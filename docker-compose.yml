@@ -1,0 +1,169 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ielts
+      POSTGRES_USER: ielts
+      POSTGRES_PASSWORD: ielts
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ielts -d ielts"]
+      interval: 5s
+      timeout: 5s
+      retries: 8
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 8
+
+  minio:
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio-development-only
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+
+  minio-setup:
+    image: minio/mc:RELEASE.2025-04-16T18-13-26Z
+    depends_on:
+      minio:
+        condition: service_started
+    volumes:
+      - ./infra/minio-cors.json:/cors.json:ro
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        i=0
+        until mc alias set local http://minio:9000 minio minio-development-only; do
+          i=$$((i+1))
+          if [ "$$i" -gt 30 ]; then exit 1; fi
+          sleep 2
+        done
+        mc mb -p local/ielts-candidate-private
+        mc mb -p local/ielts-derived-private
+        mc mb -p local/ielts-examiner-private
+        mc anonymous set none local/ielts-candidate-private || true
+        mc anonymous set none local/ielts-derived-private || true
+        mc anonymous set none local/ielts-examiner-private || true
+        mc cors set /cors.json local/ielts-candidate-private || true
+        mc cors set /cors.json local/ielts-examiner-private || true
+        echo "MinIO buckets ready"
+
+  seed:
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.backend
+    env_file:
+      - .env
+    environment: &backend-env
+      DATABASE_URL: postgresql://ielts:ielts@postgres:5432/ielts
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_PUBLIC_ENDPOINT: http://localhost:9000
+      WEB_ORIGIN: http://localhost:3000
+      API_HOST: 0.0.0.0
+      API_PORT: 4000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio-setup:
+        condition: service_completed_successfully
+    command: ["uv", "run", "python", "scripts/seed_question_bank.py"]
+    restart: "no"
+
+  api:
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.backend
+    env_file:
+      - .env
+    environment: *backend-env
+    ports:
+      - "4000:4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      seed:
+        condition: service_completed_successfully
+    command:
+      [
+        "uv",
+        "run",
+        "uvicorn",
+        "ielts_api.api:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "4000",
+      ]
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:4000/health/live')",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 8
+      start_period: 20s
+
+  worker:
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.backend
+    env_file:
+      - .env
+    environment: *backend-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      seed:
+        condition: service_completed_successfully
+    command:
+      [
+        "uv",
+        "run",
+        "celery",
+        "-A",
+        "ielts_worker.tasks:celery_app",
+        "worker",
+        "--loglevel=info",
+      ]
+
+  web:
+    build:
+      context: apps/web
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: http://localhost:4000/v1
+    ports:
+      - "3000:80"
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  minio_data:
