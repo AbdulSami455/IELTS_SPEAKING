@@ -1,0 +1,68 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ielts
+      POSTGRES_USER: ielts
+      POSTGRES_PASSWORD: ielts
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ielts -d ielts"]
+      interval: 5s
+      timeout: 5s
+      retries: 8
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 8
+
+  minio:
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio-development-only
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+
+  minio-setup:
+    image: minio/mc:RELEASE.2025-04-16T18-13-26Z
+    depends_on:
+      - minio
+    volumes:
+      - ./minio-cors.json:/cors.json:ro
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        i=0
+        until mc alias set local http://minio:9000 minio minio-development-only; do
+          i=$$((i+1))
+          if [ "$$i" -gt 30 ]; then exit 1; fi
+          sleep 2
+        done
+        mc mb -p local/ielts-candidate-private
+        mc mb -p local/ielts-derived-private
+        mc mb -p local/ielts-examiner-private
+        mc anonymous set none local/ielts-candidate-private || true
+        mc anonymous set none local/ielts-derived-private || true
+        mc anonymous set none local/ielts-examiner-private || true
+        mc cors set /cors.json local/ielts-candidate-private || true
+        mc cors set /cors.json local/ielts-examiner-private || true
+        echo "MinIO buckets ready"
+
+volumes:
+  postgres_data:
+  minio_data:
