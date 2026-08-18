@@ -1,0 +1,78 @@
+"""Database package for IELTS Speaking platform.
+
+Contains SQLAlchemy mappings, repositories, and transaction helpers.
+API routes and Celery tasks cannot issue raw SQL directly.
+"""
+
+from ielts_db.database import DatabaseConfig, create_engine, create_session_factory, get_database_url
+from ielts_db.models import (
+    Answer,
+    AuditEvent,
+    Base,
+    CriterionScore,
+    DeletionRequest,
+    ExaminerAudioAsset,
+    IdempotencyRecord,
+    MediaObject,
+    ModelCallAttempt,
+    PracticeAction,
+    PracticeGoal,
+    ProcessingJob,
+    ProgressSnapshot,
+    Question,
+    QuestionSet,
+    Report,
+    SessionQuestion,
+    SkillObservation,
+    SpeechObservation,
+    TestSession,
+    Transcript,
+    UsageLedger,
+    User,
+)
+from ielts_db.repositories import (
+    AnswerRepository,
+    JobRepository,
+    ProgressRepository,
+    QuestionSetRepository,
+    ReportRepository,
+    TestSessionRepository,
+    UserRepository,
+)
+
+__all__ = [
+    "DatabaseConfig",
+    "create_engine",
+    "create_session_factory",
+    "get_database_url",
+    "Base",
+    "User",
+    "UserRepository",
+    "QuestionSetRepository",
+    "TestSessionRepository",
+    "AnswerRepository",
+    "ReportRepository",
+    "ProgressRepository",
+    "JobRepository",
+    "QuestionSet",
+    "Question",
+    "TestSession",
+    "SessionQuestion",
+    "Answer",
+    "MediaObject",
+    "ExaminerAudioAsset",
+    "ProcessingJob",
+    "Transcript",
+    "SpeechObservation",
+    "CriterionScore",
+    "Report",
+    "SkillObservation",
+    "ProgressSnapshot",
+    "PracticeGoal",
+    "PracticeAction",
+    "ModelCallAttempt",
+    "UsageLedger",
+    "IdempotencyRecord",
+    "DeletionRequest",
+    "AuditEvent",
+]

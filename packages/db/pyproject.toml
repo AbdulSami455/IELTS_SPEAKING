@@ -1,0 +1,19 @@
+[project]
+name = "ielts-db"
+version = "0.1.0"
+description = "Database models and repositories"
+requires-python = ">=3.13"
+dependencies = [
+    "sqlalchemy[asyncio]>=2.0",
+    "psycopg[binary]>=3.0",
+    "minio>=7.2",
+    "ielts-config",
+    "ielts-domain",
+]
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
