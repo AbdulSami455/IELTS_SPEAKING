@@ -1,0 +1,25 @@
+{
+  "slug": "everyday-life-v1",
+  "version": "2",
+  "language": "en",
+  "title": "Everyday life",
+  "questions": [
+    {"part": 1, "sort_order": 1, "timing_seconds": 40, "prompt_text": "Let's talk about your hometown. Where is it, and what do you like most about living there?"},
+    {"part": 1, "sort_order": 2, "timing_seconds": 40, "prompt_text": "Do you prefer mornings or evenings, and why?"},
+    {"part": 1, "sort_order": 3, "timing_seconds": 40, "prompt_text": "Tell me about a hobby you enjoy in your free time."},
+    {"part": 1, "sort_order": 4, "timing_seconds": 40, "prompt_text": "How often do you spend time outdoors?"},
+    {
+      "part": 2,
+      "sort_order": 5,
+      "timing_seconds": 120,
+      "prompt_text": "Describe a place you like to visit in your free time.",
+      "cue_card": {
+        "title": "A place you like to visit",
+        "prompts": ["where it is", "how you get there", "what you do there", "and explain why you enjoy visiting this place"]
+      }
+    },
+    {"part": 3, "sort_order": 6, "timing_seconds": 50, "prompt_text": "How have public places in cities changed in recent years?"},
+    {"part": 3, "sort_order": 7, "timing_seconds": 50, "prompt_text": "Do you think people spend too much time indoors? Why or why not?"},
+    {"part": 3, "sort_order": 8, "timing_seconds": 50, "prompt_text": "What can governments do to make cities more pleasant to live in?"}
+  ]
+}
