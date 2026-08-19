@@ -5,30 +5,32 @@ import { setToken } from "./lib/api";
 export function Layout({ children }: { children: ReactNode }) {
   const location = useLocation();
   return (
-    <div className="shell">
-      <header className="topbar">
-        <Link to="/" className="brand">
-          Atelier <span>Speaking</span>
-        </Link>
-        <nav>
-          <Link className={location.pathname === "/" ? "active" : ""} to="/">
-            Studio
+    <div>
+      <div className="shell">
+        <header className="topbar">
+          <Link to="/" className="brand">
+            Atelier <span>Speaking</span>
           </Link>
-          <Link className={location.pathname.startsWith("/progress") ? "active" : ""} to="/progress">
-            Progress
-          </Link>
-          <button
-            className="ghost"
-            onClick={() => {
-              setToken(null);
-              window.location.href = "/login";
-            }}
-          >
-            Sign out
-          </button>
-        </nav>
-      </header>
-      {children}
+          <nav>
+            <Link className={location.pathname === "/" ? "active" : ""} to="/">
+              Studio
+            </Link>
+            <Link className={location.pathname.startsWith("/progress") ? "active" : ""} to="/progress">
+              Progress
+            </Link>
+            <button
+              className="ghost"
+              onClick={() => {
+                setToken(null);
+                window.location.href = "/login";
+              }}
+            >
+              Sign out
+            </button>
+          </nav>
+        </header>
+        {children}
+      </div>
     </div>
   );
 }

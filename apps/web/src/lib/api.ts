@@ -37,6 +37,14 @@ async function request<T>(path: string, init: RequestInit = {}, authed = true): 
   return body.data as T;
 }
 
+function wsUrl(path: string): string {
+  const base = API_BASE.replace(/^http/, "ws");
+  const token = getToken();
+  const url = new URL(`${base}${path}`);
+  if (token) url.searchParams.set("token", token);
+  return url.toString();
+}
+
 export type User = {
   id: string;
   displayName?: string;
@@ -45,7 +53,7 @@ export type User = {
   consentVersion?: string;
 };
 
-export type Question = {
+export type Turn = {
   id: string;
   answerId: string;
   part: number;
@@ -58,17 +66,34 @@ export type Question = {
   hasExaminerAudio: boolean;
   isFollowUp?: boolean;
   playbackAvailable?: boolean;
+  transcriptText?: string | null;
 };
 
 export type TestSession = {
   testId: string;
   state: string;
   revision: number;
-  questions: Question[];
+  turns: Turn[];
+  currentTurn?: Turn | null;
   permittedActions: string[];
   reportId?: string | null;
   expiresAt?: string;
   part2PrepSeconds?: number;
+};
+
+export type RealtimeSession = {
+  sessionId: string;
+  transport: string;
+  state: string;
+  phase: string;
+  llmModel: string;
+  sttModel: string;
+  ttsModel: string;
+  ttsVoice: string;
+  wsUrl?: string | null;
+  examinerPlaybackUrl?: string | null;
+  currentTurnId?: string | null;
+  test: TestSession;
 };
 
 export type Report = {
@@ -123,28 +148,49 @@ export const api = {
   me: () => request<User>("/me"),
   consent: () => request<User>("/me/consent", { method: "POST", body: JSON.stringify({ version: "2026-08-18", accepted: true }) }),
   questionSets: () => request<{ slug: string; version: string; language: string }[]>("/question-sets"),
-  createTest: (slug?: string) =>
-    request<TestSession>(`/tests${slug ? `?slug=${encodeURIComponent(slug)}` : ""}`, { method: "POST" }),
+  createTest: () => request<TestSession>("/tests", { method: "POST" }),
   getTest: (id: string) => request<TestSession>(`/tests/${id}`),
   listTests: () => request<{ testId: string; state: string; createdAt?: string }[]>("/tests"),
   deviceCheck: (id: string, payload: object) =>
     request<TestSession>(`/tests/${id}/device-check`, { method: "POST", body: JSON.stringify(payload) }),
+  createRealtimeSession: (id: string) => request<RealtimeSession>(`/tests/${id}/realtime/session`, { method: "POST" }),
+  realtimeEvent: (id: string, payload: object) =>
+    request<{ accepted: boolean }>(`/tests/${id}/realtime/events`, { method: "POST", body: JSON.stringify(payload) }),
+  realtimeSocketUrl: (id: string) => wsUrl(`/tests/${id}/realtime/live`),
+  realtimeTurnAudio: async (testId: string, turnId: string, blob: Blob) => {
+    const token = getToken();
+    const form = new FormData();
+    const extension = blob.type.includes("mp4") ? "m4a" : "webm";
+    form.append("audio", blob, `turn-${turnId}.${extension}`);
+    const response = await fetch(`${API_BASE}/tests/${testId}/realtime/turns/${turnId}/audio`, {
+      method: "POST",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: form,
+    });
+    const body = await response.json();
+    if (!response.ok) {
+      throw new ApiError(body.error?.message ?? "Upload failed", body.error?.code ?? "ERROR");
+    }
+    return body.data as { test: TestSession; examinerPlaybackUrl?: string | null; nextTurnId?: string | null };
+  },
+  startConversation: (id: string) => request<TestSession>(`/tests/${id}/conversation/start`, { method: "POST" }),
   transition: (id: string, event: string, expectedRevision: number) =>
     request<TestSession>(`/tests/${id}/transitions`, {
       method: "POST",
       body: JSON.stringify({ event, expectedRevision }),
     }),
-  uploadUrl: (testId: string, answerId: string) =>
+  uploadUrl: (testId: string, turnId: string) =>
     request<{ uploadUrl: string; headers: Record<string, string>; maxBytes: number }>(
-      `/tests/${testId}/answers/${answerId}/upload`,
+      `/tests/${testId}/turns/${turnId}/response/upload`,
       { method: "POST" },
     ),
-  uploadComplete: (testId: string, answerId: string, payload: object) =>
-    request<TestSession>(`/tests/${testId}/answers/${answerId}/upload-complete`, {
+  uploadComplete: (testId: string, turnId: string, payload: object) =>
+    request<TestSession>(`/tests/${testId}/turns/${turnId}/response/complete`, {
       method: "POST",
       body: JSON.stringify(payload),
     }),
   submit: (id: string) => request<TestSession>(`/tests/${id}/submit`, { method: "POST" }),
+  finish: (id: string) => request<TestSession>(`/tests/${id}/finish`, { method: "POST" }),
   status: (id: string) =>
     request<{ state: string; stage: string; progress: number; reportId?: string; error?: string }>(`/tests/${id}/status`),
   examinerAudio: (testId: string, questionId: string) =>

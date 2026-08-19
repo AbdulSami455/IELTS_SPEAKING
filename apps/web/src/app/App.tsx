@@ -2,7 +2,7 @@ import { Link, Navigate, Route, Routes, useNavigate, useParams } from "react-rou
 import { useEffect, useState } from "react";
 import { ApiError, api, getToken, setToken, type Report, type User } from "../lib/api";
 import { TestRunnerPage } from "../features/test-runner/TestRunner";
-import { Layout, VolumeAudio, criterionLabel, packTitle, prettyState } from "../ui";
+import { Layout, VolumeAudio, criterionLabel, prettyState } from "../ui";
 
 function useUser() {
   const [user, setUser] = useState<User | null>(null);
@@ -12,7 +12,9 @@ function useUser() {
       setError("AUTH_REQUIRED");
       return;
     }
-    api.me().then(setUser).catch((err: ApiError) => setError(err.message));
+    api.me().then(setUser).catch((err: ApiError) => {
+      if (err.code !== "RATE_LIMITED") setError(err.message);
+    });
   }, []);
   return { user, setUser, error };
 }
@@ -95,21 +97,14 @@ function Home() {
   const { user, setUser, error } = useUser();
   const navigate = useNavigate();
   const [tests, setTests] = useState<{ testId: string; state: string; createdAt?: string }[]>([]);
-  const [packs, setPacks] = useState<{ slug: string; version: string }[]>([]);
-  const [slug, setSlug] = useState("");
   const [busy, setBusy] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
 
   useEffect(() => {
     if (error) setLocalError(error === "AUTH_REQUIRED" ? null : error);
-    api.listTests().then(setTests).catch((err: ApiError) => setLocalError(err.message));
-    api
-      .questionSets()
-      .then((items) => {
-        setPacks(items);
-        if (items[0]) setSlug(items[0].slug);
-      })
-      .catch(() => undefined);
+    api.listTests().then(setTests).catch((err: ApiError) => {
+      if (err.code !== "RATE_LIMITED") setLocalError(err.message);
+    });
   }, [error]);
 
   if (error === "AUTH_REQUIRED") return <Navigate to="/login" replace />;
@@ -121,7 +116,7 @@ function Home() {
         const next = await api.consent();
         setUser(next);
       }
-      const test = await api.createTest(slug || undefined);
+      const test = await api.createTest();
       navigate(`/tests/${test.testId}/device-check`);
     } catch (err) {
       setLocalError(err instanceof Error ? err.message : "Could not start");
@@ -136,25 +131,15 @@ function Home() {
         <section className="hero">
           <div className="card stack">
             <p className="kicker">Your studio</p>
-            <h1>Take a full speaking test</h1>
+            <h1>Sit the speaking test</h1>
             <p className="muted">
               {user?.displayName ? `Hello, ${user.displayName}. ` : ""}
-              The examiner asks, you speak, we transcribe and score fluency, grammar, vocabulary, and pronunciation.
+              A live examiner talks first. You answer out loud. We score fluency, grammar, vocabulary, and pronunciation.
             </p>
             {user?.consentRequired && (
               <p className="muted">Starting records your answers privately for scoring, then deletes them on the retention schedule.</p>
             )}
             {localError && localError !== "AUTH_REQUIRED" && <div className="error">{localError}</div>}
-            <label className="field">
-              Question paper
-              <select value={slug} onChange={(event) => setSlug(event.target.value)}>
-                {packs.map((pack) => (
-                  <option key={pack.slug} value={pack.slug}>
-                    {packTitle(pack.slug)}
-                  </option>
-                ))}
-              </select>
-            </label>
             <div className="row">
               <button onClick={start} disabled={busy}>
                 {busy ? "Opening the room…" : "Start full test"}
@@ -214,8 +199,11 @@ function DeviceCheckPage() {
   const [playbackUrl, setPlaybackUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [passed, setPassed] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   async function run() {
+    if (busy) return;
+    setBusy(true);
     setError(null);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -247,6 +235,8 @@ function DeviceCheckPage() {
       setMessage("That sounded clear. Play it back, then continue into the test.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Device check failed");
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -260,10 +250,10 @@ function DeviceCheckPage() {
         {passed && <div className="ok">Device check passed.</div>}
         {error && <div className="error">{error}</div>}
         <div className="row">
-          <button className="record" onClick={run}>
-            Record sample
+          <button className="record" onClick={run} disabled={busy}>
+            {busy ? "Listening…" : "Record sample"}
           </button>
-          <button className="secondary" onClick={() => navigate(`/tests/${testId}`)} disabled={!playbackUrl}>
+          <button className="secondary" onClick={() => navigate(`/tests/${testId}`)} disabled={!passed}>
             Continue to test
           </button>
         </div>
@@ -288,17 +278,48 @@ function ProcessingPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const timer = window.setInterval(async () => {
-      const status = await api.status(testId);
-      setProgress(status.progress);
-      setStage(status.stage);
-      if (status.reportId) navigate(`/reports/${status.reportId}`);
-      if (status.stage === "failed" || status.state === "FAILED") {
-        setError(status.error ?? "Scoring failed. No band was invented.");
-        window.clearInterval(timer);
+    let cancelled = false;
+    let inFlight = false;
+    let delay = 2500;
+
+    async function poll() {
+      if (cancelled || inFlight) return;
+      inFlight = true;
+      try {
+        const status = await api.status(testId);
+        if (cancelled) return;
+        delay = 2500;
+        setProgress(status.progress);
+        setStage(status.stage);
+        if (status.reportId) {
+          cancelled = true;
+          navigate(`/reports/${status.reportId}`);
+          return;
+        }
+        if (status.stage === "failed" || status.state === "FAILED") {
+          cancelled = true;
+          setError(status.error ?? "Scoring failed. No band was invented.");
+          return;
+        }
+      } catch (err) {
+        if (cancelled) return;
+        if (err instanceof ApiError && err.code === "RATE_LIMITED") {
+          delay = Math.min(delay * 2, 12000);
+        } else if (err instanceof Error) {
+          setError(err.message);
+        }
+      } finally {
+        inFlight = false;
+        if (!cancelled) {
+          window.setTimeout(() => void poll(), delay);
+        }
       }
-    }, 1000);
-    return () => window.clearInterval(timer);
+    }
+
+    void poll();
+    return () => {
+      cancelled = true;
+    };
   }, [navigate, testId]);
 
   return (

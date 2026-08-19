@@ -4,7 +4,7 @@ Practice product only. Not official IELTS. Never invent a band.
 
 ## Run
 
-Docker (API, worker, web, Postgres, Redis, MinIO, seed):
+Docker (API, worker, web, Postgres, Redis, MinIO):
 
 ```bash
 cp .env.example .env   # set OPENROUTER_API_KEY
@@ -20,7 +20,6 @@ cp .env.example .env   # set OPENROUTER_API_KEY
 uv sync
 npm --prefix apps/web install
 make infra-up          # Postgres, Redis, MinIO
-make db-seed           # question papers
 make worker            # Celery scoring
 uv run uvicorn ielts_api.api:app --reload --host 0.0.0.0 --port 4000
 npm --prefix apps/web run dev
@@ -31,11 +30,11 @@ Or `make stack`. Register or sign in on `/login`. Restart API and worker after c
 ## Flow
 
 1. Sign in (email + password). Each account has its own tests, reports, and progress.
-2. Consent → pick paper → mic check (record + playback).
-3. Part 1 interview. After an answer, the examiner may ask one follow-up (cross-question) from the transcript.
-4. Part 2: 60s prep (no recording), up to 120s long turn, then at most one rounding question.
-5. Part 3 discussion, with follow-ups grounded in what the candidate said.
-6. Browser PUT to private MinIO. API validates, transcribes, and may insert a follow-up question.
+2. Consent → mic check (record + playback).
+3. Start the spoken exam. The AI examiner asks Part 1 questions in audio, based on prior answers.
+4. Part 2: one minute prep, then a long turn with an optional spoken rounding question.
+5. Part 3: discussion prompts generated from what the candidate already said.
+6. Browser PUT to private MinIO. API validates, transcribes, and generates the next examiner turn.
 7. Submit enqueues Celery. Worker: acoustics + pronunciation from audio; grammar/vocabulary from transcript; assemble report.
 8. Report: four criteria, mistakes with quotes/corrections, fluency notes, transcripts, pronunciation findings.
 9. Progress: tests completed, latest band, trend, per-criterion averages, weakest skill, practice actions.
@@ -49,16 +48,16 @@ Failure = FAILED, not a fake score.
 - `apps/worker` — Celery `evaluate_test_task` + retention
 - `packages/domain` — session/answer states, band rounding
 - `packages/db` — SQLAlchemy models, MinIO keys/store
-- `packages/inference` — OpenRouter STT/TTS/score/pronunciation/examiner follow-ups, assembler
+- `packages/inference` — OpenRouter STT/TTS/score/pronunciation/examiner turn generation, assembler
 - `packages/audio` — ffmpeg normalize, WAV quality, acoustic observations
 - `packages/config` — `.env` loader
-- `config/question-banks` — Part 1–3 papers
+- `config/question-banks` — optional legacy seed content
 - `infra/docker-compose.yml` — local Postgres, Redis, MinIO (uv/npm workflow)
 - `docker-compose.yml` — full stack (API, worker, web, seed, infra)
 
 ## Models (change in `.env`)
 
-All calls go through OpenRouter. Examiner follow-ups use `OPENROUTER_SCORING_MODEL`.
+All calls go through OpenRouter. Examiner turn generation and follow-ups use `OPENROUTER_SCORING_MODEL`.
 
 | Env | Role | Default |
 |---|---|---|
