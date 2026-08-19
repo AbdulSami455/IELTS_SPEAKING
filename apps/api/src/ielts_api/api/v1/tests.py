@@ -2,7 +2,17 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Query
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    File,
+    Query,
+    UploadFile,
+    WebSocket,
+    WebSocketDisconnect,
+    status,
+)
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import HTMLResponse, StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,13 +22,16 @@ from ielts_api.api.v1.schemas import (
     DeviceCheckRequest,
     GoalRequest,
     PracticeActionPatch,
+    RealtimeClientEventRequest,
     TransitionRequest,
     UploadCompleteRequest,
     UserResponse,
     camelize,
 )
+from ielts_api.auth.identity import get_identity_verifier
 from ielts_api.auth.identity import AuthenticatedUser
 from ielts_api.deps import get_session, object_store, require_user, settings
+from ielts_api.services.realtime import RealtimeSessionService
 from ielts_api.services.tests import TestService
 from ielts_config import EnvironmentConfig
 from ielts_db.repositories import UserRepository
@@ -33,6 +46,14 @@ def service(
     store: ObjectStore = Depends(object_store),
 ) -> TestService:
     return TestService(session, config, store)
+
+
+def realtime_service(
+    session: AsyncSession = Depends(get_session),
+    config: EnvironmentConfig = Depends(settings),
+    store: ObjectStore = Depends(object_store),
+) -> RealtimeSessionService:
+    return RealtimeSessionService(session, config, store)
 
 
 def envelope(data, request_id: str = "local"):
@@ -133,6 +154,76 @@ async def device_check(
     return envelope(await svc.device_check(user.user_id, test_id, payload.model_dump()))
 
 
+@router.post("/tests/{test_id}/realtime/session")
+async def create_realtime_session(
+    test_id: str,
+    user: AuthenticatedUser = Depends(require_user),
+    svc: RealtimeSessionService = Depends(realtime_service),
+) -> dict:
+    return envelope(await svc.create_session(user.user_id, test_id))
+
+
+@router.post("/tests/{test_id}/realtime/events")
+async def ingest_realtime_event(
+    test_id: str,
+    payload: RealtimeClientEventRequest,
+    user: AuthenticatedUser = Depends(require_user),
+    svc: RealtimeSessionService = Depends(realtime_service),
+) -> dict:
+    return envelope(await svc.ingest_event(user.user_id, test_id, payload.model_dump()))
+
+
+@router.post("/tests/{test_id}/realtime/turns/{turn_id}/audio")
+async def upload_realtime_turn_audio(
+    test_id: str,
+    turn_id: str,
+    audio: UploadFile = File(...),
+    user: AuthenticatedUser = Depends(require_user),
+    svc: RealtimeSessionService = Depends(realtime_service),
+) -> dict:
+    return envelope(
+        await svc.upload_turn_audio(
+            user.user_id,
+            test_id,
+            turn_id,
+            await audio.read(),
+            audio.content_type or "audio/webm",
+        )
+    )
+
+
+@router.websocket("/tests/{test_id}/realtime/live")
+async def realtime_live_socket(
+    websocket: WebSocket,
+    test_id: str,
+    session: AsyncSession = Depends(get_session),
+    config: EnvironmentConfig = Depends(settings),
+    store: ObjectStore = Depends(object_store),
+) -> None:
+    token = websocket.query_params.get("token", "")
+    identity = await get_identity_verifier(config).verify(token)
+    if identity is None:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+    repo = UserRepository(session)
+    user = await repo.create_or_update(
+        auth_subject=identity.auth_subject,
+        email=identity.email,
+        display_name=identity.display_name,
+    )
+    await session.commit()
+    await websocket.accept()
+    svc = RealtimeSessionService(session, config, store)
+    await websocket.send_json(envelope(await svc.create_session(user.id, test_id)))
+    try:
+        while True:
+            payload = await websocket.receive_json()
+            data = RealtimeClientEventRequest.model_validate(payload)
+            await websocket.send_json(envelope(await svc.ingest_event(user.id, test_id, data.model_dump())))
+    except WebSocketDisconnect:
+        return
+
+
 @router.post("/tests/{test_id}/transitions")
 async def transitions(
     test_id: str,
@@ -143,6 +234,15 @@ async def transitions(
     return envelope(await svc.transition(user.user_id, test_id, payload.event, payload.expected_revision))
 
 
+@router.post("/tests/{test_id}/conversation/start")
+async def start_conversation(
+    test_id: str,
+    user: AuthenticatedUser = Depends(require_user),
+    svc: TestService = Depends(service),
+) -> dict:
+    return envelope(await svc.start_conversation(user.user_id, test_id))
+
+
 @router.post("/tests/{test_id}/answers/{answer_id}/upload")
 async def upload(
     test_id: str,
@@ -151,6 +251,16 @@ async def upload(
     svc: TestService = Depends(service),
 ) -> dict:
     return envelope(await svc.authorize_upload(user.user_id, test_id, answer_id))
+
+
+@router.post("/tests/{test_id}/turns/{turn_id}/response/upload")
+async def upload_turn_response(
+    test_id: str,
+    turn_id: str,
+    user: AuthenticatedUser = Depends(require_user),
+    svc: TestService = Depends(service),
+) -> dict:
+    return envelope(await svc.authorize_turn_upload(user.user_id, test_id, turn_id))
 
 
 @router.post("/tests/{test_id}/answers/{answer_id}/upload-complete")
@@ -164,8 +274,33 @@ async def upload_complete(
     return envelope(await svc.complete_upload(user.user_id, test_id, answer_id, payload.model_dump()))
 
 
+@router.post("/tests/{test_id}/turns/{turn_id}/response/complete")
+async def upload_turn_response_complete(
+    test_id: str,
+    turn_id: str,
+    payload: UploadCompleteRequest,
+    user: AuthenticatedUser = Depends(require_user),
+    svc: TestService = Depends(service),
+) -> dict:
+    return envelope(await svc.complete_turn_upload(user.user_id, test_id, turn_id, payload.model_dump()))
+
+
 @router.post("/tests/{test_id}/submit")
 async def submit(
+    test_id: str,
+    background: BackgroundTasks,
+    user: AuthenticatedUser = Depends(require_user),
+    svc: TestService = Depends(service),
+) -> dict:
+    from ielts_api.jobs import enqueue_evaluate
+
+    data = await svc.submit(user.user_id, test_id)
+    background.add_task(enqueue_evaluate, test_id)
+    return envelope(data)
+
+
+@router.post("/tests/{test_id}/finish")
+async def finish(
     test_id: str,
     background: BackgroundTasks,
     user: AuthenticatedUser = Depends(require_user),
