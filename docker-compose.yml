@@ -60,11 +60,11 @@ services:
         mc anonymous set none local/ielts-candidate-private || true
         mc anonymous set none local/ielts-derived-private || true
         mc anonymous set none local/ielts-examiner-private || true
-        mc cors set /cors.json local/ielts-candidate-private || true
-        mc cors set /cors.json local/ielts-examiner-private || true
+        mc cors set local/ielts-candidate-private /cors.json
+        mc cors set local/ielts-examiner-private /cors.json
         echo "MinIO buckets ready"
 
-  seed:
+  api:
     build:
       context: .
       dockerfile: infra/Dockerfile.backend
@@ -79,40 +79,35 @@ services:
       WEB_ORIGIN: http://localhost:3000
       API_HOST: 0.0.0.0
       API_PORT: 4000
+      WATCHFILES_FORCE_POLLING: "true"
+      PYTHONPATH: /app/apps/api/src:/app/apps/worker/src:/app/packages/domain/src:/app/packages/db/src:/app/packages/config/src:/app/packages/inference/src:/app/packages/audio/src:/app/packages/observability/src
+    volumes: &backend-src
+      - ./apps:/app/apps
+      - ./packages:/app/packages
+      - ./scripts:/app/scripts
+      - ./config:/app/config
     depends_on:
       postgres:
         condition: service_healthy
       minio-setup:
         condition: service_completed_successfully
-    command: ["uv", "run", "python", "scripts/seed_question_bank.py"]
-    restart: "no"
-
-  api:
-    build:
-      context: .
-      dockerfile: infra/Dockerfile.backend
-    env_file:
-      - .env
-    environment: *backend-env
-    ports:
-      - "4000:4000"
-    depends_on:
-      postgres:
-        condition: service_healthy
       redis:
         condition: service_healthy
-      seed:
-        condition: service_completed_successfully
+    ports:
+      - "4000:4000"
     command:
       [
-        "uv",
-        "run",
         "uvicorn",
         "ielts_api.api:app",
         "--host",
         "0.0.0.0",
         "--port",
         "4000",
+        "--reload",
+        "--reload-dir",
+        "/app/apps",
+        "--reload-dir",
+        "/app/packages",
       ]
     healthcheck:
       test:
@@ -134,32 +129,34 @@ services:
     env_file:
       - .env
     environment: *backend-env
+    volumes: *backend-src
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
-      seed:
-        condition: service_completed_successfully
     command:
       [
-        "uv",
-        "run",
-        "celery",
-        "-A",
-        "ielts_worker.tasks:celery_app",
-        "worker",
-        "--loglevel=info",
+        "watchfiles",
+        "--filter",
+        "python",
+        "celery -A ielts_worker.tasks:celery_app worker --loglevel=info --pool=solo",
+        "/app/apps",
+        "/app/packages",
       ]
 
   web:
-    build:
-      context: apps/web
-      dockerfile: Dockerfile
-      args:
-        VITE_API_BASE_URL: http://localhost:4000/v1
+    image: node:22-alpine
+    working_dir: /web
+    volumes:
+      - ./apps/web:/web
+      - web_node_modules:/web/node_modules
+    environment:
+      VITE_API_BASE_URL: http://localhost:4000/v1
+      CHOKIDAR_USEPOLLING: "true"
+    command: sh -c "npm ci && npm run dev -- --host 0.0.0.0 --port 3000"
     ports:
-      - "3000:80"
+      - "3000:3000"
     depends_on:
       api:
         condition: service_healthy
@@ -167,3 +164,4 @@ services:
 volumes:
   postgres_data:
   minio_data:
+  web_node_modules:
