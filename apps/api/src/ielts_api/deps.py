@@ -61,11 +61,12 @@ async def require_user(
         email=identity.email,
         display_name=identity.display_name,
     )
-    await session.commit()
-    await session.refresh(user)
+    if request.method != "GET":
+        await session.commit()
+        await session.refresh(user)
     from ielts_api.rate_limit import check_rate
 
-    check_rate(user.id)
+    check_rate(user.id, request)
     return AuthenticatedUser(
         user_id=user.id,
         auth_subject=user.auth_subject,
