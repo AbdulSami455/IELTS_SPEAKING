@@ -112,8 +112,8 @@ class TestSession(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
-    question_set_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("question_sets.id"), nullable=False
+    question_set_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("question_sets.id"), nullable=True
     )
     status: Mapped[str] = mapped_column(String(30), nullable=False, default="CREATED")
     revision: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
@@ -125,6 +125,7 @@ class TestSession(Base):
         onupdate=sql_text("now()"), nullable=False
     )
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    topic_plan: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
 
     user = relationship("User", back_populates="test_sessions")
     question_set = relationship("QuestionSet", backref="test_sessions")
@@ -132,6 +133,8 @@ class TestSession(Base):
                                       cascade="all, delete-orphan")
     answers = relationship("Answer", back_populates="test_session",
                            cascade="all, delete-orphan")
+    realtime_sessions = relationship("RealtimeSession", back_populates="test_session", cascade="all, delete-orphan")
+    conversation_events = relationship("ConversationEvent", back_populates="test_session", cascade="all, delete-orphan")
     processing_jobs = relationship("ProcessingJob", back_populates="test_session",
                                     cascade="all, delete-orphan")
     report = relationship("Report", back_populates="test_session", uselist=False,
@@ -223,12 +226,93 @@ class MediaObject(Base):
     )
 
     answer = relationship("Answer", back_populates="media_object", uselist=False)
+    conversation_events = relationship("ConversationEvent", back_populates="media_object")
 
     __table_args__ = (
         UniqueConstraint("bucket", "object_key", name="uq_media_object_bucket_key"),
         CheckConstraint(
             "category IN ('candidate','derivative','examiner')",
             name="ck_media_object_category"
+        ),
+    )
+
+
+class RealtimeSession(Base):
+    __tablename__ = "realtime_sessions"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    test_session_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("test_sessions.id"), nullable=False
+    )
+    transport: Mapped[str] = mapped_column(String(20), nullable=False, default="websocket")
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="ACTIVE")
+    current_phase: Mapped[str] = mapped_column(String(20), nullable=False, default="READY")
+    llm_model: Mapped[str] = mapped_column(String(120), nullable=False)
+    stt_model: Mapped[str] = mapped_column(String(120), nullable=False)
+    tts_model: Mapped[str] = mapped_column(String(120), nullable=False)
+    tts_voice: Mapped[str] = mapped_column(String(50), nullable=False)
+    session_notes: Mapped[Optional[dict[str, Any]]] = mapped_column(JSON, nullable=True)
+    started_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=sql_text("now()"), nullable=False
+    )
+    finished_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=sql_text("now()"), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=sql_text("now()"),
+        onupdate=sql_text("now()"), nullable=False
+    )
+
+    test_session = relationship("TestSession", back_populates="realtime_sessions")
+    conversation_events = relationship("ConversationEvent", back_populates="realtime_session")
+
+    __table_args__ = (
+        Index("idx_realtime_sessions_test_status", "test_session_id", "status"),
+        CheckConstraint(
+            "status IN ('ACTIVE','FINISHED','FAILED','ABANDONED')",
+            name="ck_realtime_session_status",
+        ),
+    )
+
+
+class ConversationEvent(Base):
+    __tablename__ = "conversation_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    realtime_session_id: Mapped[Optional[str]] = mapped_column(
+        String(36), ForeignKey("realtime_sessions.id"), nullable=True
+    )
+    test_session_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("test_sessions.id"), nullable=False
+    )
+    media_object_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("media_objects.id"), nullable=True
+    )
+    phase: Mapped[str] = mapped_column(String(20), nullable=False)
+    speaker_role: Mapped[str] = mapped_column(String(20), nullable=False)
+    event_type: Mapped[str] = mapped_column(String(40), nullable=False)
+    sequence_index: Mapped[int] = mapped_column(Integer, nullable=False)
+    transcript_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    prompt_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    provider_event_id: Mapped[Optional[str]] = mapped_column(String(120), nullable=True)
+    payload: Mapped[Optional[dict[str, Any]]] = mapped_column(JSON, nullable=True)
+    started_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    ended_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    latency_ms: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=sql_text("now()"), nullable=False
+    )
+
+    realtime_session = relationship("RealtimeSession", back_populates="conversation_events")
+    test_session = relationship("TestSession", back_populates="conversation_events")
+    media_object = relationship("MediaObject", back_populates="conversation_events")
+
+    __table_args__ = (
+        Index("idx_conversation_events_test_sequence", "test_session_id", "sequence_index"),
+        CheckConstraint(
+            "speaker_role IN ('examiner','candidate','system')",
+            name="ck_conversation_event_speaker_role",
         ),
     )
 
