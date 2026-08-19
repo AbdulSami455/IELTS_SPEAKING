@@ -107,6 +107,8 @@ def create_app() -> FastAPI:
             await conn.run_sync(Base.metadata.create_all)
             await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)"))
             await conn.execute(text("ALTER TABLE session_questions ALTER COLUMN question_id DROP NOT NULL"))
+            await conn.execute(text("ALTER TABLE test_sessions ALTER COLUMN question_set_id DROP NOT NULL"))
+            await conn.execute(text("ALTER TABLE test_sessions ADD COLUMN IF NOT EXISTS topic_plan JSON"))
         await db.dispose()
 
     app.include_router(api_router, prefix="/v1")
