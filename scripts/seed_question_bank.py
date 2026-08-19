@@ -21,7 +21,12 @@ ROOT = Path(__file__).resolve().parents[1]
 def _load_env() -> None:
     env_path = ROOT / ".env"
     example = ROOT / ".env.example"
-    source = env_path if env_path.exists() else example
+    if env_path.exists():
+        source = env_path
+    elif example.exists():
+        source = example
+    else:
+        return
     for line in source.read_text().splitlines():
         if not line or line.startswith("#") or "=" not in line:
             continue

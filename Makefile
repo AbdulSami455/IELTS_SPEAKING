@@ -19,7 +19,7 @@ stack:
 	zsh scripts/dev_stack.sh
 
 compose-up:
-	docker compose up --build
+	docker compose up
 
 compose-down:
 	docker compose down
