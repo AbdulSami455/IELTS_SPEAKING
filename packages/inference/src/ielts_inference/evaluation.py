@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,6 +15,7 @@ from ielts_audio.media import concat_wavs, measure_wav, normalize_to_wav, acoust
 from ielts_config import EnvironmentConfig
 from ielts_db.models import (
     Answer,
+    ConversationEvent,
     CriterionScore,
     PracticeAction,
     ProcessingJob,
@@ -31,6 +33,7 @@ from ielts_inference.openrouter import InferenceError, OpenRouterClient, Transcr
 from ielts_inference.progress import rebuild_progress_snapshot
 from ielts_inference.pronunciation import check_pronunciation
 from ielts_inference.quota import reserve_model_call
+from ielts_inference.transcript import clean_transcript
 
 
 PUBLIC_STAGES = (
@@ -84,6 +87,8 @@ async def evaluate_test(session: AsyncSession, test_id: str, config: Environment
         .options(
             selectinload(TestSession.answers).selectinload(Answer.session_question),
             selectinload(TestSession.answers).selectinload(Answer.media_object),
+            selectinload(TestSession.answers).selectinload(Answer.transcript),
+            selectinload(TestSession.conversation_events),
             selectinload(TestSession.report),
         )
         .where(TestSession.id == test_id)
@@ -111,6 +116,7 @@ async def evaluate_test(session: AsyncSession, test_id: str, config: Environment
         coverage_values: list[float] = []
         merged_features: dict = {}
         wav_parts: list[bytes] = []
+        conversation_context = _conversation_context(test.conversation_events)
 
         _set_stage(job, "validating_audio", 15)
         await session.commit()
@@ -124,9 +130,10 @@ async def evaluate_test(session: AsyncSession, test_id: str, config: Environment
             raise InferenceError("No uploaded answers to evaluate")
 
         for answer in usable_answers:
-            object_key = f"tests/{test_id}/answers/{answer.id}.webm"
+            object_key = answer.media_object.object_key if answer.media_object is not None else f"tests/{test_id}/answers/{answer.id}.webm"
             audio = store.get_bytes(config.minio_candidate_bucket, object_key)
-            wav = normalize_to_wav(audio, ".webm")
+            source_ext = Path(object_key).suffix or ".webm"
+            wav = normalize_to_wav(audio, source_ext)
             wav_parts.append(wav)
             quality = measure_wav(wav)
             acoustic = {
@@ -147,7 +154,7 @@ async def evaluate_test(session: AsyncSession, test_id: str, config: Environment
             saved = existing.scalar_one_or_none()
             if saved and saved.text:
                 transcript = TranscriptResult(
-                    text=saved.text,
+                    text=clean_transcript(saved.text),
                     language="en",
                     duration_seconds=0,
                     words=saved.words or [],
@@ -158,15 +165,24 @@ async def evaluate_test(session: AsyncSession, test_id: str, config: Environment
                 await reserve_model_call(session, test.user_id, test_id, "transcription", config)
                 fmt = "wav" if wav[:4] == b"RIFF" else "webm"
                 transcript = client.transcribe(wav if fmt == "wav" else audio, fmt)
+                text = clean_transcript(transcript.text)
                 session.add(
                     Transcript(
                         answer_id=answer.id,
                         part=part,
                         evaluator_version=EVALUATOR_VERSION,
-                        text=transcript.text,
+                        text=text,
                         words=transcript.words,
                         model_policy_version=config.openrouter_scoring_model[:50],
                     )
+                )
+                transcript = TranscriptResult(
+                    text=text,
+                    language=transcript.language,
+                    duration_seconds=transcript.duration_seconds,
+                    words=transcript.words,
+                    segments=transcript.segments,
+                    model=transcript.model,
                 )
             fmt = "wav" if wav[:4] == b"RIFF" else "webm"
             features = extract_features(transcript.text, transcript.words, acoustic)
@@ -237,6 +253,8 @@ async def evaluate_test(session: AsyncSession, test_id: str, config: Environment
             SCORING_INSTRUCTIONS
             + "\n\nAcoustic/feature summary:\n"
             + json.dumps({"merged": merged_features, "coverage": mean_coverage}, indent=2)
+            + "\n\nConversation summary:\n"
+            + json.dumps(conversation_context, indent=2)
             + "\n\nAnswers:\n"
             + json.dumps(part_payloads, indent=2)
         )
@@ -356,6 +374,22 @@ async def evaluate_test(session: AsyncSession, test_id: str, config: Environment
         _set_stage(job, "failed", 100)
         await session.commit()
         raise
+
+
+def _conversation_context(events: list[ConversationEvent]) -> list[dict]:
+    summary: list[dict] = []
+    for event in sorted(events, key=lambda item: (item.sequence_index, item.id)):
+        if event.event_type not in {"examiner_prompt", "candidate_turn_completed"}:
+            continue
+        summary.append(
+            {
+                "phase": event.phase,
+                "speaker": event.speaker_role,
+                "text": event.transcript_text or event.prompt_text or "",
+                "event": event.event_type,
+            }
+        )
+    return summary
 
 
 async def _job(session: AsyncSession, test_id: str, job_type: str) -> ProcessingJob:
