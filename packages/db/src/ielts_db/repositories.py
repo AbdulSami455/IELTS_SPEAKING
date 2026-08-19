@@ -11,11 +11,13 @@ from sqlalchemy.orm import selectinload
 
 from ielts_db.models import (
     Answer,
+    ConversationEvent,
     CriterionScore,
     PracticeAction,
     PracticeGoal,
     ProcessingJob,
     QuestionSet,
+    RealtimeSession,
     Report,
     SessionQuestion,
     TestSession,
@@ -123,8 +125,15 @@ class TestSessionRepository:
         result = await self._session.execute(
             select(TestSession)
             .options(
-                selectinload(TestSession.session_questions).selectinload(SessionQuestion.answer),
-                selectinload(TestSession.answers),
+                selectinload(TestSession.session_questions)
+                .selectinload(SessionQuestion.answer)
+                .selectinload(Answer.transcript),
+                selectinload(TestSession.session_questions)
+                .selectinload(SessionQuestion.answer)
+                .selectinload(Answer.media_object),
+                selectinload(TestSession.answers).selectinload(Answer.transcript),
+                selectinload(TestSession.realtime_sessions),
+                selectinload(TestSession.conversation_events),
                 selectinload(TestSession.report),
                 selectinload(TestSession.processing_jobs),
             )
@@ -137,8 +146,15 @@ class TestSessionRepository:
         result = await self._session.execute(
             select(TestSession)
             .options(
-                selectinload(TestSession.session_questions).selectinload(SessionQuestion.answer),
-                selectinload(TestSession.answers),
+                selectinload(TestSession.session_questions)
+                .selectinload(SessionQuestion.answer)
+                .selectinload(Answer.transcript),
+                selectinload(TestSession.session_questions)
+                .selectinload(SessionQuestion.answer)
+                .selectinload(Answer.media_object),
+                selectinload(TestSession.answers).selectinload(Answer.transcript),
+                selectinload(TestSession.realtime_sessions),
+                selectinload(TestSession.conversation_events),
                 selectinload(TestSession.report),
                 selectinload(TestSession.processing_jobs),
             )
@@ -177,7 +193,11 @@ class AnswerRepository:
     async def get_owned(self, answer_id: str, test_id: str) -> Optional[Answer]:
         result = await self._session.execute(
             select(Answer)
-            .options(selectinload(Answer.media_object), selectinload(Answer.session_question))
+            .options(
+                selectinload(Answer.media_object),
+                selectinload(Answer.session_question),
+                selectinload(Answer.transcript),
+            )
             .where(Answer.id == answer_id)
             .where(Answer.test_session_id == test_id)
         )
@@ -188,6 +208,28 @@ class AnswerRepository:
             select(Answer)
             .options(selectinload(Answer.session_question), selectinload(Answer.media_object))
             .where(Answer.test_session_id == test_id)
+        )
+        return result.scalars().all()
+
+
+class RealtimeSessionRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    async def active_for_test(self, test_id: str) -> Optional[RealtimeSession]:
+        result = await self._session.execute(
+            select(RealtimeSession)
+            .where(RealtimeSession.test_session_id == test_id)
+            .where(RealtimeSession.status == "ACTIVE")
+            .order_by(RealtimeSession.created_at.desc())
+        )
+        return result.scalars().first()
+
+    async def list_events(self, test_id: str) -> Sequence[ConversationEvent]:
+        result = await self._session.execute(
+            select(ConversationEvent)
+            .where(ConversationEvent.test_session_id == test_id)
+            .order_by(ConversationEvent.sequence_index.asc(), ConversationEvent.id.asc())
         )
         return result.scalars().all()
 
