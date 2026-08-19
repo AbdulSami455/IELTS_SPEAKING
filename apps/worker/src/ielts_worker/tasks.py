@@ -45,6 +45,25 @@ celery_app.conf.update(
 )
 
 
+@celery_app.task(name="ielts_worker.tasks.transcribe_answer")
+def transcribe_answer_task(user_id: int, test_id: str, answer_id: str) -> str:
+    from ielts_api.services.tests import TestService
+    from ielts_config import EnvironmentConfig
+    from ielts_db.database import DatabaseConfig
+    from ielts_db.storage import ObjectStore
+
+    async def _run() -> str:
+        db = DatabaseConfig()
+        config = EnvironmentConfig.from_env()
+        store = ObjectStore(config)
+        async with db.session_factory() as session:
+            await TestService(session, config, store).transcribe_saved_answer(user_id, test_id, answer_id)
+        await db.dispose()
+        return answer_id
+
+    return asyncio.run(_run())
+
+
 @celery_app.task(name="ielts_worker.tasks.evaluate_test")
 def evaluate_test_task(test_id: str) -> str:
     from ielts_db.database import DatabaseConfig
