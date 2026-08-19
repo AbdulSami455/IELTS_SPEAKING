@@ -16,7 +16,20 @@ def test_features_are_deterministic_and_do_not_assign_a_band():
     assert first["word_count"] > 0
 
 
-def test_acoustic_observations_never_assign_a_band():
+def test_pause_features_use_audio_duration_not_broken_timestamps():
+    from ielts_audio.media import pause_features
+
+    words = [{"w": "hello", "start": 0.0, "end": 0.2}, {"w": "there", "start": 0.3, "end": 0.5}] * 40
+    result = pause_features(words, duration_ms=40_000)
+    assert result["words_per_minute"] <= 250
+    assert result["words_per_minute"] < 200
+
+
+def test_clean_transcript_drops_non_english_script():
+    from ielts_inference.transcript import clean_transcript
+
+    assert "pizza" in clean_transcript("I received pizza. 有的。 别把人冲了。").lower()
+    assert "有" not in clean_transcript("I received pizza. 有的。")
     from ielts_audio.media import acoustic_observations
 
     result = acoustic_observations(b"not-a-wav", [{"w": "hello", "startMs": 0, "endMs": 200}])

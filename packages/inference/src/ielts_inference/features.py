@@ -15,7 +15,7 @@ def extract_features(text: str, words: list[dict], acoustic: dict) -> dict:
     duration_ms = acoustic.get("duration_ms") or 0
     from ielts_audio.media import pause_features
 
-    pauses = pause_features(words) if words else {
+    pauses = pause_features(words, duration_ms) if words else {
         "pause_count": 0,
         "mean_pause_seconds": 0,
         "words_per_minute": 0,
