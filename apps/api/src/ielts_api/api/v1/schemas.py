@@ -60,7 +60,7 @@ class ConsentRequest(ApiModel):
     accepted: bool
 
 
-class QuestionResponse(ApiModel):
+class TurnResponse(ApiModel):
     id: str
     answer_id: str
     part: int
@@ -73,17 +73,53 @@ class QuestionResponse(ApiModel):
     has_examiner_audio: bool = False
     is_follow_up: bool = False
     playback_available: bool = False
+    transcript_text: Optional[str] = None
 
 
 class TestSessionResponse(ApiModel):
     test_id: str
     state: str
     revision: int
-    questions: list[QuestionResponse]
+    turns: list[TurnResponse]
+    current_turn: Optional[TurnResponse] = None
     permitted_actions: list[str]
     started_at: Optional[str] = None
     expires_at: Optional[str] = None
     report_id: Optional[str] = None
+    part2_prep_seconds: Optional[int] = None
+
+
+class RealtimeSessionResponse(ApiModel):
+    session_id: str
+    transport: str
+    state: str
+    phase: str
+    llm_model: str
+    stt_model: str
+    tts_model: str
+    tts_voice: str
+    ws_url: Optional[str] = None
+    examiner_playback_url: Optional[str] = None
+    current_turn_id: Optional[str] = None
+    test: TestSessionResponse
+
+
+class RealtimeClientEventRequest(ApiModel):
+    event_type: str
+    speaker_role: str = "system"
+    provider_event_id: Optional[str] = None
+    transcript_text: Optional[str] = None
+    prompt_text: Optional[str] = None
+    started_at: Optional[str] = None
+    ended_at: Optional[str] = None
+    latency_ms: Optional[int] = None
+    payload: dict[str, Any] = Field(default_factory=dict)
+
+
+class RealtimeAudioTurnResponse(ApiModel):
+    test: TestSessionResponse
+    examiner_playback_url: Optional[str] = None
+    next_turn_id: Optional[str] = None
 
 
 class DeviceCheckRequest(ApiModel):
