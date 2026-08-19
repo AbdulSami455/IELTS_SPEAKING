@@ -98,26 +98,39 @@ def _pcm_rms(frames: bytes, width: int) -> float:
     return round((total / count) ** 0.5 / peak, 4)
 
 
-def pause_features(words: list[dict]) -> dict:
+def _timestamp_seconds(word: dict) -> tuple[float, float]:
+    start = word.get("start")
+    end = word.get("end")
+    if start is None:
+        start = (word.get("startMs") or 0) / 1000
+    if end is None:
+        end = (word.get("endMs") or 0) / 1000
+    start_f = float(start or 0)
+    end_f = float(end or 0)
+    return start_f, end_f
+
+
+def pause_features(words: list[dict], duration_ms: int = 0) -> dict:
+    spans = [_timestamp_seconds(word) for word in words]
+    if spans and max(end for _start, end in spans) > 1000:
+        spans = [(start / 1000, end / 1000) for start, end in spans]
     gaps = []
     previous_end = None
-    for word in words:
-        start = float(word.get("start") or word.get("startMs", 0) / 1000)
-        end = float(word.get("end") or word.get("endMs", 0) / 1000)
+    for start, end in spans:
         if previous_end is not None:
             gap = start - previous_end
-            if gap >= 0.4:
+            if 0.4 <= gap <= 8:
                 gaps.append(gap)
         previous_end = end
-    duration = 0.0
-    if words:
-        last = words[-1]
-        duration = float(last.get("end") or last.get("endMs", 0) / 1000)
+    timestamp_duration = spans[-1][1] if spans else 0.0
+    acoustic_duration = duration_ms / 1000 if duration_ms else 0.0
+    duration = max(acoustic_duration, timestamp_duration, 1.0)
     word_count = len(words)
+    wpm = word_count / duration * 60
     return {
         "pause_count": len(gaps),
         "mean_pause_seconds": round(sum(gaps) / len(gaps), 3) if gaps else 0.0,
-        "words_per_minute": round(word_count / max(duration, 1) * 60, 1),
+        "words_per_minute": round(min(max(wpm, 0), 250), 1),
         "mean_length_of_run": round(word_count / max(len(gaps) + 1, 1), 2),
         "speaking_duration_ms": int(duration * 1000),
     }
@@ -137,7 +150,7 @@ def inspect_audio(data: bytes, suffix: str = ".webm") -> dict:
 
 def acoustic_observations(wav: bytes, words: list[dict]) -> dict:
     quality = measure_wav(wav)
-    pauses = pause_features(words) if words else {"pause_count": 0, "words_per_minute": 0.0}
+    pauses = pause_features(words, quality.duration_ms) if words else {"pause_count": 0, "words_per_minute": 0.0}
     coverage = quality.speech_ratio
     if quality.duration_ms < 3000:
         coverage = min(coverage, 0.2)
