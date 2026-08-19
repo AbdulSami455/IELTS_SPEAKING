@@ -7,16 +7,16 @@ import json
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import select
+from sqlalchemy import inspect, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ielts_api.errors import conflict, not_found, validation
+from ielts_api.errors import AppError, conflict, not_found, validation
+from ielts_api.services.conversation import ConversationOrchestrator
 from ielts_config import EnvironmentConfig
 from ielts_db.models import Answer, MediaObject, SessionQuestion, TestSession, Transcript
 from ielts_db.repositories import (
     AnswerRepository,
     ProgressRepository,
-    QuestionSetRepository,
     ReportRepository,
     TestSessionRepository,
     UserRepository,
@@ -32,8 +32,9 @@ from ielts_domain import (
     apply_answer_transition,
     apply_transition,
 )
-from ielts_audio.media import inspect_audio
 from ielts_inference.evaluation import PUBLIC_STAGES
+from ielts_inference.openrouter import InferenceError, OpenRouterClient
+from ielts_inference.transcript import clean_transcript
 
 
 def _examiner_script(question: SessionQuestion) -> str:
@@ -54,34 +55,54 @@ def permitted_actions(state: str) -> list[str]:
     return sorted({event.value for (src, event), _dst in _TRANSITION_TABLE.items() if src == current})
 
 
-def serialize_test(test: TestSession) -> dict:
-    questions = sorted(test.session_questions, key=lambda item: (item.sort_order, item.id))
-    payload = []
+def _loaded_transcript_text(answer: Answer | None) -> str | None:
+    if answer is None:
+        return None
+    loaded = inspect(answer).dict.get("transcript")
+    if loaded is None:
+        return None
+    return loaded.text
+
+
+def _serialize_turn(question: SessionQuestion) -> dict:
+    answer = question.answer
+    return {
+        "id": str(question.id),
+        "answer_id": answer.id if answer else "",
+        "part": question.part,
+        "sort_order": question.sort_order,
+        "prompt_text": question.prompt_text,
+        "timing_seconds": question.timing_seconds,
+        "cue_card": question.cue_card,
+        "follow_ups": question.follow_ups,
+        "answer_status": answer.status if answer else "PENDING",
+        "has_examiner_audio": True,
+        "is_follow_up": question.examiner_asset_version == "follow-up",
+        "playback_available": bool(
+            answer and answer.status in {AnswerState.VALID.value, AnswerState.READY.value}
+        ),
+        "transcript_text": _loaded_transcript_text(answer),
+    }
+
+
+def _current_turn(questions: list[SessionQuestion]) -> SessionQuestion | None:
     for question in questions:
         answer = question.answer
-        payload.append(
-            {
-                "id": str(question.id),
-                "answer_id": answer.id if answer else "",
-                "part": question.part,
-                "sort_order": question.sort_order,
-                "prompt_text": question.prompt_text,
-                "timing_seconds": question.timing_seconds,
-                "cue_card": question.cue_card,
-                "follow_ups": question.follow_ups,
-                "answer_status": answer.status if answer else "PENDING",
-                "has_examiner_audio": True,
-                "is_follow_up": question.examiner_asset_version == "follow-up",
-                "playback_available": bool(
-                    answer and answer.status in {AnswerState.VALID.value, AnswerState.READY.value}
-                ),
-            }
-        )
+        if answer is not None and answer.status not in {AnswerState.VALID.value, AnswerState.READY.value}:
+            return question
+    return questions[-1] if questions else None
+
+
+def serialize_test(test: TestSession) -> dict:
+    questions = sorted(test.session_questions, key=lambda item: (item.sort_order, item.id))
+    payload = [_serialize_turn(question) for question in questions]
+    active = _current_turn(questions)
     return {
         "test_id": test.id,
         "state": test.status,
         "revision": test.revision,
-        "questions": payload,
+        "turns": payload,
+        "current_turn": _serialize_turn(active) if active else None,
         "permitted_actions": permitted_actions(test.status),
         "started_at": test.created_at.isoformat() if test.created_at else None,
         "expires_at": test.expires_at.isoformat() if test.expires_at else None,
@@ -96,50 +117,23 @@ class TestService:
         self.config = config
         self.store = store
         self.tests = TestSessionRepository(session)
-        self.questions = QuestionSetRepository(session)
         self.answers = AnswerRepository(session)
         self.reports = ReportRepository(session)
         self.users = UserRepository(session)
         self.progress = ProgressRepository(session)
+        self.conversation = ConversationOrchestrator(session, config)
 
     async def create_test(self, user_id: int, slug: str | None = None) -> dict:
-        question_set = await self.questions.get_published(slug)
-        if question_set is None:
-            raise not_found("No published question set is available")
         test_id = str(uuid.uuid4())
         test = TestSession(
             id=test_id,
             user_id=user_id,
-            question_set_id=question_set.id,
+            question_set_id=None,
             status=TestState.CREATED.value,
             revision=0,
             expires_at=datetime.now(timezone.utc) + timedelta(days=2),
         )
         self.session.add(test)
-        await self.session.flush()
-        for question in sorted(question_set.questions, key=lambda item: item.sort_order):
-            snapshot = SessionQuestion(
-                test_session_id=test_id,
-                question_id=question.id,
-                prompt_text=question.prompt_text,
-                part=question.part,
-                sort_order=question.sort_order,
-                timing_seconds=question.timing_seconds,
-                cue_card=question.cue_card,
-                follow_ups=question.follow_ups,
-                examiner_asset_id=question.examiner_asset_id,
-                examiner_asset_version=question.examiner_asset_version,
-            )
-            self.session.add(snapshot)
-            await self.session.flush()
-            self.session.add(
-                Answer(
-                    id=str(uuid.uuid4()),
-                    test_session_id=test_id,
-                    session_question_id=snapshot.id,
-                    status=AnswerState.PENDING.value,
-                )
-            )
         start = apply_transition(
             TestState.CREATED,
             TestEvent.START_DEVICE_CHECK,
@@ -155,14 +149,7 @@ class TestService:
         return serialize_test(created)
 
     async def list_question_sets(self) -> list[dict]:
-        seen: set[str] = set()
-        sets = []
-        for item in await self.questions.list_published():
-            if item.slug in seen:
-                continue
-            seen.add(item.slug)
-            sets.append({"slug": item.slug, "version": item.version, "language": item.language})
-        return sets
+        return []
 
     async def get_test(self, user_id: int, test_id: str) -> dict:
         test = await self.tests.get_owned(test_id, user_id)
@@ -193,7 +180,20 @@ class TestService:
         test = await self.tests.get_owned(test_id, user_id)
         if test is None:
             raise not_found("Test session not found")
-        if test.status == TestState.CREATED.value:
+        state = TestState(test.status)
+        if state in {
+            TestState.READY,
+            TestState.PART1,
+            TestState.PART2_PREP,
+            TestState.PART2_SPEAK,
+            TestState.PART3,
+            TestState.UPLOADING,
+            TestState.SUBMITTED,
+            TestState.PROCESSING,
+            TestState.COMPLETED,
+        }:
+            return serialize_test(test)
+        if state == TestState.CREATED:
             started = apply_transition(
                 TestState.CREATED,
                 TestEvent.START_DEVICE_CHECK,
@@ -202,9 +202,10 @@ class TestService:
             )
             test.status = started.new_state.value
             test.revision = started.new_revision
+            state = TestState.DEVICE_CHECK
         try:
             transition = apply_transition(
-                TestState(test.status),
+                state,
                 TestEvent.COMPLETE_DEVICE_CHECK,
                 expected_revision=test.revision,
                 current_revision=test.revision,
@@ -241,6 +242,39 @@ class TestService:
         updated = await self.tests.get_owned(test_id, user_id)
         assert updated is not None
         return serialize_test(updated)
+
+    async def start_conversation(self, user_id: int, test_id: str) -> dict:
+        test = await self.tests.get_owned(test_id, user_id)
+        if test is None:
+            raise not_found("Test session not found")
+        if test.status == TestState.READY.value and not test.session_questions:
+            try:
+                await self.conversation.start(test)
+            except InferenceError as exc:
+                raise AppError("EXAMINER_GENERATION_FAILED", str(exc), 502, retryable=exc.retryable) from exc
+            await self.session.commit()
+            updated = await self.tests.get_owned(test_id, user_id)
+            assert updated is not None
+            return serialize_test(updated)
+        return serialize_test(test)
+
+    async def authorize_turn_upload(self, user_id: int, test_id: str, turn_id: str) -> dict:
+        test = await self.tests.get_owned(test_id, user_id)
+        if test is None:
+            raise not_found("Test session not found")
+        question = next((item for item in test.session_questions if str(item.id) == turn_id), None)
+        if question is None or question.answer is None:
+            raise not_found("Turn not found")
+        return await self.authorize_upload(user_id, test_id, question.answer.id)
+
+    async def complete_turn_upload(self, user_id: int, test_id: str, turn_id: str, payload: dict) -> dict:
+        test = await self.tests.get_owned(test_id, user_id)
+        if test is None:
+            raise not_found("Test session not found")
+        question = next((item for item in test.session_questions if str(item.id) == turn_id), None)
+        if question is None or question.answer is None:
+            raise not_found("Turn not found")
+        return await self.complete_upload(user_id, test_id, question.answer.id, payload)
 
     async def authorize_upload(self, user_id: int, test_id: str, answer_id: str) -> dict:
         test = await self.tests.get_owned(test_id, user_id)
@@ -314,95 +348,80 @@ class TestService:
             answer.media_object.mime_type = payload["mime_type"]
             answer.media_object.content_sha256 = payload["content_sha256"] or hashlib.sha256(object_key.encode()).hexdigest()
             answer.media_object.retention_expires_at = datetime.now(timezone.utc) + timedelta(days=self.config.raw_audio_retention_days)
-        await self._transcribe_and_follow_up(test, answer, audio)
+        try:
+            await self._transcribe_and_advance(test, answer, audio)
+        except InferenceError as exc:
+            raise AppError("CONVERSATION_STEP_FAILED", str(exc), 502, retryable=exc.retryable) from exc
         await self.session.commit()
         updated = await self.tests.get_owned(test_id, user_id)
         assert updated is not None
         return serialize_test(updated)
 
-    async def _transcribe_and_follow_up(self, test: TestSession, answer: Answer, audio: bytes) -> None:
+    async def persist_transcript(self, test: TestSession, answer: Answer, audio: bytes) -> Transcript:
         from ielts_audio.media import normalize_to_wav
         from ielts_inference.assembler import EVALUATOR_VERSION
-        from ielts_inference.examiner import FOLLOW_UP_INSTRUCTIONS, FOLLOW_UP_LIMITS, parse_follow_up
-        from ielts_inference.openrouter import InferenceError, OpenRouterClient
         from ielts_inference.quota import reserve_model_call
 
         question = answer.session_question
         if question is None:
-            return
-        try:
-            client = OpenRouterClient(self.config)
-            wav = normalize_to_wav(audio, ".webm")
-            fmt = "wav" if wav[:4] == b"RIFF" else "webm"
-            await reserve_model_call(self.session, test.user_id, test.id, "transcription", self.config)
-            transcript = client.transcribe(wav if fmt == "wav" else audio, fmt)
-        except InferenceError:
-            return
+            raise validation("Answer is missing its question")
+        if answer.transcript is not None and answer.transcript.text:
+            return answer.transcript
+        client = OpenRouterClient(self.config)
+        suffix = ".wav" if audio[:4] == b"RIFF" else ".webm"
+        wav = normalize_to_wav(audio, suffix)
+        fmt = "wav" if wav[:4] == b"RIFF" else suffix.lstrip(".")
+        await reserve_model_call(self.session, test.user_id, test.id, "transcription", self.config)
+        result = client.transcribe(wav if fmt == "wav" else audio, fmt)
+        text = clean_transcript(result.text)
         existing = await self.session.execute(select(Transcript).where(Transcript.answer_id == answer.id))
-        if existing.scalar_one_or_none() is None:
-            self.session.add(
-                Transcript(
-                    answer_id=answer.id,
-                    part=question.part,
-                    evaluator_version=EVALUATOR_VERSION,
-                    text=transcript.text,
-                    words=transcript.words,
-                    model_policy_version=self.config.openrouter_stt_model[:50],
-                )
+        saved = existing.scalar_one_or_none()
+        if saved is None:
+            saved = Transcript(
+                answer_id=answer.id,
+                part=question.part,
+                evaluator_version=EVALUATOR_VERSION,
+                text=text,
+                words=result.words,
+                model_policy_version=self.config.openrouter_stt_model[:50],
             )
-        if question.examiner_asset_version == "follow-up":
-            return
-        generated = [
-            item
-            for item in test.session_questions
-            if item.part == question.part and item.examiner_asset_version == "follow-up"
-        ]
-        if len(generated) >= FOLLOW_UP_LIMITS.get(question.part, 0):
-            return
-        try:
-            await reserve_model_call(self.session, test.user_id, test.id, "examiner", self.config)
-            raw = client.chat_json(
-                FOLLOW_UP_INSTRUCTIONS,
-                json.dumps(
-                    {
-                        "part": question.part,
-                        "question": question.prompt_text,
-                        "transcript": transcript.text,
-                    }
-                ),
-            )
-            follow = parse_follow_up(raw)
-        except InferenceError:
-            return
-        if not follow:
-            return
-        snapshot = SessionQuestion(
-            test_session_id=test.id,
-            question_id=None,
-            prompt_text=follow,
-            part=question.part,
-            sort_order=question.sort_order,
-            timing_seconds=20 if question.part == 2 else 30 if question.part == 1 else 40,
-            examiner_asset_version="follow-up",
-        )
-        self.session.add(snapshot)
+            self.session.add(saved)
+        saved.text = text
+        saved.words = result.words
+        answer.transcript = saved
         await self.session.flush()
-        self.session.add(
-            Answer(
-                id=str(uuid.uuid4()),
-                test_session_id=test.id,
-                session_question_id=snapshot.id,
-                status=AnswerState.PENDING.value,
-            )
-        )
+        return saved
+
+    async def transcribe_saved_answer(self, user_id: int, test_id: str, answer_id: str) -> None:
+        test = await self.tests.get_owned(test_id, user_id)
+        answer = await self.answers.get_owned(answer_id, test_id)
+        if test is None or answer is None or answer.media_object is None:
+            return
+        audio = self.store.get_bytes(answer.media_object.bucket, answer.media_object.object_key)
+        await self.persist_transcript(test, answer, audio)
+        await self.session.commit()
+
+    async def _transcribe_and_advance(self, test: TestSession, answer: Answer, audio: bytes) -> None:
+        await self.persist_transcript(test, answer, audio)
+        await self.session.commit()
+        refreshed = await self.tests.get_owned(test.id, test.user_id)
+        if refreshed is None:
+            return
+        next_answer = next((item for item in refreshed.answers if item.id == answer.id), None)
+        if next_answer is None:
+            return
+        await self.conversation.on_answer_completed(refreshed, next_answer)
 
     async def submit(self, user_id: int, test_id: str) -> dict:
         test = await self.tests.get_owned(test_id, user_id)
         if test is None:
             raise not_found("Test session not found")
-        answers = [item for item in test.answers if item.status != AnswerState.DELETED.value]
-        if not answers or any(item.status not in {AnswerState.VALID.value, AnswerState.READY.value} for item in answers):
-            raise conflict("All answers must be uploaded and validated before submit")
+        for answer in test.answers:
+            if answer.status not in {AnswerState.VALID.value, AnswerState.READY.value, AnswerState.DELETED.value}:
+                answer.status = AnswerState.DELETED.value
+        answers = [item for item in test.answers if item.status in {AnswerState.VALID.value, AnswerState.READY.value}]
+        if not answers:
+            raise conflict("Speak at least one answer before finishing")
         current = TestState(test.status)
         for state, event in (
             (TestState.READY, TestEvent.READY_TO_START),
