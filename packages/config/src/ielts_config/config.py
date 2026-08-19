@@ -40,6 +40,11 @@ class EnvironmentConfig:
     openrouter_scoring_model: str
     openrouter_scoring_fallback_model: str
     openrouter_pronunciation_model: str
+    realtime_transport: str
+    realtime_llm_model: str
+    realtime_stt_model: str
+    realtime_tts_model: str
+    realtime_tts_voice: str
     raw_audio_retention_days: int
     transcript_retention_days: int
     report_retention_days: int
@@ -113,6 +118,11 @@ class EnvironmentConfig:
             openrouter_scoring_model=_str("OPENROUTER_SCORING_MODEL", "google/gemma-3-27b-it:free"),
             openrouter_scoring_fallback_model=_str("OPENROUTER_SCORING_FALLBACK_MODEL", "google/gemma-3-27b-it"),
             openrouter_pronunciation_model=_str("OPENROUTER_PRONUNCIATION_MODEL", "google/gemma-3-27b-it:free"),
+            realtime_transport=_str("REALTIME_TRANSPORT", "websocket"),
+            realtime_llm_model=_str("REALTIME_LLM_MODEL", _str("OPENROUTER_SCORING_FALLBACK_MODEL", "google/gemma-3-27b-it")),
+            realtime_stt_model=_str("REALTIME_STT_MODEL", _str("OPENROUTER_STT_MODEL", "openai/whisper-large-v3-turbo")),
+            realtime_tts_model=_str("REALTIME_TTS_MODEL", _str("OPENROUTER_TTS_MODEL", "openai/gpt-4o-mini-tts")),
+            realtime_tts_voice=_str("REALTIME_TTS_VOICE", _str("OPENROUTER_TTS_VOICE", "alloy")),
             raw_audio_retention_days=_int("RAW_AUDIO_RETENTION_DAYS", 7),
             transcript_retention_days=_int("TRANSCRIPT_RETENTION_DAYS", 30),
             report_retention_days=_int("REPORT_RETENTION_DAYS", 365),
