@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import timedelta
-from urllib.parse import urlparse, urlunparse
+from urllib.parse import urlparse
 
 from minio import Minio
 from minio.error import S3Error
@@ -31,7 +31,17 @@ class ObjectStore:
             region=config.minio_region,
         )
         self._ttl = config.minio_signed_url_ttl_seconds
-        self._public_endpoint = (config.minio_public_endpoint or "").rstrip("/")
+        self._public_client = self._client
+        public_endpoint = (config.minio_public_endpoint or "").rstrip("/")
+        if public_endpoint:
+            public = urlparse(public_endpoint)
+            self._public_client = Minio(
+                public.netloc or public.path,
+                access_key=config.minio_access_key,
+                secret_key=config.minio_secret_key,
+                secure=public.scheme == "https",
+                region=config.minio_region,
+            )
         self.candidate_bucket = config.minio_candidate_bucket
         self.examiner_bucket = config.minio_examiner_bucket
         self.derivative_bucket = config.minio_derivative_bucket
@@ -42,23 +52,10 @@ class ObjectStore:
                 self._client.make_bucket(bucket)
 
     def presigned_put(self, bucket: str, object_key: str) -> str:
-        return self._public_url(
-            self._client.presigned_put_object(bucket, object_key, expires=timedelta(seconds=self._ttl))
-        )
+        return self._public_client.presigned_put_object(bucket, object_key, expires=timedelta(seconds=self._ttl))
 
     def presigned_get(self, bucket: str, object_key: str) -> str:
-        return self._public_url(
-            self._client.presigned_get_object(bucket, object_key, expires=timedelta(seconds=self._ttl))
-        )
-
-    def _public_url(self, url: str) -> str:
-        if not self._public_endpoint:
-            return url
-        src = urlparse(url)
-        dst = urlparse(self._public_endpoint)
-        return urlunparse(
-            (dst.scheme or src.scheme, dst.netloc, src.path, src.params, src.query, src.fragment)
-        )
+        return self._public_client.presigned_get_object(bucket, object_key, expires=timedelta(seconds=self._ttl))
 
     def head(self, bucket: str, object_key: str) -> ObjectHead:
         try:
