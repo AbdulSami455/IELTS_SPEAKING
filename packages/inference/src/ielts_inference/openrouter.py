@@ -188,13 +188,16 @@ class OpenRouterClient:
             )
         raise InferenceError(f"Scoring failed: {last_error}", retryable=True)
 
-    def chat_json(self, system: str, prompt: str) -> dict:
-        models = _unique_models(
-            self._config.openrouter_scoring_model,
-            self._config.openrouter_scoring_fallback_model,
+    def chat_json(self, system: str, prompt: str, models: list[str] | None = None) -> dict:
+        chosen = _dedupe_models(
+            models
+            or [
+                self._config.openrouter_scoring_model,
+                self._config.openrouter_scoring_fallback_model,
+            ]
         )
         last_error = "chat failed"
-        for model in models:
+        for model in chosen:
             body = {
                 "model": model,
                 "temperature": 0.3,
@@ -216,7 +219,14 @@ class OpenRouterClient:
 
 
 def _unique_models(primary: str, fallback: str) -> list[str]:
-    models = [primary]
-    if fallback and fallback != primary:
-        models.append(fallback)
-    return models
+    return _dedupe_models([primary, fallback])
+
+
+def _dedupe_models(models: list[str]) -> list[str]:
+    seen: set[str] = set()
+    unique: list[str] = []
+    for model in models:
+        if model and model not in seen:
+            seen.add(model)
+            unique.append(model)
+    return unique
