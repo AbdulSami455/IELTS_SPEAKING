@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 
 from celery import Celery
+from celery.signals import worker_process_init
 
 
 def _load_env() -> None:
@@ -33,6 +34,10 @@ app = celery_app
 celery_app.conf.update(
     task_acks_late=True,
     worker_prefetch_multiplier=1,
+    task_serializer="json",
+    result_serializer="json",
+    accept_content=["json"],
+    task_store_errors=False,
     task_soft_time_limit=int(os.environ.get("CELERY_DEFAULT_SOFT_TIME_LIMIT_SECONDS", "600")),
     task_time_limit=int(os.environ.get("CELERY_DEFAULT_HARD_TIME_LIMIT_SECONDS", "660")),
     timezone="UTC",
@@ -44,6 +49,15 @@ celery_app.conf.update(
     },
 )
 
+_worker_engines: dict[int, object] = {}
+
+
+@worker_process_init.connect
+def _reset_engine_per_worker(**kwargs):
+    for engine in _worker_engines.values():
+        asyncio.run(engine.dispose())
+    _worker_engines.clear()
+
 
 @celery_app.task(name="ielts_worker.tasks.transcribe_answer")
 def transcribe_answer_task(user_id: int, test_id: str, answer_id: str) -> str:
@@ -53,13 +67,15 @@ def transcribe_answer_task(user_id: int, test_id: str, answer_id: str) -> str:
     from ielts_db.storage import ObjectStore
 
     async def _run() -> str:
-        db = DatabaseConfig()
         config = EnvironmentConfig.from_env()
-        store = ObjectStore(config)
-        async with db.session_factory() as session:
-            await TestService(session, config, store).transcribe_saved_answer(user_id, test_id, answer_id)
-        await db.dispose()
-        return answer_id
+        db = DatabaseConfig()
+        try:
+            store = ObjectStore(config)
+            async with db.session_factory() as session:
+                await TestService(session, config, store).transcribe_saved_answer(user_id, test_id, answer_id)
+            return answer_id
+        finally:
+            await db.dispose()
 
     return asyncio.run(_run())
 
@@ -71,9 +87,12 @@ def evaluate_test_task(test_id: str) -> str:
 
     async def _run() -> str:
         db = DatabaseConfig()
-        async with db.session_factory() as session:
-            report = await evaluate_test(session, test_id)
-            return report.id
+        try:
+            async with db.session_factory() as session:
+                report = await evaluate_test(session, test_id)
+                return report.id
+        finally:
+            await db.dispose()
 
     return asyncio.run(_run())
 
@@ -85,9 +104,13 @@ def reconcile_retention() -> str:
     from ielts_inference.retention import reconcile_retention as run_retention
 
     async def _run() -> str:
+        config = EnvironmentConfig.from_env()
         db = DatabaseConfig()
-        async with db.session_factory() as session:
-            deleted = await run_retention(session, EnvironmentConfig.from_env())
-            return str(deleted)
+        try:
+            async with db.session_factory() as session:
+                deleted = await run_retention(session, config)
+                return str(deleted)
+        finally:
+            await db.dispose()
 
     return asyncio.run(_run())
