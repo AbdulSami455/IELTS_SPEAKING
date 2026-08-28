@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 
 import jwt
 
@@ -23,9 +24,11 @@ class DevIdentityVerifier:
     def __init__(self, config: EnvironmentConfig) -> None:
         self._subject = config.dev_auth_user_id
 
-    async def verify(self, token: str) -> AuthenticatedUser | None:
+    async def verify(self, token: str, *, expected_token_type: str | None = None) -> AuthenticatedUser | None:
         allowed = {self._subject, "dev-token", "dev-token-for-testing"}
         if token not in allowed:
+            return None
+        if expected_token_type not in {None, "access"}:
             return None
         return AuthenticatedUser(
             user_id=0,
@@ -41,12 +44,25 @@ class JwtIdentityVerifier:
         self._issuer = config.auth_jwt_issuer or None
         self._audience = config.auth_jwt_audience or None
 
-    def issue(self, user_id: int, auth_subject: str, email: str | None, display_name: str | None) -> str:
+    def issue(
+        self,
+        user_id: int,
+        auth_subject: str,
+        email: str | None,
+        display_name: str | None,
+        *,
+        token_type: str = "access",
+        ttl: timedelta | None = None,
+    ) -> str:
+        now = datetime.now(timezone.utc)
         payload = {
             "sub": auth_subject,
             "uid": user_id,
             "email": email,
             "name": display_name,
+            "typ": token_type,
+            "iat": int(now.timestamp()),
+            "exp": int((now + (ttl or timedelta(days=7))).timestamp()),
         }
         if self._issuer:
             payload["iss"] = self._issuer
@@ -54,7 +70,7 @@ class JwtIdentityVerifier:
             payload["aud"] = self._audience
         return jwt.encode(payload, self._secret, algorithm="HS256")
 
-    async def verify(self, token: str) -> AuthenticatedUser | None:
+    async def verify(self, token: str, *, expected_token_type: str | None = None) -> AuthenticatedUser | None:
         if not self._secret or token.count(".") != 2:
             return None
         options: dict[str, bool] = {"verify_aud": bool(self._audience)}
@@ -68,6 +84,9 @@ class JwtIdentityVerifier:
                 options=options,
             )
         except jwt.InvalidTokenError:
+            return None
+        token_type = payload.get("typ")
+        if expected_token_type is not None and token_type != expected_token_type:
             return None
         subject = payload.get("sub")
         if not subject:
@@ -89,12 +108,12 @@ class AppIdentityVerifier:
             else None
         )
 
-    async def verify(self, token: str) -> AuthenticatedUser | None:
-        identity = await self._jwt.verify(token)
+    async def verify(self, token: str, *, expected_token_type: str | None = None) -> AuthenticatedUser | None:
+        identity = await self._jwt.verify(token, expected_token_type=expected_token_type)
         if identity is not None:
             return identity
         if self._dev is not None:
-            return await self._dev.verify(token)
+            return await self._dev.verify(token, expected_token_type=expected_token_type)
         return None
 
 
