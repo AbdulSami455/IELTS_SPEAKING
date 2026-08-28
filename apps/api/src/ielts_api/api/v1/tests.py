@@ -138,10 +138,15 @@ async def list_tests(
 @router.get("/tests/{test_id}")
 async def get_test(
     test_id: str,
+    practice_mode: bool = Query(default=False),
     user: AuthenticatedUser = Depends(require_user),
     svc: TestService = Depends(service),
 ) -> dict:
-    return envelope(await svc.get_test(user.user_id, test_id))
+    result = await svc.get_test(user.user_id, test_id)
+    if practice_mode:
+        result["practice_mode"] = True
+        result["practice_mode_note"] = "Practice mode: no credit consumption or real-time LLM scoring"
+    return envelope(result)
 
 
 @router.post("/tests/{test_id}/device-check")
@@ -200,8 +205,8 @@ async def realtime_live_socket(
     config: EnvironmentConfig = Depends(settings),
     store: ObjectStore = Depends(object_store),
 ) -> None:
-    token = websocket.query_params.get("token", "")
-    identity = await get_identity_verifier(config).verify(token)
+    token = websocket.cookies.get("auth-token", "")
+    identity = await get_identity_verifier(config).verify(token, expected_token_type="access")
     if identity is None:
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
         return
@@ -218,10 +223,23 @@ async def realtime_live_socket(
     try:
         while True:
             payload = await websocket.receive_json()
+            if payload.get("type") == "ping":
+                await websocket.send_json({"type": "pong"})
+                continue
             data = RealtimeClientEventRequest.model_validate(payload)
             await websocket.send_json(envelope(await svc.ingest_event(user.id, test_id, data.model_dump())))
     except WebSocketDisconnect:
         return
+
+
+@router.post("/tests/{test_id}/turns/{turn_id}/retake")
+async def retake_turn(
+    test_id: str,
+    turn_id: str,
+    user: AuthenticatedUser = Depends(require_user),
+    svc: TestService = Depends(service),
+) -> dict:
+    return envelope(await svc.retake_turn(user.user_id, test_id, turn_id))
 
 
 @router.post("/tests/{test_id}/transitions")
@@ -237,10 +255,11 @@ async def transitions(
 @router.post("/tests/{test_id}/conversation/start")
 async def start_conversation(
     test_id: str,
+    practice_mode: bool = Query(default=False),
     user: AuthenticatedUser = Depends(require_user),
     svc: TestService = Depends(service),
 ) -> dict:
-    return envelope(await svc.start_conversation(user.user_id, test_id))
+    return envelope(await svc.start_conversation(user.user_id, test_id, practice_mode))
 
 
 @router.post("/tests/{test_id}/answers/{answer_id}/upload")
@@ -289,13 +308,15 @@ async def upload_turn_response_complete(
 async def submit(
     test_id: str,
     background: BackgroundTasks,
+    practice_mode: bool = Query(default=False),
     user: AuthenticatedUser = Depends(require_user),
     svc: TestService = Depends(service),
 ) -> dict:
     from ielts_api.jobs import enqueue_evaluate
 
-    data = await svc.submit(user.user_id, test_id)
-    background.add_task(enqueue_evaluate, test_id)
+    data = await svc.submit(user.user_id, test_id, practice_mode)
+    if not practice_mode:
+        background.add_task(enqueue_evaluate, test_id)
     return envelope(data)
 
 
@@ -303,13 +324,15 @@ async def submit(
 async def finish(
     test_id: str,
     background: BackgroundTasks,
+    practice_mode: bool = Query(default=False),
     user: AuthenticatedUser = Depends(require_user),
     svc: TestService = Depends(service),
 ) -> dict:
     from ielts_api.jobs import enqueue_evaluate
 
-    data = await svc.submit(user.user_id, test_id)
-    background.add_task(enqueue_evaluate, test_id)
+    data = await svc.submit(user.user_id, test_id, practice_mode)
+    if not practice_mode:
+        background.add_task(enqueue_evaluate, test_id)
     return envelope(data)
 
 
