@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 import { ApiError, api, type TestListItem } from "../../lib/api";
 import { formatDateTime, prettyState } from "../../lib/format";
 import { AppShell } from "../../components/layout/AppShell";
@@ -15,6 +15,7 @@ export function DashboardPage() {
 
   useEffect(() => {
     if (error) setLocalError(error === "AUTH_REQUIRED" ? null : error);
+    if (error === "AUTH_REQUIRED") return;
     api
       .listTests()
       .then(setTests)
@@ -24,8 +25,7 @@ export function DashboardPage() {
   }, [error]);
 
   if (error === "AUTH_REQUIRED") {
-    navigate("/login", { replace: true });
-    return null;
+    return <Navigate to="/login" replace />;
   }
 
   async function start() {

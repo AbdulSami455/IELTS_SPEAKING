@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { AppShell } from "../../components/layout/AppShell";
 import { Alert, Badge, Button, TimerRing } from "../../components/ui";
@@ -11,6 +12,28 @@ export function TestRunnerPage() {
   const { testId = "" } = useParams();
   const room = useVoiceRoom(testId);
   const { test, error } = room;
+  const [rtt, setRtt] = useState<number | null>(null);
+  const [showShortcuts, setShowShortcuts] = useState(false);
+
+  useEffect(() => {
+    function onKeydown(event: KeyboardEvent) {
+      if ((event.metaKey || event.ctrlKey) && event.key === "k") {
+        event.preventDefault();
+        setShowShortcuts((prev) => !prev);
+      }
+    }
+    window.addEventListener("keydown", onKeydown);
+    return () => window.removeEventListener("keydown", onKeydown);
+  }, []);
+
+  useEffect(() => {
+    if (room.connection !== "live") return;
+    const ping = setInterval(() => {
+      const start = Date.now();
+      room.ping?.().then(() => setRtt(Date.now() - start));
+    }, 5000);
+    return () => clearInterval(ping);
+  }, [room.connection]);
 
   if (!test) {
     return (
@@ -82,6 +105,9 @@ export function TestRunnerPage() {
   const youHot = copy.mode === "speak";
   const examinerHot = copy.mode === "listen";
   const showRing = room.secondsLeft !== null && (test.state === "PART2_PREP" || room.recording);
+  const lastCompletedTurn = [...test.turns]
+    .reverse()
+    .find((item) => item.answerStatus === "VALID" || item.answerStatus === "READY");
 
   return (
     <AppShell>
@@ -107,17 +133,47 @@ export function TestRunnerPage() {
           <span className={`live-indicator${room.connection === "live" ? " on" : ""}`}>
             <span className={`dot${room.connection === "live" ? " on" : ""}`} aria-hidden="true" />
             {room.connection === "live"
-              ? "Connected"
+              ? `Connected${rtt !== null ? ` · ${rtt}ms` : ""}`
               : room.connection === "connecting"
                 ? "Connecting"
                 : "Offline"}
           </span>
         </div>
 
-        <RoomStage room={copy} showMeter={youHot || room.recording} micLevel={room.micLevel} />
+        <RoomStage
+          room={copy}
+          showMeter={youHot || room.recording}
+          micLevel={room.micLevel}
+          secondsLeft={room.secondsLeft}
+          totalSeconds={room.totalSeconds}
+        />
+
+        {room.turn?.answerStatus === "VALID" && room.turn?.timingSeconds && (
+          <div className="speaking-time-bar">
+            <span className="caption">
+              You spoke for {room.turn.timingSeconds}s
+              {room.turn.timingSeconds >= 40 && room.turn.timingSeconds <= 45
+                ? " (right in the sweet spot!)"
+                : room.turn.timingSeconds < 40
+                  ? " (aim for 40–45s for Part 2)"
+                  : " (a touch over — keep it concise)"}
+            </span>
+            <div className="time-meter">
+              <span
+                className={`time-fill${room.turn.timingSeconds >= 40 && room.turn.timingSeconds <= 60 ? " ok" : room.turn.timingSeconds > 60 ? " over" : " under"}`}
+                style={{ width: `${Math.min(100, (room.turn.timingSeconds / 60) * 100)}%` }}
+              />
+            </div>
+          </div>
+        )}
 
         <div className="role-grid">
           <div className={`role-card${examinerHot ? " hot-listen" : ""}`}>
+            <div className="examiner-avatar" aria-hidden="true">
+              <span role="img" aria-label="Examiner avatar">
+                👤
+              </span>
+            </div>
             <b>Examiner</b>
             <p>{examinerHot ? "Speaking — listen" : "Waiting"}</p>
           </div>
@@ -153,15 +209,39 @@ export function TestRunnerPage() {
           </div>
         )}
 
-        {error && <Alert tone="error">{error}</Alert>}
+        {error && (
+          <Alert tone="error">
+            {error}
+            {room.connection === "offline" && (
+              <Button size="sm" variant="secondary" onClick={room.reconnect} style={{ marginLeft: 8 }}>
+                Try again
+              </Button>
+            )}
+          </Alert>
+        )}
 
         <div className="row no-print">
+          {room.restoredDraftAvailable && (
+            <>
+              <Button variant="secondary" size="sm" onClick={room.sendRestoredDraft} disabled={room.busy}>
+                Send restored recording
+              </Button>
+              <Button variant="ghost" size="sm" onClick={room.discardRestoredDraft} disabled={room.busy}>
+                Discard restored recording
+              </Button>
+            </>
+          )}
           <Button variant="secondary" size="sm" onClick={() => room.setMicPaused(!room.micPaused)}>
             {room.micPaused ? "Resume microphone" : "Pause microphone"}
           </Button>
           <Button variant="ghost" size="sm" onClick={() => room.setMuted(!room.muted)}>
             {room.muted ? "Unmute examiner" : "Mute examiner"}
           </Button>
+          {lastCompletedTurn && (
+            <Button variant="ghost" size="sm" onClick={() => room.retakeTurn(lastCompletedTurn.id)} disabled={room.busy}>
+              Retake last answer
+            </Button>
+          )}
           <Button variant="ghost" size="sm" onClick={room.reconnect}>
             Reconnect
           </Button>
@@ -170,6 +250,35 @@ export function TestRunnerPage() {
           </Button>
         </div>
       </section>
+
+      {showShortcuts && (
+        <div className="shortcuts-backdrop" onClick={() => setShowShortcuts(false)}>
+          <div className="shortcuts-modal" onClick={(e) => e.stopPropagation()}>
+            <h3>Keyboard shortcuts</h3>
+            <dl>
+              <div>
+                <dt>Space</dt>
+                <dd>Start / stop speaking</dd>
+              </div>
+              <div>
+                <dt>M</dt>
+                <dd>Mute examiner</dd>
+              </div>
+              <div>
+                <dt>Esc</dt>
+                <dd>End exam</dd>
+              </div>
+              <div>
+                <dt>Cmd+K / Ctrl+K</dt>
+                <dd>Toggle this help</dd>
+              </div>
+            </dl>
+            <Button size="sm" variant="secondary" onClick={() => setShowShortcuts(false)}>
+              Close
+            </Button>
+          </div>
+        </div>
+      )}
     </AppShell>
   );
 }
