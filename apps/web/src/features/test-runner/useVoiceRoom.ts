@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, type TestSession, type Turn } from "../../lib/api";
 import { recorderMime, rmsFromAnalyser } from "../../lib/audio";
+import { clearDraft, loadDraft, saveDraft } from "../../lib/drafts";
 
 const SPEECH_START_RMS = 0.05;
 const SPEECH_HOLD_RMS = 0.028;
@@ -13,7 +14,7 @@ const BARGE_IN_MS = 280;
 export type ConnectionState = "idle" | "connecting" | "live" | "offline";
 
 function silenceBudget(state: string): number {
-  if (state === "PART2_SPEAK") return 6000;
+  if (state === "PART2_SPEAK") return 8000;
   if (state === "PART3") return 4500;
   return 3800;
 }
@@ -42,6 +43,7 @@ export function useVoiceRoom(testId: string) {
   const [error, setError] = useState<string | null>(null);
   const [examinerUrl, setExaminerUrl] = useState<string | null>(null);
   const [micLevel, setMicLevel] = useState(0);
+  const [restoredDraftAvailable, setRestoredDraftAvailable] = useState(false);
 
   const lastMeterAtRef = useRef(0);
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -64,6 +66,8 @@ export function useVoiceRoom(testId: string) {
   const voicedMsRef = useRef(0);
   const lastTickAtRef = useRef(0);
   const bargeMsRef = useRef(0);
+  const restoredDraftRef = useRef<Blob | null>(null);
+  const pingResolverRef = useRef<(() => void) | null>(null);
 
   const turn = test ? currentTurn(test) : undefined;
 
@@ -78,7 +82,22 @@ export function useVoiceRoom(testId: string) {
       .getTest(testId)
       .then(setTest)
       .catch((err: Error) => setError(err.message));
+    void _checkDraft();
   }, [testId]);
+
+  async function _checkDraft() {
+    const saved = await loadDraft(testId, "current-turn");
+    if (saved) {
+      const shouldRestore = window.confirm("Restore your unsaved recording?");
+      if (shouldRestore) {
+        restoredDraftRef.current = saved;
+        setRestoredDraftAvailable(true);
+        setError("Unsaved recording restored. Send it when you are ready.");
+      } else {
+        await clearDraft(testId, "current-turn");
+      }
+    }
+  }
 
   useEffect(() => {
     return () => {
@@ -141,6 +160,17 @@ export function useVoiceRoom(testId: string) {
     const socket = new WebSocket(url);
     socketRef.current = socket;
     socket.onopen = () => setConnection("live");
+    socket.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data) as { type?: string };
+        if (message.type === "pong") {
+          pingResolverRef.current?.();
+          pingResolverRef.current = null;
+        }
+      } catch {
+        return;
+      }
+    };
     socket.onerror = () => setConnection("offline");
     socket.onclose = () => setConnection("offline");
   }
@@ -236,8 +266,12 @@ export function useVoiceRoom(testId: string) {
           bargeMsRef.current = 0;
           examinerSpeakingRef.current = false;
           if (audioRef.current) {
+            audioRef.current.volume = 0.3;
             audioRef.current.pause();
             audioRef.current.currentTime = 0;
+            setTimeout(() => {
+              if (audioRef.current) audioRef.current.volume = 1.0;
+            }, 500);
           }
           setExaminerSpeaking(false);
           void beginUtterance();
@@ -259,6 +293,9 @@ export function useVoiceRoom(testId: string) {
           void finishUtterance();
         } else if (quietFor >= 2000 && voicedMsRef.current < NOISE_BLIP_MS) {
           void cancelUtterance();
+          if (voicedMsRef.current > 0 && voicedMsRef.current < 2200) {
+            setError("Would you like to try again? Click 'Start speaking' when ready.");
+          }
         }
       }
       rafRef.current = requestAnimationFrame(tick);
@@ -352,7 +389,11 @@ export function useVoiceRoom(testId: string) {
     setBusy(true);
     setError(null);
     try {
+      await saveDraft(testId, "current-turn", blob);
       const next = await api.realtimeTurnAudio(session.testId, current.id, blob);
+      await clearDraft(testId, "current-turn");
+      restoredDraftRef.current = null;
+      setRestoredDraftAvailable(false);
       setTest(next.test);
       setExaminerUrl(next.examinerPlaybackUrl ?? null);
     } catch (err) {
@@ -379,6 +420,49 @@ export function useVoiceRoom(testId: string) {
     }
   }
 
+  async function sendRestoredDraft() {
+    const session = testRef.current;
+    const current = session ? currentTurn(session) : undefined;
+    const blob = restoredDraftRef.current;
+    if (!session || !current || !blob) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const next = await api.realtimeTurnAudio(session.testId, current.id, blob);
+      await clearDraft(testId, "current-turn");
+      restoredDraftRef.current = null;
+      setRestoredDraftAvailable(false);
+      setTest(next.test);
+      setExaminerUrl(next.examinerPlaybackUrl ?? null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not restore the recording");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function discardRestoredDraft() {
+    restoredDraftRef.current = null;
+    setRestoredDraftAvailable(false);
+    await clearDraft(testId, "current-turn");
+  }
+
+  function ping(): Promise<void> {
+    if (socketRef.current?.readyState !== WebSocket.OPEN) {
+      return Promise.resolve();
+    }
+    return new Promise<void>((resolve) => {
+      pingResolverRef.current = resolve;
+      socketRef.current?.send(JSON.stringify({ type: "ping" }));
+      window.setTimeout(() => {
+        if (pingResolverRef.current !== null) {
+          pingResolverRef.current = null;
+          resolve();
+        }
+      }, 3000);
+    });
+  }
+
   return {
     test,
     connection,
@@ -392,6 +476,7 @@ export function useVoiceRoom(testId: string) {
     micPaused,
     error,
     micLevel,
+    restoredDraftAvailable,
     turn,
     audioRef,
     setMuted,
@@ -402,6 +487,10 @@ export function useVoiceRoom(testId: string) {
     startPrep,
     finishPrep,
     finish,
+    sendRestoredDraft,
+    discardRestoredDraft,
     reconnect: () => connectSocket(api.realtimeSocketUrl(testId)),
+    ping,
+    retakeTurn: (turnId: string) => api.retakeTurn(testId, turnId).then((next) => setTest(next)),
   };
 }
