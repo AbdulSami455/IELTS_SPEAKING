@@ -39,7 +39,7 @@ def check_pronunciation(
         confidence = "low" if word_count else "inconclusive"
     elif issues:
         confidence = "medium"
-    return {
+    result = {
         "unclear_words": unclear[:20],
         "issues": issues,
         "words_per_minute": wpm,
@@ -47,3 +47,8 @@ def check_pronunciation(
         "coverage": round(coverage, 3),
         "confidence": confidence,
     }
+    if wpm > 190 and word_count >= 20:
+        result["telemetry"] = {"speech_rate_warning": True, "wpm": wpm}
+    elif 0 < wpm < 80 and word_count >= 20:
+        result["telemetry"] = {"speech_rate_warning": True, "wpm": wpm, "too_slow": True}
+    return result

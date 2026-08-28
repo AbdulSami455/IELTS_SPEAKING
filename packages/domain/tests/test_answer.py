@@ -75,3 +75,34 @@ class TestAnswerStateMachine:
             AnswerState.RECORDING, AnswerEvent.START_RECORDING
         )
         assert result.new_state == AnswerState.RECORDING
+
+    def test_invalid_media_can_re_record(self):
+        result = apply_answer_transition(
+            AnswerState.INVALID_MEDIA, AnswerEvent.START_RECORDING
+        )
+        assert result.new_state == AnswerState.RECORDING
+
+    def test_full_lifecycle_from_invalid_media(self):
+        state = AnswerState.INVALID_MEDIA
+        path = [
+            (AnswerState.RECORDING, AnswerEvent.START_RECORDING),
+            (AnswerState.RECORDED, AnswerEvent.STOP_RECORDING),
+            (AnswerState.UPLOAD_AUTHORIZED, AnswerEvent.UPLOAD_START),
+            (AnswerState.UPLOADED, AnswerEvent.UPLOAD_COMPLETE),
+            (AnswerState.VALIDATING, AnswerEvent.VALIDATE),
+            (AnswerState.VALID, AnswerEvent.MARK_VALID),
+            (AnswerState.PROCESSING, AnswerEvent.MARK_PROCESSING),
+            (AnswerState.READY, AnswerEvent.MARK_READY),
+        ]
+        for expected_state, event in path:
+            result = apply_answer_transition(state, event)
+            assert result.new_state == expected_state
+            state = result.new_state
+
+    def test_re_record_after_invalid_media(self):
+        result = apply_answer_transition(
+            AnswerState.INVALID_MEDIA, AnswerEvent.MARK_VALID
+        )
+        assert result.new_state == AnswerState.VALID
+        result = apply_answer_transition(result.new_state, AnswerEvent.MARK_PROCESSING)
+        assert result.new_state == AnswerState.PROCESSING

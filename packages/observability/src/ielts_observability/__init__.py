@@ -1,3 +1,19 @@
-from ielts_observability.logging import configure_logging, redact
+from ielts_observability.logging import configure_logging, redact, redact_pii
+from ielts_observability.metrics import (
+    metrics_response,
+    record_model_call_error,
+    record_scoring_call,
+    record_stt_call,
+    record_test_completed,
+)
 
-__all__ = ["configure_logging", "redact"]
+__all__ = [
+    "configure_logging",
+    "metrics_response",
+    "record_model_call_error",
+    "record_scoring_call",
+    "record_stt_call",
+    "record_test_completed",
+    "redact",
+    "redact_pii",
+]
