@@ -3,7 +3,7 @@ name = "ielts-observability"
 version = "0.1.0"
 description = "Structured logging and redaction"
 requires-python = ">=3.13"
-dependencies = []
+dependencies = ["fastapi>=0.115", "prometheus-client>=0.20"]
 
 [build-system]
 requires = ["setuptools>=69"]

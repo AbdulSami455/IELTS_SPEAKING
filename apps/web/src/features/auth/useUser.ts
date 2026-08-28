@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { ApiError, api, getToken, type User } from "../../lib/api";
+import { ApiError, api, type User } from "../../lib/api";
 
 export function useUser() {
   const [user, setUser] = useState<User | null>(null);
@@ -9,8 +9,14 @@ export function useUser() {
     try {
       const next = await api.me();
       setUser(next);
+      setError(null);
       return next;
     } catch (err) {
+      if (err instanceof ApiError && err.code === "AUTH_REQUIRED") {
+        setUser(null);
+        setError("AUTH_REQUIRED");
+        return null;
+      }
       if (err instanceof ApiError && err.code !== "RATE_LIMITED") {
         setError(err.message);
       }
@@ -19,10 +25,6 @@ export function useUser() {
   }, []);
 
   useEffect(() => {
-    if (!getToken()) {
-      setError("AUTH_REQUIRED");
-      return;
-    }
     void refresh();
   }, [refresh]);
 
