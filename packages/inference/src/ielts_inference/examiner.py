@@ -43,6 +43,8 @@ Rules:
 - Ask only one question.
 - Sound natural, formal, and brief, like a real Cambridge examiner.
 - Stay strictly on the assigned topic in the user payload.
+- If the previous answer was very short (< 15 words), ask a simpler, more guided question.
+- If the previous answer was long (> 30 words), ask a deeper or more complex question.
 - Cover a typical IELTS angle for that topic (habits, preferences, how often, change, people you do it with).
 - Do not switch to food, cooking, restaurants, or meals unless the assigned topic is food.
 - Do not explain the test, give feedback, or score.
@@ -77,9 +79,9 @@ Generate exactly one Part 3 discussion question in English.
 
 Rules:
 - Ask only one question.
-- Stay on the assigned Part 3 theme. This is a discussion about society, not the candidate's daily life.
+- Stay on the assigned Part 3 theme (provided as "assigned_theme"). You may reference the candidate's Part 2 topic ("part2_theme") to build continuity.
 - Prefer why, compare, impact, or future angles.
-- You may loosely use what the candidate already said, but do not drift to a new subject.
+- If the candidate flag "is_nervous" is true, use encouraging, supportive language and avoid challenging or judgmental phrasing.
 - Do not score, teach, or correct.
 
 Return JSON only:
@@ -150,11 +152,12 @@ def part2_prompt_input(history: list[dict], *, theme_label: str, task: str, part
     )
 
 
-def part3_prompt_input(history: list[dict], asked_prompts: list[str], *, theme: str) -> str:
+def part3_prompt_input(history: list[dict], asked_prompts: list[str], *, theme: str, part2_theme: str = "") -> str:
     return json.dumps(
         {
             "part": 3,
             "assigned_theme": theme,
+            "part2_theme": part2_theme,
             "asked_prompts": asked_prompts[-8:],
             "candidate_history": history[-5:],
         }

@@ -10,6 +10,7 @@ dependencies = [
     "ielts-domain",
     "ielts-config",
     "ielts-audio",
+    "ielts-observability",
 ]
 
 [build-system]

@@ -4,11 +4,17 @@ from __future__ import annotations
 
 import base64
 import json
+import logging
 from dataclasses import dataclass
+from typing import Optional
 
 import httpx
+from pydantic import BaseModel, Field, field_validator
 
 from ielts_config import EnvironmentConfig
+from ielts_observability import record_model_call_error, record_scoring_call, record_stt_call
+
+logger = logging.getLogger(__name__)
 
 
 class InferenceError(Exception):
@@ -32,6 +38,62 @@ class ScoreResult:
     raw: dict
     model: str
     generation_id: str | None
+
+
+class EvidenceItem(BaseModel):
+    quote: str
+    note: Optional[str] = None
+
+
+class CriterionScore(BaseModel):
+    criterion: str
+    band: float
+    confidence: str
+    subdimensions: dict = Field(default_factory=dict)
+    evidence: list[EvidenceItem] = Field(default_factory=list)
+
+    @field_validator("criterion")
+    @classmethod
+    def _valid_criterion(cls, v: str) -> str:
+        allowed = {
+            "fluency_and_coherence",
+            "lexical_resource",
+            "grammatical_range_and_accuracy",
+            "pronunciation",
+        }
+        if v not in allowed:
+            raise ValueError(f"Unknown criterion: {v}")
+        return v
+
+    @field_validator("band")
+    @classmethod
+    def _valid_band(cls, v: float) -> float:
+        return min(9.0, max(0.0, v))
+
+    @field_validator("confidence")
+    @classmethod
+    def _valid_confidence(cls, v: str) -> str:
+        allowed = {"high", "medium", "low", "inconclusive"}
+        if v not in allowed:
+            raise ValueError(f"Invalid confidence: {v}")
+        return v
+
+
+class ScoreSchema(BaseModel):
+    criteria: list[CriterionScore]
+    strengths: list[str] = Field(default_factory=list, max_length=10)
+    improvements: list[str] = Field(default_factory=list, max_length=10)
+    mistakes: list[dict] = Field(default_factory=list)
+    fluencyNotes: list[str] = Field(default_factory=list)
+    exampleRewrites: list[dict] = Field(default_factory=list)
+    practicePlan: dict = Field(default_factory=lambda: {"days": []})
+
+    @field_validator("criteria")
+    @classmethod
+    def _validate_criteria(cls, v: list[CriterionScore]) -> list[CriterionScore]:
+        if not v:
+            raise ValueError("At least one criterion is required")
+        return v
 
 
 class OpenRouterClient:
@@ -62,8 +124,10 @@ class OpenRouterClient:
                 "response_format": "verbose_json",
                 "timestamp_granularities[]": "word",
             }
+            record_stt_call()
             response = self._client.post("/audio/transcriptions", data=data, files=files)
             if response.status_code >= 400:
+                record_model_call_error()
                 payload = {
                     "model": model,
                     "language": "en",
@@ -73,8 +137,10 @@ class OpenRouterClient:
                         "format": safe_fmt,
                     },
                 }
+                record_stt_call()
                 response = self._client.post("/audio/transcriptions", json=payload)
             if response.status_code >= 400:
+                record_model_call_error()
                 last_error = response.text[:300]
                 continue
             body = response.json()
@@ -99,9 +165,15 @@ class OpenRouterClient:
                             "confidence": segment.get("avg_logprob"),
                         }
                     )
+            detected_language = body.get("language") or "en"
+            language_warning = None
+            if detected_language and detected_language != "en" and detected_language != "english":
+                language_warning = f"Detected language '{detected_language}'; expected 'en'. Scoring may be unreliable."
+            if language_warning:
+                logger.warning(language_warning)
             return TranscriptResult(
                 text=text.strip(),
-                language=body.get("language") or "en",
+                language=detected_language,
                 duration_seconds=float(body.get("duration") or 0),
                 words=words,
                 segments=body.get("segments") or [],
@@ -174,13 +246,24 @@ class OpenRouterClient:
                     {"role": "user", "content": prompt},
                 ],
             }
+            record_scoring_call()
             response = self._client.post("/chat/completions", json=body)
             if response.status_code >= 400:
+                record_model_call_error()
                 last_error = response.text[:300]
                 continue
             payload = response.json()
             content = payload["choices"][0]["message"]["content"]
             parsed = json.loads(content)
+            if not isinstance(parsed, dict):
+                record_model_call_error()
+                raise InferenceError(f"Scoring returned non-object for model {model}")
+            try:
+                ScoreSchema.model_validate(parsed)
+            except Exception as exc:
+                record_model_call_error()
+                last_error = f"Schema validation failed for model {model}: {exc}"
+                continue
             return ScoreResult(
                 raw=parsed,
                 model=model,
