@@ -1,16 +1,7 @@
 const API_BASE: string = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:4000/v1";
-const TOKEN_KEY = "ielts_token";
 
 export const API_BASE_URL = API_BASE;
-
-export function getToken(): string | null {
-  return localStorage.getItem(TOKEN_KEY);
-}
-
-export function setToken(token: string | null): void {
-  if (token) localStorage.setItem(TOKEN_KEY, token);
-  else localStorage.removeItem(TOKEN_KEY);
-}
+let refreshPromise: Promise<boolean> | null = null;
 
 export class ApiError extends Error {
   constructor(
@@ -22,36 +13,72 @@ export class ApiError extends Error {
   }
 }
 
-export async function request<T>(path: string, init: RequestInit = {}, authed = true): Promise<T> {
-  const token = getToken();
+const ALLOWED_MIME_PREFIXES = ["audio/"];
+
+async function refreshSession(): Promise<boolean> {
+  if (refreshPromise) return refreshPromise;
+  refreshPromise = fetch(`${API_BASE}/auth/refresh`, {
+    method: "POST",
+    credentials: "include",
+  })
+    .then((response) => response.ok)
+    .catch(() => false)
+    .finally(() => {
+      refreshPromise = null;
+    });
+  return refreshPromise;
+}
+
+function canRefresh(path: string): boolean {
+  return !path.startsWith("/auth/");
+}
+
+export async function request<T>(path: string, init: RequestInit = {}, retried = false): Promise<T> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(init.headers as Record<string, string> | undefined),
   };
-  if (authed && token) headers.Authorization = `Bearer ${token}`;
-  const response = await fetch(`${API_BASE}${path}`, { ...init, headers });
+  const response = await fetch(`${API_BASE}${path}`, {
+    ...init,
+    headers,
+    credentials: "include",
+  });
+  if (response.status === 401 && !retried && canRefresh(path) && (await refreshSession())) {
+    return request<T>(path, init, true);
+  }
   if (response.headers.get("content-type")?.includes("text/html")) {
     return (await response.text()) as T;
   }
   const body = await response.json();
   if (!response.ok) {
-    throw new ApiError(body.error?.message ?? "Request failed", body.error?.code ?? "ERROR");
+    let errorMessage = body.error?.message ?? "Request failed";
+    const code = body.error?.code ?? "ERROR";
+    if (response.status === 401 && code !== "AUTH_REQUIRED") {
+      errorMessage = "Session expired. Please sign in again.";
+    }
+    throw new ApiError(errorMessage, code);
   }
   return body.data as T;
 }
 
 export function wsUrl(path: string): string {
   const base = API_BASE.replace(/^http/, "ws");
-  const token = getToken();
   const url = new URL(`${base}${path}`);
-  if (token) url.searchParams.set("token", token);
   return url.toString();
 }
 
 export async function fetchText(path: string): Promise<string> {
-  const token = getToken();
   const response = await fetch(`${API_BASE}${path}`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    credentials: "include",
   });
   return response.text();
 }
+
+export async function logout(): Promise<void> {
+  await fetch(`${API_BASE}/auth/logout`, {
+    method: "POST",
+    credentials: "include",
+  }).catch(() => undefined);
+}
+
+export { ALLOWED_MIME_PREFIXES };

@@ -4,10 +4,17 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import timedelta
+from typing import Any
 from urllib.parse import urlparse
 
-from minio import Minio
-from minio.error import S3Error
+try:
+    from minio import Minio
+    from minio.error import S3Error
+except ModuleNotFoundError:
+    Minio = None
+
+    class S3Error(Exception):
+        code = "MINIO_UNAVAILABLE"
 
 from ielts_config import EnvironmentConfig
 
@@ -22,6 +29,14 @@ class ObjectHead:
 
 class ObjectStore:
     def __init__(self, config: EnvironmentConfig) -> None:
+        self._client: Any = None
+        self._public_client: Any = None
+        self._ttl = config.minio_signed_url_ttl_seconds
+        self.candidate_bucket = config.minio_candidate_bucket
+        self.examiner_bucket = config.minio_examiner_bucket
+        self.derivative_bucket = config.minio_derivative_bucket
+        if Minio is None:
+            return
         parsed = urlparse(config.minio_endpoint)
         self._client = Minio(
             parsed.netloc or parsed.path,
@@ -30,7 +45,6 @@ class ObjectStore:
             secure=parsed.scheme == "https",
             region=config.minio_region,
         )
-        self._ttl = config.minio_signed_url_ttl_seconds
         self._public_client = self._client
         public_endpoint = (config.minio_public_endpoint or "").rstrip("/")
         if public_endpoint:
@@ -42,24 +56,29 @@ class ObjectStore:
                 secure=public.scheme == "https",
                 region=config.minio_region,
             )
-        self.candidate_bucket = config.minio_candidate_bucket
-        self.examiner_bucket = config.minio_examiner_bucket
-        self.derivative_bucket = config.minio_derivative_bucket
+    def _require_client(self) -> Any:
+        if self._client is None or self._public_client is None:
+            raise RuntimeError("MinIO client dependency is not installed")
+        return self._client
 
     def ensure_buckets(self) -> None:
+        client = self._require_client()
         for bucket in (self.candidate_bucket, self.examiner_bucket, self.derivative_bucket):
-            if not self._client.bucket_exists(bucket):
-                self._client.make_bucket(bucket)
+            if not client.bucket_exists(bucket):
+                client.make_bucket(bucket)
 
     def presigned_put(self, bucket: str, object_key: str) -> str:
+        self._require_client()
         return self._public_client.presigned_put_object(bucket, object_key, expires=timedelta(seconds=self._ttl))
 
     def presigned_get(self, bucket: str, object_key: str) -> str:
+        self._require_client()
         return self._public_client.presigned_get_object(bucket, object_key, expires=timedelta(seconds=self._ttl))
 
     def head(self, bucket: str, object_key: str) -> ObjectHead:
+        client = self._require_client()
         try:
-            info = self._client.stat_object(bucket, object_key)
+            info = client.stat_object(bucket, object_key)
         except S3Error as exc:
             if exc.code in {"NoSuchKey", "NoSuchObject", "NoSuchBucket"}:
                 return ObjectHead(False, 0, None, None)
@@ -72,7 +91,8 @@ class ObjectStore:
         )
 
     def get_bytes(self, bucket: str, object_key: str) -> bytes:
-        response = self._client.get_object(bucket, object_key)
+        client = self._require_client()
+        response = client.get_object(bucket, object_key)
         try:
             return response.read()
         finally:
@@ -80,12 +100,14 @@ class ObjectStore:
             response.release_conn()
 
     def delete(self, bucket: str, object_key: str) -> None:
-        self._client.remove_object(bucket, object_key)
+        client = self._require_client()
+        client.remove_object(bucket, object_key)
 
     def put_bytes(self, bucket: str, object_key: str, data: bytes, content_type: str) -> None:
         from io import BytesIO
 
-        self._client.put_object(
+        client = self._require_client()
+        client.put_object(
             bucket,
             object_key,
             BytesIO(data),

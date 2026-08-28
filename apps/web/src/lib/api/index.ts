@@ -1,4 +1,4 @@
-import { API_BASE_URL, ApiError, fetchText, getToken, request, setToken, wsUrl } from "./client";
+import { API_BASE_URL, ApiError, fetchText, logout, request, wsUrl } from "./client";
 import type {
   ActionPatch,
   DeviceCheckPayload,
@@ -15,16 +15,14 @@ import type {
 
 export const api = {
   register: (email: string, password: string, displayName: string) =>
-    request<{ token: string; user: User }>(
+    request<{ user: User }>(
       "/auth/register",
       { method: "POST", body: JSON.stringify({ email, password, displayName }) },
-      false,
     ),
   login: (email: string, password: string) =>
-    request<{ token: string; user: User }>(
+    request<{ user: User }>(
       "/auth/login",
       { method: "POST", body: JSON.stringify({ email, password }) },
-      false,
     ),
   me: () => request<User>("/me"),
   consent: () =>
@@ -46,14 +44,16 @@ export const api = {
       body: JSON.stringify(payload),
     }),
   realtimeSocketUrl: (id: string) => wsUrl(`/tests/${id}/realtime/live`),
-  realtimeTurnAudio: async (testId: string, turnId: string, blob: Blob) => {
-    const token = getToken();
-    const form = new FormData();
+   realtimeTurnAudio: async (testId: string, turnId: string, blob: Blob) => {
+    if (!blob.type.startsWith("audio/")) {
+      throw new ApiError("Expected an audio blob", "INVALID_MIME");
+    }
     const extension = blob.type.includes("mp4") ? "m4a" : "webm";
+    const form = new FormData();
     form.append("audio", blob, `turn-${turnId}.${extension}`);
     const response = await fetch(`${API_BASE_URL}/tests/${testId}/realtime/turns/${turnId}/audio`, {
       method: "POST",
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      credentials: "include",
       body: form,
     });
     const body = await response.json();
@@ -62,6 +62,8 @@ export const api = {
     }
     return body.data as { test: TestSession; examinerPlaybackUrl?: string | null; nextTurnId?: string | null };
   },
+  retakeTurn: (testId: string, turnId: string) =>
+    request<TestSession>(`/tests/${testId}/turns/${turnId}/retake`, { method: "POST" }),
   startConversation: (id: string) =>
     request<TestSession>(`/tests/${id}/conversation/start`, { method: "POST" }),
   transition: (id: string, event: string, expectedRevision: number) =>
@@ -97,7 +99,7 @@ export const api = {
   deleteTest: (id: string) => request(`/tests/${id}`, { method: "DELETE" }),
 };
 
-export { ApiError, getToken, setToken };
+export { ApiError, logout };
 export type {
   ActionPatch,
   CriterionScore,

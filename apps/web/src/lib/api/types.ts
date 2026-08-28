@@ -20,6 +20,9 @@ export type Turn = {
   isFollowUp?: boolean;
   playbackAvailable?: boolean;
   transcriptText?: string | null;
+  speechRateWpm?: number;
+  speechRateWarning?: boolean;
+  accentNote?: string | null;
 };
 
 export type TestSession = {
