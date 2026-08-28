@@ -1,9 +1,9 @@
 import { Link, useLocation } from "react-router-dom";
 import type { ReactNode } from "react";
-import { setToken } from "../../lib/api";
+import { logout } from "../../lib/api";
 
-function signOut() {
-  setToken(null);
+async function signOut() {
+  await logout();
   window.location.href = "/login";
 }
 

@@ -7,13 +7,19 @@ export function PartSteps({ state }: { state: string }) {
   const part3Done = state === "UPLOADING";
 
   const parts = [
-    { id: "1", label: "Interview", done: part1Done, on: part1Active },
-    { id: "2", label: "Long turn", done: part2Done, on: part2Active },
-    { id: "3", label: "Discussion", done: part3Done, on: part3Active },
+    { id: "1" as const, label: "Interview", done: part1Done, on: part1Active },
+    { id: "2" as const, label: "Long turn", done: part2Done, on: part2Active },
+    { id: "3" as const, label: "Discussion", done: part3Done, on: part3Active },
   ];
+
+  const currentPart = part3Active || part3Done ? 3 : part2Active || part2Done ? 2 : 1;
 
   return (
     <div className="steps">
+      <div className="step-breadcrumb" aria-label={`Part ${currentPart} of 3`}>
+        <span className="muted caption">Part {currentPart} of 3</span>
+        <span className="muted caption">~{6 - currentPart * 2} min left</span>
+      </div>
       {parts.map((part) => (
         <div
           key={part.id}
