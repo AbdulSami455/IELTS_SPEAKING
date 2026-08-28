@@ -45,6 +45,7 @@ class User(Base):
     consent_accepted_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    voice_preference: Mapped[Optional[str]] = mapped_column(String(50), nullable=True, default="alloy")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=sql_text("now()"), nullable=False
     )

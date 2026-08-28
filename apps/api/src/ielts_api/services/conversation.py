@@ -96,6 +96,12 @@ class ConversationOrchestrator:
     async def _advance_part1(self, test: TestSession) -> None:
         count = self._answered_count(test, 1)
         if count < PART1_TARGET_QUESTIONS:
+            last_answer = self._last_answer_for_part(test, 1)
+            if last_answer and len(last_answer.split()) < 15:
+                follow_up = await self._generate_part1_follow_up(test, last_answer)
+                if follow_up is not None:
+                    self._append_turn(test, follow_up, part=1, asset_version="follow-up")
+                    return
             turn = await self._generate_part1_turn(test)
             self._append_turn(test, turn, part=1)
             return
@@ -124,6 +130,62 @@ class ConversationOrchestrator:
             self._append_turn(test, turn, part=3)
             return
         self._transition(test, TestEvent.COMPLETE_PART3)
+
+    def _last_answer_for_part(self, test: TestSession, part: int) -> str | None:
+        history = sorted(test.conversation_events, key=lambda item: (item.sequence_index, item.id))
+        for event in reversed(history):
+            if event.phase and f"PART{part}" in event.phase and event.transcript_text:
+                return event.transcript_text
+        return None
+
+    async def _generate_part1_follow_up(self, test: TestSession, transcript: str) -> GeneratedTurn | None:
+        from ielts_inference.examiner import FOLLOW_UP_INSTRUCTIONS, parse_follow_up
+
+        prompt = json.dumps(
+            {
+                "part": 1,
+                "question": test.session_questions[-1].prompt_text if test.session_questions else "",
+                "transcript": transcript,
+            }
+        )
+        payload = await self._chat_json(test, FOLLOW_UP_INSTRUCTIONS, prompt)
+        follow_up = parse_follow_up(payload)
+        if follow_up is None:
+            return None
+        return GeneratedTurn(prompt_text=follow_up, timing_seconds=35, asset_version="follow-up")
+
+    async def _generate_part3_turn(self, test: TestSession) -> GeneratedTurn:
+        asked = [item.prompt_text for item in test.session_questions if item.part == 3]
+        history = await self._history(test.id)
+        plan = self._topic_plan(test)
+        part2_theme = ""
+        is_nervous = self._detect_nervousness(test, history)
+        if test.topic_plan and isinstance(test.topic_plan, dict) and "part2" in test.topic_plan:
+            from ielts_inference.topics import part2_theme as get_part2_theme
+
+            theme_info = get_part2_theme(test.topic_plan["part2"])
+            part2_theme = theme_info["label"]
+        prompt = part3_prompt_input(
+            history,
+            asked,
+            theme=plan["part3_theme"],
+            part2_theme=part2_theme,
+        )
+        payload = json.loads(prompt)
+        payload["is_nervous"] = is_nervous
+        return await self._chat_turn(
+            test,
+            PART3_INSTRUCTIONS,
+            json.dumps(payload),
+            timing_seconds=40,
+        )
+
+    def _detect_nervousness(self, test: TestSession, history: list[dict]) -> bool:
+        part1_answers = [h for h in history if h.get("part") == 1]
+        if len(part1_answers) < 3:
+            return False
+        short_count = sum(1 for h in part1_answers if len(h.get("transcript", "").split()) < 5)
+        return short_count >= 2
 
     def _append_turn(
         self,
