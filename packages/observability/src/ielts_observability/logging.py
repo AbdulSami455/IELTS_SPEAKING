@@ -29,6 +29,29 @@ SECRET_KEYS = {
 URL_RE = re.compile(r"https?://[^\s]+X-Amz-[^\s]+", re.IGNORECASE)
 BEARER_RE = re.compile(r"Bearer\s+[A-Za-z0-9._\-]+", re.IGNORECASE)
 
+EMAIL_RE = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b")
+PHONE_RE = re.compile(
+    r"\b(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b"
+)
+
+PII_PATTERNS = {
+    "email": EMAIL_RE,
+    "phone": PHONE_RE,
+}
+
+
+def redact_pii(text: str, max_replacements: int = 100) -> str:
+    count = 0
+    for pattern in (EMAIL_RE, PHONE_RE):
+        def _replacer(match: re.Match, _pattern=pattern) -> str:
+            nonlocal count
+            if count >= max_replacements:
+                return match.group(0)
+            count += 1
+            return "[redacted-pii]"
+        text = pattern.sub(_replacer, text)
+    return text
+
 
 def redact(value: Any) -> Any:
     if isinstance(value, dict):
@@ -43,7 +66,8 @@ def redact(value: Any) -> Any:
         return [redact(item) for item in value]
     if isinstance(value, str):
         text = URL_RE.sub("[redacted-url]", value)
-        return BEARER_RE.sub("Bearer [redacted]", text)
+        text = BEARER_RE.sub("Bearer [redacted]", text)
+        return redact_pii(text)
     return value
 
 
