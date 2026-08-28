@@ -93,6 +93,22 @@ export function FluencySection({ report }: { report: Report }) {
 
 export function TranscriptsSection({ report }: { report: Report }) {
   if (!report.transcripts || report.transcripts.length === 0) return null;
+  const highlight: string[] = (report.mistakes?.map((m) => m.quote).filter(Boolean) ?? []) as string[];
+  function highlightText(text: string) {
+    if (!highlight.length) return <p>{text}</p>;
+    const parts = text.split(new RegExp(`(${highlight.map((q) => q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).filter(Boolean).join("|")})`, "gi"));
+    return (
+      <p>
+        {parts.map((part, index) =>
+          highlight.some((q) => q !== undefined && q.toLowerCase() === part.toLowerCase()) ? (
+            <mark key={index}>{part}</mark>
+          ) : (
+            part
+          ),
+        )}
+      </p>
+    );
+  }
   return (
     <section className="card stack">
       <div className="section-head">
@@ -104,7 +120,7 @@ export function TranscriptsSection({ report }: { report: Report }) {
             <Badge tone="accent">Part {item.part}</Badge>
           </div>
           <p className="muted">{item.promptText}</p>
-          <p>{item.text}</p>
+          {highlightText(item.text)}
         </div>
       ))}
     </section>

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { api, setToken } from "../../lib/api";
+import { api } from "../../lib/api";
 import { Alert, Button, Field, TextInput } from "../../components/ui";
 
 export function LoginPage() {
@@ -21,7 +21,7 @@ export function LoginPage() {
         mode === "register"
           ? await api.register(email, password, displayName)
           : await api.login(email, password);
-      setToken(result.token);
+      void result;
       navigate("/");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not sign in");
