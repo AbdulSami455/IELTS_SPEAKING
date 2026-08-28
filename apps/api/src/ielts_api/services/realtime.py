@@ -37,6 +37,11 @@ class RealtimeSessionService:
             assert test is not None
         live = await self._realtime.active_for_test(test_id)
         if live is None:
+            from ielts_db.repositories import UserRepository
+
+            user_repo = UserRepository(self._session)
+            user = await user_repo.get_by_id(user_id)
+            user_voice = getattr(user, "voice_preference", None) or self._config.realtime_tts_voice
             live = RealtimeSession(
                 id=str(uuid.uuid4()),
                 test_session_id=test.id,
@@ -46,7 +51,7 @@ class RealtimeSessionService:
                 llm_model=self._config.realtime_llm_model,
                 stt_model=self._config.realtime_stt_model,
                 tts_model=self._config.realtime_tts_model,
-                tts_voice=self._config.realtime_tts_voice,
+                tts_voice=user_voice,
                 session_notes={"mode": "internal-realtime-agent"},
             )
             self._session.add(live)
@@ -103,6 +108,8 @@ class RealtimeSessionService:
         audio: bytes,
         mime_type: str,
     ) -> dict:
+        if not mime_type or not mime_type.startswith("audio/"):
+            raise validation("Only audio/* MIME types are accepted for STT processing")
         test = await self._tests.get_owned(test_id, user_id)
         if test is None:
             raise not_found("Test session not found")
@@ -172,7 +179,7 @@ class RealtimeSessionService:
         except (InferenceError, StateConflictError) as extra:
             await self._session.commit()
             if isinstance(extra, InferenceError):
-                raise AppError("CONVERSATION_STEP_FAILED", str(extra), 502, retryable=exc.retryable) from extra
+                raise AppError("CONVERSATION_STEP_FAILED", str(extra), 502, retryable=extra.retryable) from extra
             raise AppError("CONVERSATION_STEP_FAILED", str(extra), 409, retryable=True) from extra
         await self._session.flush()
         next_test = await self._tests.get_owned(test_id, user_id)

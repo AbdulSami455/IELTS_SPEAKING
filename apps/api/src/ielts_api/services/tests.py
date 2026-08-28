@@ -132,6 +132,7 @@ class TestService:
             status=TestState.CREATED.value,
             revision=0,
             expires_at=datetime.now(timezone.utc) + timedelta(days=2),
+            topic_plan=None,
         )
         self.session.add(test)
         start = apply_transition(
@@ -243,7 +244,7 @@ class TestService:
         assert updated is not None
         return serialize_test(updated)
 
-    async def start_conversation(self, user_id: int, test_id: str) -> dict:
+    async def start_conversation(self, user_id: int, test_id: str, practice_mode: bool = False) -> dict:
         test = await self.tests.get_owned(test_id, user_id)
         if test is None:
             raise not_found("Test session not found")
@@ -255,7 +256,9 @@ class TestService:
             await self.session.commit()
             updated = await self.tests.get_owned(test_id, user_id)
             assert updated is not None
-            return serialize_test(updated)
+            result = serialize_test(updated)
+            result["practice_mode"] = practice_mode
+            return result
         return serialize_test(test)
 
     async def authorize_turn_upload(self, user_id: int, test_id: str, turn_id: str) -> dict:
@@ -266,6 +269,34 @@ class TestService:
         if question is None or question.answer is None:
             raise not_found("Turn not found")
         return await self.authorize_upload(user_id, test_id, question.answer.id)
+
+    async def retake_turn(self, user_id: int, test_id: str, turn_id: str) -> dict:
+        test = await self.tests.get_owned(test_id, user_id)
+        if test is None:
+            raise not_found("Test session not found")
+        question = next((item for item in test.session_questions if str(item.id) == turn_id), None)
+        if question is None or question.answer is None:
+            raise not_found("Turn not found")
+        answer = question.answer
+        state = AnswerState(answer.status)
+        if state not in {
+            AnswerState.INVALID_MEDIA,
+            AnswerState.FAILED_RETRYABLE,
+            AnswerState.READY,
+            AnswerState.VALID,
+        }:
+            raise conflict("Retake is available after a completed or failed answer")
+        if answer.transcript is not None:
+            await self.session.delete(answer.transcript)
+        answer.status = AnswerState.PENDING.value
+        answer.recorded_at = None
+        answer.upload_completed_at = None
+        answer.validated_at = None
+        answer.validation_error_code = None
+        await self.session.commit()
+        updated = await self.tests.get_owned(test_id, user_id)
+        assert updated is not None
+        return serialize_test(updated)
 
     async def complete_turn_upload(self, user_id: int, test_id: str, turn_id: str, payload: dict) -> dict:
         test = await self.tests.get_owned(test_id, user_id)
@@ -412,7 +443,7 @@ class TestService:
             return
         await self.conversation.on_answer_completed(refreshed, next_answer)
 
-    async def submit(self, user_id: int, test_id: str) -> dict:
+    async def submit(self, user_id: int, test_id: str, practice_mode: bool = False) -> dict:
         test = await self.tests.get_owned(test_id, user_id)
         if test is None:
             raise not_found("Test session not found")
@@ -443,18 +474,21 @@ class TestService:
                 current = step.new_state
         if current != TestState.SUBMITTED:
             raise conflict(f"Cannot submit from {current}")
-        from ielts_api.errors import AppError
-        from ielts_inference.openrouter import InferenceError
-        from ielts_inference.quota import assert_capacity
+        if not practice_mode:
+            from ielts_api.errors import AppError
+            from ielts_inference.openrouter import InferenceError
+            from ielts_inference.quota import assert_capacity
 
-        try:
-            await assert_capacity(self.session, user_id, self.config)
-        except InferenceError as extra:
-            raise AppError("BUDGET_EXCEEDED", str(extra), 402) from extra
+            try:
+                await assert_capacity(self.session, user_id, self.config)
+            except InferenceError as extra:
+                raise AppError("BUDGET_EXCEEDED", str(extra), 402) from extra
         await self.session.commit()
         updated = await self.tests.get_owned(test_id, user_id)
         assert updated is not None
-        return serialize_test(updated)
+        result = serialize_test(updated)
+        result["practice_mode"] = practice_mode
+        return result
 
     async def status(self, user_id: int, test_id: str) -> dict:
         test = await self.tests.get_owned(test_id, user_id)
@@ -497,11 +531,12 @@ class TestService:
         question = next((item for item in test.session_questions if str(item.id) == question_id), None)
         if question is None:
             raise not_found("Question not found")
+        user_voice = getattr(await self.users.get_by_id(user_id), "voice_preference", None) or self.config.openrouter_tts_voice
         object_key = examiner_object_key(
             _examiner_script(question),
             question.examiner_asset_version or "v1",
             model=self.config.openrouter_tts_model,
-            voice=self.config.openrouter_tts_voice,
+            voice=user_voice,
         )
         head = self.store.head(self.config.minio_examiner_bucket, object_key)
         if not head.exists:
@@ -581,7 +616,16 @@ class TestService:
             "pronunciation": (report.parts or {}).get("pronunciation") or [],
             "mistakes": (report.parts or {}).get("mistakes") or [],
             "fluency": (report.parts or {}).get("fluency") or [],
+            "accent_note": self._accent_note(report),
         }
+
+    def _accent_note(self, report: Report) -> str | None:
+        parts = report.parts or {}
+        pronunciation = parts.get("pronunciation") or []
+        for item in pronunciation:
+            if isinstance(item, dict) and item.get("coverage", 1.0) < 0.5:
+                return "The recognizer had difficulty matching your speech. Speak a little slower and more clearly for more reliable feedback."
+        return None
 
     async def _transcripts(self, test_id: str) -> list[dict]:
         result = await self.session.execute(
