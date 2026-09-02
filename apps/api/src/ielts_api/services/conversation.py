@@ -329,11 +329,18 @@ class ConversationOrchestrator:
         )
 
     async def _chat_turn(self, test: TestSession, system: str, prompt: str, *, timing_seconds: int) -> GeneratedTurn:
-        payload = await self._chat_json(test, system, prompt)
-        parsed = parse_spoken_question(payload, timing_seconds=timing_seconds)
-        if parsed is None:
-            raise InferenceError("Examiner prompt generation returned invalid JSON", retryable=True)
-        return parsed
+        retry_prompt = (
+            f"{prompt}\n\n"
+            'Your previous reply was unusable. Return JSON only: {"question": "one spoken examiner question"}'
+        )
+        for attempt, user_prompt in enumerate((prompt, retry_prompt)):
+            payload = await self._chat_json(test, system, user_prompt)
+            parsed = parse_spoken_question(payload, timing_seconds=timing_seconds)
+            if parsed is not None:
+                return parsed
+            if attempt == 0:
+                continue
+        raise InferenceError("Examiner prompt generation returned invalid JSON", retryable=True)
 
     async def _chat_json(self, test: TestSession, system: str, prompt: str) -> dict:
         await reserve_model_call(self._session, test.user_id, test.id, "examiner", self._config)
