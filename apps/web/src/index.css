@@ -801,7 +801,7 @@ mark {
   min-height: 100vh;
   display: grid;
   place-items: center;
-  padding: var(--space-6) var(--space-4);
+  padding: var(--space-8) var(--space-4);
 }
 
 .auth-grid {
@@ -816,15 +816,23 @@ mark {
 }
 
 .auth-story {
-  padding: var(--space-12) var(--space-10);
-  background: var(--color-mist);
+  padding: clamp(var(--space-8), 5vw, var(--space-12)) var(--space-10);
+  background: var(--color-obsidian);
+  color: rgba(250, 251, 252, 0.88);
   display: grid;
   gap: var(--space-5);
   align-content: center;
 }
 
+.auth-story .kicker {
+  color: var(--color-silver);
+}
+
 .auth-story h1 {
   max-width: 14ch;
+  color: var(--color-paper-white);
+  font-weight: var(--weight-regular);
+  line-height: 1.1;
 }
 
 .auth-points {
@@ -833,8 +841,9 @@ mark {
   list-style: none;
   display: grid;
   gap: 10px;
-  color: var(--color-pewter);
+  color: rgba(250, 251, 252, 0.76);
   font-size: var(--text-control);
+  line-height: var(--leading-body);
 }
 
 .auth-points li {
@@ -849,15 +858,54 @@ mark {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--color-sky-signal);
+  background: var(--color-silver);
   transform: translateY(-1px);
 }
 
+.auth-story .caption {
+  color: rgba(250, 251, 252, 0.56);
+}
+
 .auth-form {
-  padding: var(--space-10) var(--space-8);
+  padding: clamp(var(--space-8), 4vw, var(--space-10)) var(--space-8);
   display: grid;
   gap: var(--space-4);
   align-content: center;
+  background: #ffffff;
+}
+
+.auth-form h2 {
+  color: #292c3d;
+  font-weight: var(--weight-medium);
+}
+
+.auth-form .field {
+  color: #292c3d;
+  font-weight: var(--weight-medium);
+}
+
+.auth-form .field .caption {
+  color: var(--color-pewter);
+  font-weight: var(--weight-regular);
+}
+
+.auth-form .field input {
+  color: #292c3d;
+}
+
+.auth-form .btn--primary {
+  background: var(--color-inkstone);
+  color: var(--color-paper-white);
+}
+
+.auth-form .btn--primary:hover:not(:disabled) {
+  background: var(--color-midnight);
+}
+
+.auth-form .btn--ghost {
+  color: var(--color-slate);
+  justify-self: start;
+  padding-left: 0;
 }
 
 .auth-form form {
@@ -1248,6 +1296,20 @@ mark {
   .topbar {
     background: var(--color-paper-white);
     border-color: var(--color-linen);
+  }
+
+  .auth-form {
+    background: #ffffff;
+  }
+
+  .auth-form h2,
+  .auth-form .field {
+    color: #292c3d;
+  }
+
+  .auth-form .btn--primary {
+    background: var(--color-obsidian);
+    color: #fafbfc;
   }
 
   .time-fill {

@@ -34,17 +34,16 @@ export function LoginPage() {
     <div className="auth-shell">
       <div className="auth-grid">
         <div className="auth-story">
-          <p className="kicker">Practice studio</p>
-          <h1>Speak as if the examiner is already in the room.</h1>
+          <p className="kicker">Atelier Speaking</p>
+          <h1>Practice a full IELTS speaking test.</h1>
           <ul className="auth-points">
-            <li>A full Part 1–3 interview with timed answers and follow-up questions.</li>
-            <li>Your voice stays private — recorded for scoring, then deleted on schedule.</li>
-            <li>A four-criterion estimated report: fluency, vocabulary, grammar, pronunciation.</li>
+            <li>Live Part 1–3 interview with an AI examiner</li>
+            <li>Band estimate across fluency, vocabulary, grammar, and pronunciation</li>
           </ul>
-          <p className="caption">Practice estimates only. Never an official IELTS result.</p>
+          <p className="caption">Practice only — not an official IELTS score.</p>
         </div>
         <div className="auth-form">
-          <h2>{mode === "register" ? "Create your studio" : "Welcome back"}</h2>
+          <h2>{mode === "register" ? "Create account" : "Sign in"}</h2>
           <form onSubmit={submit}>
             {mode === "register" && (
               <Field label="Name">
@@ -65,7 +64,7 @@ export function LoginPage() {
                 autoComplete="email"
               />
             </Field>
-            <Field label="Password" hint="At least 8 characters.">
+            <Field label="Password" hint={mode === "register" ? "At least 8 characters." : undefined}>
               <TextInput
                 type="password"
                 value={password}
@@ -77,11 +76,11 @@ export function LoginPage() {
             </Field>
             {error && <Alert tone="error">{error}</Alert>}
             <Button type="submit" loading={busy}>
-              {busy ? "Please wait…" : mode === "register" ? "Create account" : "Enter studio"}
+              {busy ? "Please wait…" : mode === "register" ? "Create account" : "Sign in"}
             </Button>
           </form>
           <Button variant="ghost" onClick={() => setMode(mode === "login" ? "register" : "login")}>
-            {mode === "login" ? "Need an account? Register" : "Already have an account? Sign in"}
+            {mode === "login" ? "Create an account" : "Already have an account?"}
           </Button>
         </div>
       </div>
