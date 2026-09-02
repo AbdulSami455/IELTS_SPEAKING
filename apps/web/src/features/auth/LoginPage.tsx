@@ -36,11 +36,11 @@ export function LoginPage() {
         <div className="auth-story">
           <p className="kicker">Atelier Speaking</p>
           <h1>Practice a full IELTS speaking test.</h1>
-          <ul className="auth-points">
-            <li>Live Part 1–3 interview with an AI examiner</li>
-            <li>Band estimate across fluency, vocabulary, grammar, and pronunciation</li>
-          </ul>
-          <p className="caption">Practice only — not an official IELTS score.</p>
+          <div className="auth-story-body">
+            <p>Live Part 1–3 interview with an AI examiner.</p>
+            <p>Band estimate across fluency, vocabulary, grammar, and pronunciation.</p>
+          </div>
+          <p className="auth-disclaimer">Practice only — not an official IELTS score.</p>
         </div>
         <div className="auth-form">
           <h2>{mode === "register" ? "Create account" : "Sign in"}</h2>

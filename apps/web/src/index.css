@@ -812,58 +812,48 @@ mark {
   border-radius: var(--radius-panel);
   background: #ffffff;
   box-shadow: var(--shadow-hairline);
-  overflow: hidden;
 }
 
 .auth-story {
   padding: clamp(var(--space-8), 5vw, var(--space-12)) var(--space-10);
-  background: var(--color-obsidian);
-  color: rgba(250, 251, 252, 0.88);
+  background: #171719;
+  color: #f0f0f2;
   display: grid;
   gap: var(--space-5);
-  align-content: center;
+  align-content: start;
+  border-radius: var(--radius-panel) 0 0 var(--radius-panel);
 }
 
 .auth-story .kicker {
-  color: var(--color-silver);
+  color: #c2c3c8;
+  font-weight: var(--weight-medium);
 }
 
 .auth-story h1 {
-  max-width: 14ch;
-  color: var(--color-paper-white);
-  font-weight: var(--weight-regular);
-  line-height: 1.1;
+  max-width: 16ch;
+  color: #fafbfc;
+  font-weight: var(--weight-medium);
+  line-height: 1.15;
 }
 
-.auth-points {
-  margin: 0;
-  padding: 0;
-  list-style: none;
+.auth-story-body {
   display: grid;
-  gap: 10px;
-  color: rgba(250, 251, 252, 0.76);
-  font-size: var(--text-control);
-  line-height: var(--leading-body);
+  gap: var(--space-3);
 }
 
-.auth-points li {
-  display: flex;
-  gap: 10px;
-  align-items: baseline;
+.auth-story-body p {
+  margin: 0;
+  color: #e4e5e8;
+  font-size: 15px;
+  line-height: 1.55;
+  font-weight: var(--weight-regular);
 }
 
-.auth-points li::before {
-  content: "";
-  flex: none;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--color-silver);
-  transform: translateY(-1px);
-}
-
-.auth-story .caption {
-  color: rgba(250, 251, 252, 0.56);
+.auth-disclaimer {
+  margin: 0;
+  color: #b8b9be;
+  font-size: var(--text-small);
+  line-height: 1.5;
 }
 
 .auth-form {
@@ -872,6 +862,7 @@ mark {
   gap: var(--space-4);
   align-content: center;
   background: #ffffff;
+  border-radius: 0 var(--radius-panel) var(--radius-panel) 0;
 }
 
 .auth-form h2 {
@@ -1210,10 +1201,12 @@ mark {
 
   .auth-story {
     padding: var(--space-8) var(--space-6);
+    border-radius: var(--radius-panel) var(--radius-panel) 0 0;
   }
 
   .auth-form {
     padding: var(--space-8) var(--space-6);
+    border-radius: 0 0 var(--radius-panel) var(--radius-panel);
   }
 
   .grid-2 {
