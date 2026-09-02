@@ -23,6 +23,12 @@ def test_parse_spoken_question_normalizes_question_mark():
     assert turn.timing_seconds == 30
 
 
+def test_parse_spoken_question_accepts_alternate_keys():
+    turn = parse_spoken_question({"prompt": "How has technology changed education?"}, timing_seconds=30)
+    assert turn is not None
+    assert "technology" in turn.prompt_text.lower()
+
+
 def test_parse_cue_card_requires_three_points():
     assert parse_cue_card({"topic": "A teacher", "task": "Describe a teacher.", "prompts": ["one", "two"]}) is None
     turn = parse_cue_card(

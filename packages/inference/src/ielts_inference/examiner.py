@@ -100,9 +100,17 @@ def parse_follow_up(raw: dict) -> str | None:
     return question
 
 
+def _spoken_question_text(raw: dict) -> str:
+    for key in ("question", "prompt", "spoken_question", "text"):
+        value = str(raw.get(key) or "").strip()
+        if value:
+            return value
+    return ""
+
+
 def parse_spoken_question(raw: dict, *, timing_seconds: int, asset_version: str = "generated") -> GeneratedTurn | None:
-    question = str(raw.get("question") or "").strip()
-    if len(question) < 10 or len(question) > 240:
+    question = _spoken_question_text(raw)
+    if len(question) < 8 or len(question) > 280:
         return None
     if "?" not in question:
         question = question.rstrip(".") + "?"

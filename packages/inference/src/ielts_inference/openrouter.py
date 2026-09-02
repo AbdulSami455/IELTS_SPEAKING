@@ -295,10 +295,23 @@ class OpenRouterClient:
                 last_error = response.text[:300]
                 continue
             payload = response.json()
-            parsed = json.loads(payload["choices"][0]["message"]["content"])
+            content = payload["choices"][0]["message"]["content"]
+            parsed = _parse_json_object(content)
             if isinstance(parsed, dict):
                 return parsed
+            last_error = "model did not return a JSON object"
         raise InferenceError(f"Examiner turn failed: {last_error}", retryable=True)
+
+
+def _parse_json_object(content: str) -> dict | None:
+    text = content.strip()
+    if text.startswith("```"):
+        text = text.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+    try:
+        parsed = json.loads(text)
+    except json.JSONDecodeError:
+        return None
+    return parsed if isinstance(parsed, dict) else None
 
 
 def _unique_models(primary: str, fallback: str) -> list[str]:
