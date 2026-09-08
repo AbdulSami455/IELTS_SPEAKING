@@ -31,6 +31,7 @@ export function ProcessingPage() {
         const status = await api.status(testId);
         if (cancelled) return;
         delay = 2500;
+        setError(null);
         setProgress(status.progress);
         setStage(status.stage);
         if (status.reportId) {

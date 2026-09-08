@@ -1,6 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import type { ReactNode } from "react";
 import { logout } from "../../lib/api";
+import { Icon } from "../ui/Icon";
 
 async function signOut() {
   await logout();
@@ -14,29 +15,51 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <>
-      <div className="announce" role="note">
-        Estimated practice scores only — not an official IELTS result.
-      </div>
+      <a className="skip-link" href="#main-content">
+        Skip to content
+      </a>
       <header className="topbar">
         <div className="topbar-inner">
           <Link to="/" className="brand">
-            Atelier Speaking
-            <span className="brand-dot" aria-hidden="true" />
+            <span className="brand-mark">
+              <Icon name="mic" size={21} />
+            </span>
+            <span>
+              Atelier<span className="brand-subtitle">SPEAKING STUDIO</span>
+            </span>
           </Link>
           <nav className="nav" aria-label="Primary">
-            <Link className={`nav-link${studioActive ? " active" : ""}`} to="/">
-              Studio
+            <Link
+              className={`nav-link${studioActive ? " active" : ""}`}
+              aria-current={studioActive ? "page" : undefined}
+              to="/"
+            >
+              <Icon name="home" size={17} /> Overview
             </Link>
-            <Link className={`nav-link${progressActive ? " active" : ""}`} to="/progress">
-              Progress
+            <Link
+              className={`nav-link${progressActive ? " active" : ""}`}
+              aria-current={progressActive ? "page" : undefined}
+              to="/progress"
+            >
+              <Icon name="chart" size={17} /> My progress
             </Link>
-            <button type="button" className="btn btn--ghost btn--sm" onClick={signOut}>
+            <button
+              type="button"
+              className="btn btn--ghost btn--sm"
+              onClick={signOut}
+            >
               Sign out
             </button>
           </nav>
         </div>
       </header>
-      <div className="shell">{children}</div>
+      <main id="main-content" className="shell">
+        {children}
+      </main>
+      <footer className="app-footer">
+        <span>Atelier Speaking · Make yourself heard.</span>
+        <span>Practice estimates, not official IELTS results.</span>
+      </footer>
     </>
   );
 }

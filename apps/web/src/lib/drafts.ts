@@ -34,7 +34,7 @@ export async function saveDraft(testId: string, answerId: string, blob: Blob): P
 export async function loadDraft(testId: string, answerId: string): Promise<Blob | null> {
   const db = await openDb();
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE, "readonly");
+    const tx = db.transaction(STORE, "readwrite");
     const metaRequest = tx.objectStore(STORE).get(`${testId}:${answerId}:meta`);
     metaRequest.onsuccess = () => {
       const meta = metaRequest.result as { createdAt: number } | null;
