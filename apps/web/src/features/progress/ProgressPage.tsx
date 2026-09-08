@@ -1,47 +1,68 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { api, type GoalInput, type ProgressOverview } from "../../lib/api";
-import { bandText, criterionLabel, formatDate, humanize } from "../../lib/format";
+import { api } from "../../lib/api";
+import {
+  bandText,
+  criterionLabel,
+  formatDate,
+  humanize,
+} from "../../lib/format";
 import { AppShell } from "../../components/layout/AppShell";
-import { Alert, Badge, Button, Field, Meter, SelectInput } from "../../components/ui";
+import { Alert, Badge, Button, Field, SelectInput } from "../../components/ui";
+import { Icon } from "../../components/ui/Icon";
+import { ProgressChart } from "./ProgressChart";
+import { SkillBars } from "./SkillBars";
+import { useProgress } from "./useProgress";
 
-const BAND_OPTIONS = ["5.5", "6.0", "6.5", "7.0", "7.5", "8.0", "8.5"];
+const BAND_OPTIONS = Array.from({ length: 19 }, (_, i) => (i / 2).toFixed(1));
+const SKILLS = [
+  "fluency_and_coherence",
+  "lexical_resource",
+  "grammatical_range_and_accuracy",
+  "pronunciation",
+];
+function dateInput(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
 
 export function ProgressPage() {
-  const [data, setData] = useState<ProgressOverview | null>(null);
+  const { data, error, loading, refresh } = useProgress();
   const [targetBand, setTargetBand] = useState("7.0");
-  const [targetDate, setTargetDate] = useState("2026-12-01");
+  const [targetDate, setTargetDate] = useState(() => {
+    const date = new Date();
+    date.setDate(date.getDate() + 90);
+    return dateInput(date);
+  });
+  const [focusSkills, setFocusSkills] = useState<string[]>([]);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [pendingAction, setPendingAction] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
-    api
-      .progress()
-      .then((next) => {
-        setData(next);
-        if (next.activeGoal) {
-          setTargetBand(next.activeGoal.targetBand.toFixed(1));
-          setTargetDate(next.activeGoal.targetDate.slice(0, 10));
-        }
-      })
-      .catch(() => undefined);
-  }, []);
+    if (data?.activeGoal) {
+      setTargetBand(data.activeGoal.targetBand.toFixed(1));
+      setTargetDate(data.activeGoal.targetDate.slice(0, 10));
+      setFocusSkills(data.activeGoal.focusSkills);
+    }
+  }, [data?.activeGoal]);
 
-  async function refresh() {
-    setData(await api.progress());
-  }
-
-  async function saveGoal() {
+  async function saveGoal(event: React.FormEvent) {
+    event.preventDefault();
     setSaving(true);
     setSaveError(null);
+    setSaved(false);
     try {
-      const payload: GoalInput = {
+      if (!targetDate || targetDate < dateInput(new Date()))
+        throw new Error("Choose a target date today or in the future.");
+      await api.saveGoal({
         targetBand: Number(targetBand),
-        targetDate: new Date(targetDate).toISOString(),
-        focusSkills: ["fluency_and_coherence", "pronunciation"],
-      };
-      await api.saveGoal(payload);
-      await refresh();
+        targetDate: new Date(`${targetDate}T00:00:00Z`).toISOString(),
+        focusSkills,
+      });
+      setSaved(true);
+      refresh();
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Could not save goal");
     } finally {
@@ -49,146 +70,265 @@ export function ProgressPage() {
     }
   }
 
-  async function completeAction(id: string) {
-    await api.patchAction(id, { completed: true });
-    await refresh();
-  }
-
-  async function skipAction(id: string) {
-    await api.patchAction(id, { skipped: true });
-    await refresh();
+  async function updateAction(
+    id: string,
+    state: "completed" | "skipped" | "reset",
+  ) {
+    setPendingAction(id);
+    setActionError(null);
+    try {
+      await api.patchAction(id, {
+        completed: state === "completed",
+        skipped: state === "skipped",
+      });
+      refresh();
+    } catch (err) {
+      setActionError(
+        err instanceof Error ? err.message : "Could not update activity",
+      );
+    } finally {
+      setPendingAction(null);
+    }
   }
 
   return (
     <AppShell>
       <div className="stack-lg">
-        <section className="page-head">
-          <p className="kicker">Your arc</p>
-          <h1>Progress.</h1>
-          <p className="lede">
-            Trends compare your latest attempts against rolling history. Estimates only — never a promise of a
-            future score.
-          </p>
-        </section>
-
-        <section className="grid" aria-label="Progress summary">
-          <div className="stat">
-            <span className="caption">Latest band</span>
-            <b>{bandText(data?.latestBand)}</b>
-          </div>
-          <div className="stat">
-            <span className="caption">Tests completed</span>
-            <b>{data?.testsCompleted ?? 0}</b>
-          </div>
-          <div className="stat">
-            <span className="caption">Trend</span>
-            <b>{data ? humanize(data.overallTrend) : "—"}</b>
+        <section className="row between">
+          <div className="stack-sm">
+            <p className="kicker">Small steps. Real progress.</p>
+            <h1>Look how far you’ve come.</h1>
             <p className="muted">
-              {data?.sampleSize ?? 0} comparable attempt{(data?.sampleSize ?? 0) === 1 ? "" : "s"} ·{" "}
-              {data?.confidence ?? "—"} confidence
+              Understand your strengths, find your focus, and keep the
+              conversation going.
             </p>
           </div>
+          <Link className="btn btn--primary" to="/">
+            Practise again <Icon name="arrow" size={17} />
+          </Link>
         </section>
-
-        {data?.weakestSkill && (
-          <Alert tone="info">
-            Weakest skill right now: <strong>{criterionLabel(data.weakestSkill)}</strong>
+        {error && (
+          <Alert tone="error">
+            {error}{" "}
+            <Button variant="secondary" size="sm" onClick={refresh}>
+              Retry
+            </Button>
           </Alert>
         )}
-
-        {data?.criterionStats && data.criterionStats.length > 0 && (
-          <section className="card stack" aria-label="Criteria averages">
-            <div className="section-head">
-              <h2>Criteria averages</h2>
-              <p className="caption">Across your comparable attempts.</p>
-            </div>
-            {data.criterionStats.map((item) => (
-              <div key={item.criterion} className="stack-sm">
-                <div className="row between">
-                  <span>{criterionLabel(item.criterion)}</span>
-                  <strong>{bandText(item.averageBand)}</strong>
-                </div>
-                <Meter value={item.averageBand ?? 0} label={criterionLabel(item.criterion)} />
-                <span className="caption">{item.samples} sample{item.samples === 1 ? "" : "s"}</span>
-              </div>
-            ))}
-          </section>
+        {loading && !data && (
+          <div className="card loading-panel" role="status">
+            Loading your progress…
+          </div>
         )}
-
-        <section className="card stack" aria-label="Goal">
-          <div className="section-head">
-            <h2>Goal</h2>
-            <p className="caption">One active goal at a time.</p>
-          </div>
-          <div className="row" style={{ alignItems: "flex-end" }}>
-            <Field label="Target band">
-              <SelectInput value={targetBand} onChange={(event) => setTargetBand(event.target.value)}>
-                {BAND_OPTIONS.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </SelectInput>
-            </Field>
-            <Field label="Target date">
-              <input
-                type="date"
-                value={targetDate}
-                onChange={(event) => setTargetDate(event.target.value)}
-              />
-            </Field>
-            <Button onClick={saveGoal} loading={saving}>
-              Save goal
-            </Button>
-          </div>
-          {saveError && <Alert tone="error">{saveError}</Alert>}
-        </section>
-
-        <section className="card stack" aria-label="Practice actions">
-          <div className="section-head">
-            <h2>Practice actions</h2>
-            <p className="caption">From your latest report. Completing activities is tracked separately from skill change.</p>
-          </div>
-          {(!data?.actions || data.actions.length === 0) && (
-            <div className="empty">Complete a test to generate a plan.</div>
-          )}
-          <ul className="list list--neutral">
-            {data?.actions.map((action) => (
-              <li key={action.id} className="row between">
-                <span style={{ opacity: action.completed || action.skipped ? 0.55 : 1 }}>
-                  {action.completed ? "✓ " : action.skipped ? "— " : ""}
-                  {action.description}
+        {data && (
+          <>
+            <section className="stats-grid" aria-label="Progress summary">
+              <div className="stat">
+                <span className="caption">Latest estimated band</span>
+                <b>{bandText(data.latestBand)}</b>
+                <span className="caption">Out of 9.0</span>
+              </div>
+              <div className="stat">
+                <span className="caption">Tests completed</span>
+                <b>{data.testsCompleted ?? 0}</b>
+                <span className="caption">Time invested in your voice</span>
+              </div>
+              <div className="stat">
+                <span className="caption">Overall trend</span>
+                <b className="trend-value">{humanize(data.overallTrend)}</b>
+                <span className="caption">
+                  {data.sampleSize} comparable attempts · {data.confidence}{" "}
+                  confidence
                 </span>
-                {!action.completed && !action.skipped && (
-                  <span className="row" style={{ gap: 6 }}>
-                    <Button variant="secondary" size="sm" onClick={() => completeAction(action.id)}>
-                      Done
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => skipAction(action.id)}>
-                      Skip
-                    </Button>
-                  </span>
-                )}
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        {data?.timeline && data.timeline.length > 0 && (
-          <section className="card stack" aria-label="Recent reports">
-            <div className="section-head">
-              <h2>Recent reports</h2>
-            </div>
-            {data.timeline.map((point) => (
-              <div className="history-row" key={point.testId}>
-                <Badge tone="accent">Band {bandText(point.overallBand)}</Badge>
-                <Link to={`/reports/${point.reportId}`}>{formatDate(point.date)}</Link>
-                <span className="history-date">{formatDate(point.date)}</span>
-                <span />
               </div>
-            ))}
-          </section>
+              <div className="stat">
+                <span className="caption">Target band</span>
+                <b>{bandText(data.activeGoal?.targetBand)}</b>
+                <span className="caption">
+                  {data.activeGoal
+                    ? `By ${formatDate(data.activeGoal.targetDate)}`
+                    : "Give your practice a direction"}
+                </span>
+              </div>
+            </section>
+            <div className="dashboard-charts">
+              <ProgressChart
+                timeline={data.timeline}
+                target={data.activeGoal?.targetBand}
+              />
+              <SkillBars stats={data.criterionStats} />
+            </div>
+            {data.weakestSkill && (
+              <div className="focus-banner">
+                <span className="icon-tile">
+                  <Icon name="target" />
+                </span>
+                <span>
+                  <strong>
+                    Your next focus: {criterionLabel(data.weakestSkill)}
+                  </strong>
+                  <span className="caption">
+                    Start with one practical change from your latest report.
+                  </span>
+                </span>
+              </div>
+            )}
+          </>
         )}
+        <div className="progress-planning">
+          <section className="card stack" aria-label="Speaking goal">
+            <div>
+              <p className="kicker">Give yourself a destination</p>
+              <h2>Make it your goal</h2>
+            </div>
+            <p className="caption">
+              Choose your target and the skills you want to work on.
+            </p>
+            <form
+              className="stack"
+              onSubmit={saveGoal}
+              onChange={() => setSaved(false)}
+            >
+              <div className="goal-fields">
+                <Field label="Target band">
+                  <SelectInput
+                    value={targetBand}
+                    onChange={(e) => setTargetBand(e.target.value)}
+                  >
+                    {BAND_OPTIONS.map((band) => (
+                      <option key={band}>{band}</option>
+                    ))}
+                  </SelectInput>
+                </Field>
+                <Field label="Target date">
+                  <input
+                    type="date"
+                    required
+                    min={dateInput(new Date())}
+                    value={targetDate}
+                    onChange={(e) => setTargetDate(e.target.value)}
+                  />
+                </Field>
+              </div>
+              <fieldset className="skill-choices">
+                <legend>
+                  Focus skills <span className="caption">(optional)</span>
+                </legend>
+                {SKILLS.map((skill) => (
+                  <label key={skill}>
+                    <input
+                      type="checkbox"
+                      checked={focusSkills.includes(skill)}
+                      onChange={(e) =>
+                        setFocusSkills((current) =>
+                          e.target.checked
+                            ? [...current, skill]
+                            : current.filter((s) => s !== skill),
+                        )
+                      }
+                    />
+                    {criterionLabel(skill)}
+                  </label>
+                ))}
+              </fieldset>
+              <Button
+                type="submit"
+                loading={saving}
+                disabled={loading || !data}
+              >
+                Save my goal <Icon name="arrow" size={16} />
+              </Button>
+              {saveError && <Alert tone="error">{saveError}</Alert>}
+              {saved && (
+                <div role="status">
+                  <Alert tone="success">
+                    Your goal is saved. Let’s work toward it.
+                  </Alert>
+                </div>
+              )}
+            </form>
+          </section>
+          <section className="card stack" aria-label="Practice actions">
+            <div className="row between">
+              <div>
+                <p className="kicker">Put feedback into practice</p>
+                <h2>Your next steps</h2>
+              </div>
+              {data && (
+                <Badge tone="accent">
+                  {data.actions.filter((a) => a.completed).length}/
+                  {data.actions.length} done
+                </Badge>
+              )}
+            </div>
+            <p className="caption">
+              Activities from your report. Completion is tracked separately from
+              skill improvement.
+            </p>
+            {actionError && <Alert tone="error">{actionError}</Alert>}
+            {!data?.actions.length && (
+              <div className="empty">
+                Your personalised practice plan will appear after a completed
+                test.
+              </div>
+            )}
+            <ul className="practice-actions">
+              {data?.actions.map((action) => (
+                <li
+                  key={action.id}
+                  className={
+                    action.completed || action.skipped ? "action-finished" : ""
+                  }
+                >
+                  <span className="action-check" aria-hidden="true">
+                    {action.completed ? "✓" : action.skipped ? "–" : ""}
+                  </span>
+                  <div className="stack-sm">
+                    <span className="kicker">{humanize(action.category)}</span>
+                    <p>{action.description}</p>
+                    <div className="row">
+                      {action.completed || action.skipped ? (
+                        <>
+                          <span className="caption">
+                            {action.completed ? "Completed" : "Skipped"}
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={pendingAction !== null || loading}
+                            onClick={() => updateAction(action.id, "reset")}
+                          >
+                            Undo
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            disabled={pendingAction !== null || loading}
+                            loading={pendingAction === action.id}
+                            onClick={() => updateAction(action.id, "completed")}
+                          >
+                            Mark done
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={pendingAction !== null || loading}
+                            onClick={() => updateAction(action.id, "skipped")}
+                          >
+                            Skip for now
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        </div>
       </div>
     </AppShell>
   );

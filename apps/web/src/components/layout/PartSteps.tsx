@@ -18,7 +18,6 @@ export function PartSteps({ state }: { state: string }) {
     <div className="steps">
       <div className="step-breadcrumb" aria-label={`Part ${currentPart} of 3`}>
         <span className="muted caption">Part {currentPart} of 3</span>
-        <span className="muted caption">~{6 - currentPart * 2} min left</span>
       </div>
       {parts.map((part) => (
         <div

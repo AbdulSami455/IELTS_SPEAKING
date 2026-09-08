@@ -12,13 +12,19 @@ interface CriterionGridProps {
 
 export function CriterionGrid({ criteria }: CriterionGridProps) {
   return (
-    <section className="grid" aria-label="Criterion bands">
+    <section className="criteria-grid" aria-label="Criterion bands">
       {criteria.map((item) => (
-        <div key={item.criterion} className="card stack-sm">
-          <span className="caption" style={{ textTransform: "uppercase", letterSpacing: "0.08em" }}>
+        <div key={item.criterion} className="card stack criterion-card">
+          <span
+            className="caption"
+            style={{ textTransform: "uppercase", letterSpacing: "0.08em" }}
+          >
             {criterionLabel(item.criterion)}
           </span>
-          <p className="band-display" style={{ fontSize: "clamp(2.4rem, 5vw, 3.4rem)" }}>
+          <p
+            className="band-display"
+            style={{ fontSize: "clamp(2.4rem, 5vw, 3.4rem)" }}
+          >
             {item.band.toFixed(1)}
           </p>
           <Meter value={item.band} label={criterionLabel(item.criterion)} />
