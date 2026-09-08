@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useState } from "react";
+import { Link, useParams } from "react-router-dom";
 import { AppShell } from "../../components/layout/AppShell";
 import { Alert, Badge, Button, TimerRing } from "../../components/ui";
 import { PartSteps } from "../../components/layout/PartSteps";
@@ -7,39 +7,26 @@ import { partLabel } from "../../lib/format";
 import { RoomStage } from "./RoomStage";
 import { roomCopy } from "./roomCopy";
 import { useVoiceRoom } from "./useVoiceRoom";
+import { QuestionPanel } from "./QuestionPanel";
+import { Icon } from "../../components/ui/Icon";
 
 export function TestRunnerPage() {
   const { testId = "" } = useParams();
   const room = useVoiceRoom(testId);
   const { test, error } = room;
-  const [rtt, setRtt] = useState<number | null>(null);
-  const [showShortcuts, setShowShortcuts] = useState(false);
-
-  useEffect(() => {
-    function onKeydown(event: KeyboardEvent) {
-      if ((event.metaKey || event.ctrlKey) && event.key === "k") {
-        event.preventDefault();
-        setShowShortcuts((prev) => !prev);
-      }
-    }
-    window.addEventListener("keydown", onKeydown);
-    return () => window.removeEventListener("keydown", onKeydown);
-  }, []);
-
-  useEffect(() => {
-    if (room.connection !== "live") return;
-    const ping = setInterval(() => {
-      const start = Date.now();
-      room.ping?.().then(() => setRtt(Date.now() - start));
-    }, 5000);
-    return () => clearInterval(ping);
-  }, [room.connection]);
-
+  const [showQuestion, setShowQuestion] = useState(true);
   if (!test) {
     return (
       <AppShell>
         <div className="center-page">
-          <p>{error ?? "Preparing the room…"}</p>
+          <div className="stack">
+            <p role="status">{error ?? "Preparing the room…"}</p>
+            {error && (
+              <Link to="/" className="btn btn--secondary">
+                Back to overview
+              </Link>
+            )}
+          </div>
         </div>
       </AppShell>
     );
@@ -55,10 +42,14 @@ export function TestRunnerPage() {
           </div>
           <PartSteps state={test.state} />
           <p className="lede">
-            Talk with the examiner as in a real interview. Start speaking when you are ready — even if they are
-            still finishing the question. A thinking pause is fine. Scoring happens quietly in the background.
+            Talk with the examiner as in a real interview. Start speaking when
+            you are ready — even if they are still finishing the question. A
+            thinking pause is fine. Scoring happens quietly in the background.
           </p>
-          <p className="muted">No written question paper is shown on screen.</p>
+          <p className="muted">
+            Questions and available answer transcripts appear in your session
+            companion.
+          </p>
           {error && <Alert tone="error">{error}</Alert>}
           <div className="row">
             <Button size="lg" onClick={room.beginLiveRoom} loading={room.busy}>
@@ -80,8 +71,8 @@ export function TestRunnerPage() {
           </div>
           <PartSteps state={test.state} />
           <p className="muted">
-            All spoken turns are saved. Finish now to run transcription, language analysis, pronunciation checks,
-            and report building.
+            All spoken turns are saved. Finish now to run transcription,
+            language analysis, pronunciation checks, and report building.
           </p>
           {error && <Alert tone="error">{error}</Alert>}
           <div className="row">
@@ -104,181 +95,233 @@ export function TestRunnerPage() {
   });
   const youHot = copy.mode === "speak";
   const examinerHot = copy.mode === "listen";
-  const showRing = room.secondsLeft !== null && (test.state === "PART2_PREP" || room.recording);
+  const showRing = room.secondsLeft !== null && room.recording;
   const lastCompletedTurn = [...test.turns]
     .reverse()
-    .find((item) => item.answerStatus === "VALID" || item.answerStatus === "READY");
+    .find(
+      (item) => item.answerStatus === "VALID" || item.answerStatus === "READY",
+    );
 
   return (
     <AppShell>
-      <section className="stack live-room">
-        <audio
-          ref={room.audioRef}
-          className="visually-hidden"
-          muted={room.muted}
-          onPlay={() => {
-            room.setExaminerSpeaking(true);
-            void room.postRealtimeEvent("examiner_playback_started", "examiner");
-          }}
-          onEnded={() => {
-            room.setExaminerSpeaking(false);
-            void room.postRealtimeEvent("examiner_playback_ended", "examiner");
-          }}
-        />
-        <div className="row between voice-topline">
-          <div className="row">
-            <Badge>{partLabel(test.state)}</Badge>
-            {room.turn?.isFollowUp && <Badge tone="dark">Follow-up</Badge>}
-          </div>
-          <span className={`live-indicator${room.connection === "live" ? " on" : ""}`}>
-            <span className={`dot${room.connection === "live" ? " on" : ""}`} aria-hidden="true" />
-            {room.connection === "live"
-              ? `Connected${rtt !== null ? ` · ${rtt}ms` : ""}`
-              : room.connection === "connecting"
-                ? "Connecting"
-                : "Offline"}
-          </span>
-        </div>
-
-        <RoomStage
-          room={copy}
-          showMeter={youHot || room.recording}
-          micLevel={room.micLevel}
-          secondsLeft={room.secondsLeft}
-          totalSeconds={room.totalSeconds}
-        />
-
-        {room.turn?.answerStatus === "VALID" && room.turn?.timingSeconds && (
-          <div className="speaking-time-bar">
-            <span className="caption">
-              You spoke for {room.turn.timingSeconds}s
-              {room.turn.timingSeconds >= 40 && room.turn.timingSeconds <= 45
-                ? " (right in the sweet spot!)"
-                : room.turn.timingSeconds < 40
-                  ? " (aim for 40–45s for Part 2)"
-                  : " (a touch over — keep it concise)"}
-            </span>
-            <div className="time-meter">
+      <div className="speaking-layout">
+        <section className="stack speaking-main">
+          <audio
+            ref={room.audioRef}
+            className="visually-hidden"
+            muted={room.muted}
+            onPlay={() => {
+              room.setExaminerSpeaking(true);
+              void room.postRealtimeEvent(
+                "examiner_playback_started",
+                "examiner",
+              );
+            }}
+            onEnded={() => {
+              room.setExaminerSpeaking(false);
+              void room.postRealtimeEvent(
+                "examiner_playback_ended",
+                "examiner",
+              );
+            }}
+          />
+          <div className="row between voice-topline">
+            <div className="row">
+              <Badge>{partLabel(test.state)}</Badge>
+              {room.turn?.isFollowUp && <Badge tone="dark">Follow-up</Badge>}
+            </div>
+            <span
+              className={`live-indicator${room.connection === "live" ? " on" : ""}`}
+            >
               <span
-                className={`time-fill${room.turn.timingSeconds >= 40 && room.turn.timingSeconds <= 60 ? " ok" : room.turn.timingSeconds > 60 ? " over" : " under"}`}
-                style={{ width: `${Math.min(100, (room.turn.timingSeconds / 60) * 100)}%` }}
+                className={`dot${room.connection === "live" ? " on" : ""}`}
+                aria-hidden="true"
               />
-            </div>
+              {room.connection === "live"
+                ? "Connected"
+                : room.connection === "connecting"
+                  ? "Connecting"
+                  : "Offline"}
+            </span>
           </div>
-        )}
 
-        <div className="role-grid">
-          <div className={`role-card${examinerHot ? " hot-listen" : ""}`}>
-            <div className="examiner-avatar" aria-hidden="true">
-              <span role="img" aria-label="Examiner avatar">
-                👤
+          <RoomStage
+            room={copy}
+            showMeter={youHot || room.recording}
+            micLevel={room.micLevel}
+            secondsLeft={room.secondsLeft}
+            totalSeconds={room.totalSeconds}
+          />
+
+          {room.turn && (
+            <div className="current-prompt stack">
+              <div className="row between">
+                <span className="kicker">Your AI examiner</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  aria-expanded={showQuestion}
+                  onClick={() => setShowQuestion(!showQuestion)}
+                >
+                  {showQuestion ? "Hide question" : "Show question"}
+                </Button>
+              </div>
+              {showQuestion && <p>{room.turn.promptText}</p>}
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={room.replayExaminer}
+                disabled={
+                  room.recording ||
+                  room.busy ||
+                  room.examinerSpeaking ||
+                  !room.turn.hasExaminerAudio
+                }
+              >
+                <Icon name="play" size={15} /> Replay question
+              </Button>
+            </div>
+          )}
+
+          <div className="role-grid">
+            <div className={`role-card${examinerHot ? " hot-listen" : ""}`}>
+              <span className="role-icon">
+                <Icon name="spark" size={18} />
               </span>
+              <b>AI examiner</b>
+              <p>{examinerHot ? "Speaking — listen" : "Waiting"}</p>
             </div>
-            <b>Examiner</b>
-            <p>{examinerHot ? "Speaking — listen" : "Waiting"}</p>
+            <div className={`role-card${youHot ? " hot-speak" : ""}`}>
+              <span className="role-icon">
+                <Icon name="mic" size={18} />
+              </span>
+              <b>You</b>
+              <p>
+                {room.recording
+                  ? "Heard — keep going"
+                  : youHot
+                    ? "Your turn to speak"
+                    : room.micPaused
+                      ? "Mic paused"
+                      : room.busy
+                        ? "Wait for the examiner"
+                        : "Wait"}
+              </p>
+            </div>
           </div>
-          <div className={`role-card${youHot ? " hot-speak" : ""}`}>
-            <b>You</b>
-            <p>
-              {room.recording
-                ? "Heard — keep going"
-                : youHot
-                  ? "Your turn to speak"
-                  : room.micPaused
-                    ? "Mic paused"
-                    : room.busy
-                      ? "Wait for the examiner"
-                      : "Wait"}
-            </p>
-          </div>
-        </div>
 
-        <PartSteps state={test.state} />
-        {showRing && <TimerRing seconds={room.secondsLeft ?? 0} total={room.totalSeconds} />}
-
-        {test.state === "PART2_PREP" && (
-          <div className="row">
-            {room.secondsLeft === null && (
-              <Button onClick={room.startPrep}>Start one-minute preparation</Button>
-            )}
-            {room.secondsLeft !== null && (
-              <Button variant="secondary" onClick={room.finishPrep}>
-                I&apos;m ready to speak
-              </Button>
-            )}
-          </div>
-        )}
-
-        {error && (
-          <Alert tone="error">
-            {error}
-            {room.connection === "offline" && (
-              <Button size="sm" variant="secondary" onClick={room.reconnect} style={{ marginLeft: 8 }}>
-                Try again
-              </Button>
-            )}
-          </Alert>
-        )}
-
-        <div className="row no-print">
-          {room.restoredDraftAvailable && (
-            <>
-              <Button variant="secondary" size="sm" onClick={room.sendRestoredDraft} disabled={room.busy}>
-                Send restored recording
-              </Button>
-              <Button variant="ghost" size="sm" onClick={room.discardRestoredDraft} disabled={room.busy}>
-                Discard restored recording
-              </Button>
-            </>
+          <PartSteps state={test.state} />
+          {showRing && (
+            <TimerRing
+              seconds={room.secondsLeft ?? 0}
+              total={room.totalSeconds}
+            />
           )}
-          <Button variant="secondary" size="sm" onClick={() => room.setMicPaused(!room.micPaused)}>
-            {room.micPaused ? "Resume microphone" : "Pause microphone"}
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => room.setMuted(!room.muted)}>
-            {room.muted ? "Unmute examiner" : "Mute examiner"}
-          </Button>
-          {lastCompletedTurn && (
-            <Button variant="ghost" size="sm" onClick={() => room.retakeTurn(lastCompletedTurn.id)} disabled={room.busy}>
-              Retake last answer
-            </Button>
-          )}
-          <Button variant="ghost" size="sm" onClick={room.reconnect}>
-            Reconnect
-          </Button>
-          <Button variant="ghost" size="sm" onClick={room.finish} disabled={room.busy}>
-            End exam
-          </Button>
-        </div>
-      </section>
 
-      {showShortcuts && (
-        <div className="shortcuts-backdrop" onClick={() => setShowShortcuts(false)}>
-          <div className="shortcuts-modal" onClick={(e) => e.stopPropagation()}>
-            <h3>Keyboard shortcuts</h3>
-            <dl>
-              <div>
-                <dt>Space</dt>
-                <dd>Start / stop speaking</dd>
-              </div>
-              <div>
-                <dt>M</dt>
-                <dd>Mute examiner</dd>
-              </div>
-              <div>
-                <dt>Esc</dt>
-                <dd>End exam</dd>
-              </div>
-              <div>
-                <dt>Cmd+K / Ctrl+K</dt>
-                <dd>Toggle this help</dd>
-              </div>
-            </dl>
-            <Button size="sm" variant="secondary" onClick={() => setShowShortcuts(false)}>
-              Close
+          {test.state === "PART2_PREP" && (
+            <div className="row">
+              {room.secondsLeft === null && (
+                <Button onClick={room.startPrep}>
+                  Start one-minute preparation
+                </Button>
+              )}
+              {room.secondsLeft !== null && (
+                <Button variant="secondary" onClick={room.finishPrep}>
+                  I&apos;m ready to speak
+                </Button>
+              )}
+            </div>
+          )}
+
+          {error && (
+            <Alert tone="error">
+              {error}
+              {room.connection === "offline" && (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={room.reconnect}
+                  style={{ marginLeft: 8 }}
+                >
+                  Try again
+                </Button>
+              )}
+            </Alert>
+          )}
+
+          <div className="room-controls row no-print">
+            {room.restoredDraftAvailable && (
+              <>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={room.sendRestoredDraft}
+                  disabled={room.busy}
+                >
+                  Send restored recording
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={room.discardRestoredDraft}
+                  disabled={room.busy}
+                >
+                  Discard restored recording
+                </Button>
+              </>
+            )}
+            <Button
+              variant="secondary"
+              size="sm"
+              aria-pressed={room.micPaused}
+              onClick={room.toggleMicrophone}
+              disabled={room.busy}
+            >
+              {room.micPaused ? "Resume microphone" : "Pause microphone"}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-pressed={room.muted}
+              onClick={() => room.setMuted(!room.muted)}
+            >
+              {room.muted ? "Unmute examiner" : "Mute examiner"}
+            </Button>
+            {lastCompletedTurn && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => room.retakeTurn(lastCompletedTurn.id)}
+                disabled={
+                  room.busy || room.recording || room.restoredDraftAvailable
+                }
+              >
+                Retake last answer
+              </Button>
+            )}
+            <Button variant="ghost" size="sm" onClick={room.reconnect}>
+              Reconnect
+            </Button>
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={() => {
+                if (
+                  window.confirm(
+                    "End this session and score your saved answers?",
+                  )
+                )
+                  void room.finish();
+              }}
+              disabled={room.busy || room.restoredDraftAvailable}
+            >
+              End exam
             </Button>
           </div>
-        </div>
-      )}
+        </section>
+
+        <QuestionPanel test={test} turn={room.turn} />
+      </div>
     </AppShell>
   );
 }

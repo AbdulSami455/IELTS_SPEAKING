@@ -46,8 +46,9 @@ export async function request<T>(path: string, init: RequestInit = {}, retried =
   if (response.status === 401 && !retried && canRefresh(path) && (await refreshSession())) {
     return request<T>(path, init, true);
   }
-  if (response.headers.get("content-type")?.includes("text/html")) {
-    return (await response.text()) as T;
+  if (response.status === 204) return undefined as T;
+  if (!response.headers.get("content-type")?.includes("application/json")) {
+    throw new ApiError("The service is temporarily unavailable. Please try again.", "INVALID_RESPONSE");
   }
   const body = await response.json();
   if (!response.ok) {
@@ -68,9 +69,11 @@ export function wsUrl(path: string): string {
 }
 
 export async function fetchText(path: string): Promise<string> {
-  const response = await fetch(`${API_BASE}${path}`, {
-    credentials: "include",
-  });
+  let response = await fetch(`${API_BASE}${path}`, { credentials: "include" });
+  if (response.status === 401 && (await refreshSession())) {
+    response = await fetch(`${API_BASE}${path}`, { credentials: "include" });
+  }
+  if (!response.ok) throw new ApiError("Could not download the report. Please try again.", "EXPORT_FAILED");
   return response.text();
 }
 
