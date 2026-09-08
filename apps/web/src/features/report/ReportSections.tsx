@@ -34,8 +34,11 @@ export function MistakesSection({ report }: { report: Report }) {
   return (
     <section className="card stack">
       <div className="section-head">
-        <h2>Mistakes</h2>
-        <p className="caption">Grounded in your transcript. Low-confidence items are marked as possible.</p>
+        <h2>Fine-tune your answers</h2>
+        <p className="caption">
+          Grounded in your transcript. Low-confidence items are marked as
+          possible.
+        </p>
       </div>
       <ul className="list list--neutral">
         {report.mistakes.map((item, index) => (
@@ -60,14 +63,22 @@ export function RewritesSection({ report }: { report: Report }) {
   return (
     <section className="card stack">
       <div className="section-head">
-        <h2>Safer rewrites</h2>
-        <p className="caption">Examples that keep your meaning — not model answers.</p>
+        <h2>Same idea. A stronger answer.</h2>
+        <p className="caption">
+          Examples that keep your meaning — not model answers.
+        </p>
       </div>
       <ul className="list list--neutral">
         {report.exampleRewrites.map((item, index) => (
           <li key={index} className="stack-sm">
-            <p className="muted">{item.original}</p>
-            <p>{item.saferRewrite}</p>
+            <div className="rewrite-original">
+              <span className="kicker">You said</span>
+              <p>{item.original}</p>
+            </div>
+            <div className="rewrite-improved">
+              <span className="kicker">Try this</span>
+              <p>{item.saferRewrite}</p>
+            </div>
           </li>
         ))}
       </ul>
@@ -93,14 +104,26 @@ export function FluencySection({ report }: { report: Report }) {
 
 export function TranscriptsSection({ report }: { report: Report }) {
   if (!report.transcripts || report.transcripts.length === 0) return null;
-  const highlight: string[] = (report.mistakes?.map((m) => m.quote).filter(Boolean) ?? []) as string[];
+  const highlight: string[] = (report.mistakes
+    ?.map((m) => m.quote)
+    .filter(Boolean) ?? []) as string[];
   function highlightText(text: string) {
     if (!highlight.length) return <p>{text}</p>;
-    const parts = text.split(new RegExp(`(${highlight.map((q) => q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).filter(Boolean).join("|")})`, "gi"));
+    const parts = text.split(
+      new RegExp(
+        `(${highlight
+          .map((q) => q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+          .filter(Boolean)
+          .join("|")})`,
+        "gi",
+      ),
+    );
     return (
       <p>
         {parts.map((part, index) =>
-          highlight.some((q) => q !== undefined && q.toLowerCase() === part.toLowerCase()) ? (
+          highlight.some(
+            (q) => q !== undefined && q.toLowerCase() === part.toLowerCase(),
+          ) ? (
             <mark key={index}>{part}</mark>
           ) : (
             part
@@ -112,7 +135,7 @@ export function TranscriptsSection({ report }: { report: Report }) {
   return (
     <section className="card stack">
       <div className="section-head">
-        <h2>Transcripts</h2>
+        <h2>Your conversation, in words</h2>
       </div>
       {report.transcripts.map((item, index) => (
         <div key={index} className="stack-sm">
@@ -133,13 +156,20 @@ export function PronunciationSection({ report }: { report: Report }) {
     <section className="card stack">
       <div className="section-head">
         <h2>Pronunciation</h2>
-        <p className="caption">Accent is never treated as an error. Only acoustic evidence appears here.</p>
+        <p className="caption">
+          Accent is never treated as an error. Only acoustic evidence appears
+          here.
+        </p>
       </div>
       {report.pronunciation.map((item, index) => (
         <div key={index} className="stack-sm">
           <div className="chips">
-            {item.coverage !== undefined && <span className="pill">Coverage {item.coverage.toFixed(2)}</span>}
-            {item.wordsPerMinute !== undefined && <span className="pill">{item.wordsPerMinute} wpm</span>}
+            {item.coverage !== undefined && (
+              <span className="pill">Coverage {item.coverage.toFixed(2)}</span>
+            )}
+            {item.wordsPerMinute !== undefined && (
+              <span className="pill">{item.wordsPerMinute} wpm</span>
+            )}
             {item.confidence && <span className="pill">{item.confidence}</span>}
           </div>
           {(item.unclearWords ?? []).length > 0 && (

@@ -21,7 +21,9 @@ function silenceBudget(state: string): number {
 
 export function currentTurn(test: TestSession): Turn | undefined {
   if (test.currentTurn) return test.currentTurn;
-  return test.turns.find((item) => item.answerStatus !== "VALID" && item.answerStatus !== "READY");
+  return test.turns.find(
+    (item) => item.answerStatus !== "VALID" && item.answerStatus !== "READY",
+  );
 }
 
 export function canSpeak(state: string): boolean {
@@ -82,7 +84,9 @@ export function useVoiceRoom(testId: string) {
       .getTest(testId)
       .then(setTest)
       .catch((err: Error) => setError(err.message));
-    void _checkDraft();
+    void _checkDraft().catch(() =>
+      setError("Local recording recovery is unavailable in this browser."),
+    );
   }, [testId]);
 
   async function _checkDraft() {
@@ -102,8 +106,12 @@ export function useVoiceRoom(testId: string) {
   useEffect(() => {
     return () => {
       stopVad();
+      if (recorderRef.current?.state === "recording")
+        recorderRef.current.stop();
       socketRef.current?.close();
-      streamRef.current?.getTracks().forEach((track: MediaStreamTrack) => track.stop());
+      streamRef.current
+        ?.getTracks()
+        .forEach((track: MediaStreamTrack) => track.stop());
       void audioContextRef.current?.close();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -116,7 +124,10 @@ export function useVoiceRoom(testId: string) {
       else if (recordingRef.current) void finishUtterance();
       return;
     }
-    const timer = window.setTimeout(() => setSecondsLeft(secondsLeft - 1), 1000);
+    const timer = window.setTimeout(
+      () => setSecondsLeft(secondsLeft - 1),
+      1000,
+    );
     return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [secondsLeft]);
@@ -124,7 +135,13 @@ export function useVoiceRoom(testId: string) {
   useEffect(() => {
     if (!examinerUrl || !audioRef.current) return;
     audioRef.current.src = examinerUrl;
-    void audioRef.current.play().catch(() => undefined);
+    void audioRef.current
+      .play()
+      .catch(() =>
+        setError(
+          "Question audio could not play. Use Replay question to try again.",
+        ),
+      );
   }, [examinerUrl]);
 
   useEffect(() => {
@@ -133,7 +150,9 @@ export function useVoiceRoom(testId: string) {
       setListening(false);
       return;
     }
-    void startVad();
+    void startVad().catch((err: Error) =>
+      setError(err.message || "Could not open the microphone."),
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [test?.state, test?.testId, micPaused]);
 
@@ -148,7 +167,9 @@ export function useVoiceRoom(testId: string) {
       connectSocket(api.realtimeSocketUrl(test.testId));
       await startVad();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not start live room");
+      setError(
+        err instanceof Error ? err.message : "Could not start live room",
+      );
     } finally {
       setBusy(false);
     }
@@ -171,8 +192,12 @@ export function useVoiceRoom(testId: string) {
         return;
       }
     };
-    socket.onerror = () => setConnection("offline");
-    socket.onclose = () => setConnection("offline");
+    socket.onerror = () => {
+      if (socketRef.current === socket) setConnection("offline");
+    };
+    socket.onclose = () => {
+      if (socketRef.current === socket) setConnection("offline");
+    };
   }
 
   async function postRealtimeEvent(
@@ -202,18 +227,39 @@ export function useVoiceRoom(testId: string) {
 
   async function finishPrep() {
     const session = testRef.current;
-    if (!session || session.state !== "PART2_PREP") return;
+    if (!session || session.state !== "PART2_PREP" || busyRef.current) return;
+    busyRef.current = true;
+    setBusy(true);
     setSecondsLeft(null);
-    const next = await api.transition(session.testId, "COMPLETE_PART2_PREP", session.revision);
-    setTest(next);
-    await postRealtimeEvent("part2_prep_completed", "system");
-    await startVad();
+    try {
+      const next = await api.transition(
+        session.testId,
+        "COMPLETE_PART2_PREP",
+        session.revision,
+      );
+      setTest(next);
+      await postRealtimeEvent("part2_prep_completed", "system");
+      await startVad();
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Could not start your speaking turn. Try preparation again.",
+      );
+    } finally {
+      busyRef.current = false;
+      setBusy(false);
+    }
   }
 
   async function ensureStream(): Promise<MediaStream> {
     if (streamRef.current) return streamRef.current;
     streamRef.current = await navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+      },
     });
     return streamRef.current;
   }
@@ -245,10 +291,13 @@ export function useVoiceRoom(testId: string) {
         Boolean(session && canSpeak(session.state)) &&
         !busyRef.current &&
         !micPausedRef.current &&
+        !restoredDraftRef.current &&
         !submittingRef.current;
       const level = rmsFromAnalyser(analyser);
       const now = performance.now();
-      const dt = lastTickAtRef.current ? Math.min(80, now - lastTickAtRef.current) : 16;
+      const dt = lastTickAtRef.current
+        ? Math.min(80, now - lastTickAtRef.current)
+        : 16;
       lastTickAtRef.current = now;
       if (now - lastMeterAtRef.current > 80) {
         lastMeterAtRef.current = now;
@@ -285,7 +334,8 @@ export function useVoiceRoom(testId: string) {
       if (starting || holding) {
         lastVoiceAtRef.current = now;
         if (recordingRef.current) voicedMsRef.current += dt;
-        if (!recordingRef.current && !startingRef.current && starting) void beginUtterance();
+        if (!recordingRef.current && !startingRef.current && starting)
+          void beginUtterance();
       } else if (recordingRef.current) {
         const quietFor = now - lastVoiceAtRef.current;
         const budget = silenceBudget(session?.state ?? "PART1");
@@ -294,7 +344,9 @@ export function useVoiceRoom(testId: string) {
         } else if (quietFor >= 2000 && voicedMsRef.current < NOISE_BLIP_MS) {
           void cancelUtterance();
           if (voicedMsRef.current > 0 && voicedMsRef.current < 2200) {
-            setError("Would you like to try again? Click 'Start speaking' when ready.");
+            setError(
+              "We only caught a short sound. Start speaking again when you’re ready.",
+            );
           }
         }
       }
@@ -313,7 +365,13 @@ export function useVoiceRoom(testId: string) {
 
   async function beginUtterance() {
     const session = testRef.current;
-    if (!session || recordingRef.current || startingRef.current || !canSpeak(session.state)) return;
+    if (
+      !session ||
+      recordingRef.current ||
+      startingRef.current ||
+      !canSpeak(session.state)
+    )
+      return;
     const current = currentTurn(session);
     if (!current) return;
     startingRef.current = true;
@@ -321,7 +379,9 @@ export function useVoiceRoom(testId: string) {
     try {
       const stream = await ensureStream();
       const mime = recorderMime();
-      const recorder = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+      const recorder = mime
+        ? new MediaRecorder(stream, { mimeType: mime })
+        : new MediaRecorder(stream);
       chunksRef.current = [];
       recorder.ondataavailable = (event) => {
         if (event.data.size > 0) chunksRef.current.push(event.data);
@@ -353,7 +413,11 @@ export function useVoiceRoom(testId: string) {
     if (typeof recorder.requestData === "function") recorder.requestData();
     const blob = await new Promise<Blob>((resolve) => {
       recorder.onstop = () =>
-        resolve(new Blob(chunksRef.current, { type: recorder.mimeType || "audio/webm" }));
+        resolve(
+          new Blob(chunksRef.current, {
+            type: recorder.mimeType || "audio/webm",
+          }),
+        );
       recorder.stop();
     });
     recorderRef.current = null;
@@ -370,9 +434,9 @@ export function useVoiceRoom(testId: string) {
     setSecondsLeft(null);
   }
 
-  async function finishUtterance() {
+  async function finishUtterance(): Promise<boolean> {
     const session = testRef.current;
-    if (!session || submittingRef.current) return;
+    if (!session || submittingRef.current) return false;
     submittingRef.current = true;
     recordingRef.current = false;
     const blob = await stopRecorder();
@@ -384,20 +448,32 @@ export function useVoiceRoom(testId: string) {
     const current = currentTurn(session);
     if (!current || !blob || blob.size < MIN_BLOB_BYTES) {
       submittingRef.current = false;
-      return;
+      setError(
+        "That recording was too short to save. Please try your answer again.",
+      );
+      return false;
     }
     setBusy(true);
     setError(null);
     try {
       await saveDraft(testId, "current-turn", blob);
-      const next = await api.realtimeTurnAudio(session.testId, current.id, blob);
+      const next = await api.realtimeTurnAudio(
+        session.testId,
+        current.id,
+        blob,
+      );
       await clearDraft(testId, "current-turn");
       restoredDraftRef.current = null;
       setRestoredDraftAvailable(false);
       setTest(next.test);
+      testRef.current = next.test;
       setExaminerUrl(next.examinerPlaybackUrl ?? null);
+      return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not send audio");
+      restoredDraftRef.current = blob;
+      setRestoredDraftAvailable(true);
+      return false;
     } finally {
       setBusy(false);
       submittingRef.current = false;
@@ -405,9 +481,12 @@ export function useVoiceRoom(testId: string) {
   }
 
   async function finish() {
+    if (busyRef.current || submittingRef.current) return;
+    if (recordingRef.current && !(await finishUtterance())) return;
     const session = testRef.current;
     if (!session) return;
     stopVad();
+    audioRef.current?.pause();
     setBusy(true);
     setError(null);
     try {
@@ -415,6 +494,54 @@ export function useVoiceRoom(testId: string) {
       navigate(`/tests/${submitted.testId}/processing`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not submit");
+      if (!micPausedRef.current)
+        void startVad().catch(() =>
+          setError(
+            "Could not resume your microphone. Reopen the session to continue.",
+          ),
+        );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function replayExaminer() {
+    if (!turn || recordingRef.current || busyRef.current) return;
+    setError(null);
+    try {
+      const playback = await api.examinerAudio(testId, turn.id);
+      if (audioRef.current) {
+        audioRef.current.src = playback.playbackUrl;
+        audioRef.current.muted = false;
+        setMuted(false);
+        await audioRef.current.play();
+      }
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Could not replay this question.",
+      );
+    }
+  }
+
+  async function toggleMicrophone() {
+    const paused = !micPausedRef.current;
+    micPausedRef.current = paused;
+    setMicPaused(paused);
+    streamRef.current?.getTracks().forEach((track) => {
+      track.enabled = !paused;
+    });
+    if (paused && recordingRef.current) await finishUtterance();
+  }
+
+  async function retakeTurn(turnId: string) {
+    setBusy(true);
+    setError(null);
+    try {
+      setTest(await api.retakeTurn(testId, turnId));
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Could not retake this answer.",
+      );
     } finally {
       setBusy(false);
     }
@@ -428,14 +555,20 @@ export function useVoiceRoom(testId: string) {
     setBusy(true);
     setError(null);
     try {
-      const next = await api.realtimeTurnAudio(session.testId, current.id, blob);
+      const next = await api.realtimeTurnAudio(
+        session.testId,
+        current.id,
+        blob,
+      );
       await clearDraft(testId, "current-turn");
       restoredDraftRef.current = null;
       setRestoredDraftAvailable(false);
       setTest(next.test);
       setExaminerUrl(next.examinerPlaybackUrl ?? null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not restore the recording");
+      setError(
+        err instanceof Error ? err.message : "Could not restore the recording",
+      );
     } finally {
       setBusy(false);
     }
@@ -481,6 +614,8 @@ export function useVoiceRoom(testId: string) {
     audioRef,
     setMuted,
     setMicPaused,
+    toggleMicrophone,
+    replayExaminer,
     setExaminerSpeaking,
     postRealtimeEvent,
     beginLiveRoom,
@@ -491,6 +626,6 @@ export function useVoiceRoom(testId: string) {
     discardRestoredDraft,
     reconnect: () => connectSocket(api.realtimeSocketUrl(testId)),
     ping,
-    retakeTurn: (turnId: string) => api.retakeTurn(testId, turnId).then((next) => setTest(next)),
+    retakeTurn,
   };
 }
