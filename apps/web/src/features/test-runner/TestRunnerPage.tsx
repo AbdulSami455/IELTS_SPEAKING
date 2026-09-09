@@ -47,8 +47,7 @@ export function TestRunnerPage() {
             thinking pause is fine. Scoring happens quietly in the background.
           </p>
           <p className="muted">
-            Questions and available answer transcripts appear in your session
-            companion.
+            Open session details to review questions and available transcripts.
           </p>
           {error && <Alert tone="error">{error}</Alert>}
           <div className="row">
@@ -94,7 +93,6 @@ export function TestRunnerPage() {
     micPaused: room.micPaused,
   });
   const youHot = copy.mode === "speak";
-  const examinerHot = copy.mode === "listen";
   const showRing = room.secondsLeft !== null && room.recording;
   const lastCompletedTurn = [...test.turns]
     .reverse()
@@ -104,7 +102,7 @@ export function TestRunnerPage() {
 
   return (
     <AppShell>
-      <div className="speaking-layout">
+      <div className="speaking-layout speaking-layout--focused">
         <section className="stack speaking-main">
           <audio
             ref={room.audioRef}
@@ -156,7 +154,7 @@ export function TestRunnerPage() {
           {room.turn && (
             <div className="current-prompt stack">
               <div className="row between">
-                <span className="kicker">Your AI examiner</span>
+                <span className="kicker">Current question</span>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -167,6 +165,16 @@ export function TestRunnerPage() {
                 </Button>
               </div>
               {showQuestion && <p>{room.turn.promptText}</p>}
+              {room.turn.cueCard && (
+                <div className="cue-card stack-sm">
+                  <strong>{room.turn.cueCard.title}</strong>
+                  <ul className="list">
+                    {room.turn.cueCard.prompts?.map((prompt) => (
+                      <li key={prompt}>{prompt}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               <Button
                 variant="secondary"
                 size="sm"
@@ -183,34 +191,6 @@ export function TestRunnerPage() {
             </div>
           )}
 
-          <div className="role-grid">
-            <div className={`role-card${examinerHot ? " hot-listen" : ""}`}>
-              <span className="role-icon">
-                <Icon name="spark" size={18} />
-              </span>
-              <b>AI examiner</b>
-              <p>{examinerHot ? "Speaking — listen" : "Waiting"}</p>
-            </div>
-            <div className={`role-card${youHot ? " hot-speak" : ""}`}>
-              <span className="role-icon">
-                <Icon name="mic" size={18} />
-              </span>
-              <b>You</b>
-              <p>
-                {room.recording
-                  ? "Heard — keep going"
-                  : youHot
-                    ? "Your turn to speak"
-                    : room.micPaused
-                      ? "Mic paused"
-                      : room.busy
-                        ? "Wait for the examiner"
-                        : "Wait"}
-              </p>
-            </div>
-          </div>
-
-          <PartSteps state={test.state} />
           {showRing && (
             <TimerRing
               seconds={room.secondsLeft ?? 0}
@@ -280,6 +260,25 @@ export function TestRunnerPage() {
               {room.micPaused ? "Resume microphone" : "Pause microphone"}
             </Button>
             <Button
+              variant="danger"
+              size="sm"
+              onClick={() => {
+                if (
+                  window.confirm(
+                    "End this session and score your saved answers?",
+                  )
+                )
+                  void room.finish();
+              }}
+              disabled={room.busy || room.restoredDraftAvailable}
+            >
+              End exam
+            </Button>
+          </div>
+          <details className="room-options no-print">
+            <summary>More controls</summary>
+            <div className="row">
+            <Button
               variant="ghost"
               size="sm"
               aria-pressed={room.muted}
@@ -302,25 +301,14 @@ export function TestRunnerPage() {
             <Button variant="ghost" size="sm" onClick={room.reconnect}>
               Reconnect
             </Button>
-            <Button
-              variant="danger"
-              size="sm"
-              onClick={() => {
-                if (
-                  window.confirm(
-                    "End this session and score your saved answers?",
-                  )
-                )
-                  void room.finish();
-              }}
-              disabled={room.busy || room.restoredDraftAvailable}
-            >
-              End exam
-            </Button>
-          </div>
+            </div>
+          </details>
         </section>
 
-        <QuestionPanel test={test} turn={room.turn} />
+        <details className="session-details">
+          <summary>Session details <span>Questions, transcripts &amp; guide</span></summary>
+          <QuestionPanel test={test} turn={room.turn} />
+        </details>
       </div>
     </AppShell>
   );

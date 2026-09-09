@@ -27,8 +27,8 @@ export function roomCopy(args: RoomCopyArgs): RoomCopy {
     return {
       mode: "listen",
       kicker: "Your AI examiner",
-      title: "A conversation starts with listening.",
-      hint: "The examiner is speaking. You can start answering as soon as you understand — that stops the question.",
+      title: "Listen to the question",
+      hint: "Start answering when you’re ready. Speaking will stop the question.",
     };
   }
   if (args.busy) {
@@ -42,9 +42,9 @@ export function roomCopy(args: RoomCopyArgs): RoomCopy {
   if (args.recording) {
     return {
       mode: "speak",
-      kicker: "Your voice, your moment",
-      title: "We’re listening to you.",
-      hint: "We can hear you. Take a breath or think — a short pause is fine. We send the turn after a longer silence.",
+      kicker: "Recording",
+      title: "Keep speaking",
+      hint: "Your answer saves automatically after a longer pause.",
     };
   }
   if (args.micPaused) {
@@ -60,7 +60,7 @@ export function roomCopy(args: RoomCopyArgs): RoomCopy {
       mode: "speak",
       kicker: "Your turn",
       title: "Over to you.",
-      hint: "The examiner has finished. Start when you are ready. Thinking pauses during your answer are fine.",
+      hint: "Your microphone is on. Start speaking when you’re ready.",
     };
   }
   return {
