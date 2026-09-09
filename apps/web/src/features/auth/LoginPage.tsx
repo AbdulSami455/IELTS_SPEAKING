@@ -34,7 +34,7 @@ export function LoginPage() {
     <div className="auth-shell">
       <div className="auth-grid">
         <div className="auth-story">
-          <p className="kicker">Atelier Speaking</p>
+          <p className="kicker">IELTS Speaking by Hinterbuild</p>
           <h1>Practice a full IELTS speaking test.</h1>
           <div className="auth-story-body">
             <p>Live Part 1–3 interview with an AI examiner.</p>

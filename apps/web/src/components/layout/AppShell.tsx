@@ -21,11 +21,9 @@ export function AppShell({ children }: { children: ReactNode }) {
       <header className="topbar">
         <div className="topbar-inner">
           <Link to="/" className="brand">
-            <span className="brand-mark">
-              <Icon name="mic" size={21} />
-            </span>
+            <img className="brand-mark" src="/hinterbuild-logo.svg" alt="" width="40" height="40" />
             <span>
-              Atelier<span className="brand-subtitle">SPEAKING STUDIO</span>
+              IELTS Speaking<span className="brand-subtitle">by Hinterbuild</span>
             </span>
           </Link>
           <nav className="nav" aria-label="Primary">
@@ -57,7 +55,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         {children}
       </main>
       <footer className="app-footer">
-        <span>Atelier Speaking · Make yourself heard.</span>
+        <span>IELTS Speaking by Hinterbuild · Make yourself heard.</span>
         <span>Practice estimates, not official IELTS results.</span>
       </footer>
     </>
