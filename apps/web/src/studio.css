@@ -81,12 +81,9 @@ h3 {
 }
 .brand-mark {
   width: 40px;
-  height: 43px;
-  border-radius: 13px;
-  color: #fff;
-  background: #1b5045;
-  display: grid;
-  place-items: center;
+  height: 40px;
+  flex-shrink: 0;
+  object-fit: contain;
 }
 .brand-subtitle {
   display: block;

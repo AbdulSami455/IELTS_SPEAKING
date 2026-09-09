@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import uuid
 from datetime import datetime, timezone
@@ -330,7 +331,7 @@ async def evaluate_test(session: AsyncSession, test_id: str, config: Environment
                     session.add(
                         SkillObservation(
                             test_session_id=test_id,
-                            skill_key=str(skill_key),
+                            skill_key=_skill_observation_key(item["criterion"], str(skill_key)),
                             comparability_group=assembled["evaluator_version"],
                             band=numeric,
                             confidence_label=item["confidence"],
@@ -369,6 +370,9 @@ async def evaluate_test(session: AsyncSession, test_id: str, config: Environment
         await session.refresh(existing_report)
         return existing_report
     except Exception as extra:
+        await session.rollback()
+        await session.refresh(test)
+        await session.refresh(job)
         try:
             source = (
                 TestState.PROCESSING
@@ -386,11 +390,21 @@ async def evaluate_test(session: AsyncSession, test_id: str, config: Environment
         except Exception:
             test.status = TestState.FAILED.value
         job.status = "FAILED"
+        job.completed_at = datetime.now(timezone.utc)
         job.error_code = "EVALUATION_FAILED"
         job.error_message = str(extra)[:500]
         _set_stage(job, "failed", 100)
         await session.commit()
         raise
+
+
+def _skill_observation_key(criterion: str, skill: str) -> str:
+    # Subdimension names are local to a criterion (e.g. vocabulary/grammar range).
+    key = f"{criterion}:{skill}"
+    if len(key) <= 50:
+        return key
+    digest = hashlib.sha256(key.encode()).hexdigest()[:16]
+    return f"{key[:33]}:{digest}"
 
 
 def _conversation_context(events: list[ConversationEvent]) -> list[dict]:
