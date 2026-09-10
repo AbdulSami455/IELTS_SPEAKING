@@ -85,6 +85,29 @@ export type PronunciationPart = {
   modelNotes?: { findings?: string[]; notes?: string[] } | null;
 };
 
+export type ReportComparison = {
+  hasPrevious: boolean;
+  previousTestAt?: string;
+  previousOverallBand?: number | null;
+  overallDelta?: number | null;
+  criterionChanges?: {
+    criterion: string;
+    label: string;
+    current: number | null;
+    previous: number | null;
+    delta: number | null;
+    direction: "up" | "down" | "stable" | "unavailable";
+  }[];
+  improvedAreas?: string[];
+  minorGains?: string[];
+  stillWorkingOn?: string[];
+  mistakeTrends?: {
+    resolved: { type?: string; quote?: string; correction?: string }[];
+    recurring: { type?: string; quote?: string; correction?: string }[];
+    newIssues: { type?: string; quote?: string; correction?: string }[];
+  };
+};
+
 export type Report = {
   scoreReadiness?: { reasons: string[]; recordedSeconds?: number; audioCoverage?: number; minimumTests: number };
   reportId: string;
