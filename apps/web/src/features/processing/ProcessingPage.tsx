@@ -69,10 +69,10 @@ export function ProcessingPage() {
 
   return (
     <AppShell>
-      <section className="card stack" style={{ maxWidth: 640, margin: "0 auto" }}>
+      <section className="card stack workflow-card">
         <div className="section-head">
-          <p className="kicker">After the conversation</p>
-          <h1>Listening back, carefully.</h1>
+          <p className="kicker">Results & feedback</p>
+          <h1>Preparing your report</h1>
         </div>
         <progress className="progress-track" value={progress} max={100} aria-label="Scoring progress" />
         <p className="caption">{progress}% complete</p>

@@ -61,7 +61,7 @@ export function DeviceCheckPage() {
 
   return (
     <AppShell>
-      <section className="card stack" style={{ maxWidth: 640, margin: "0 auto" }}>
+      <section className="card stack workflow-card">
         <div className="section-head">
           <p className="kicker">Before you begin</p>
           <h1>Microphone check</h1>
