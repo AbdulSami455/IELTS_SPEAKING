@@ -1,13 +1,113 @@
 import type { Report } from "../../lib/api";
-import { humanize } from "../../lib/format";
+import { formatDate, humanize } from "../../lib/format";
 import { Badge } from "../../components/ui";
+
+const MISTAKE_GROUPS = [
+  { key: "grammar", label: "Grammar" },
+  { key: "phrase", label: "Phrase choice" },
+  { key: "sentence_completion", label: "Sentence completion" },
+  { key: "fluency", label: "Fluency" },
+] as const;
+
+function groupMistakes(report: Report) {
+  const mistakes = report.mistakes ?? [];
+  const grouped = new Map<string, typeof mistakes>();
+  for (const item of mistakes) {
+    const key = (item.type ?? "issue").toLowerCase();
+    const bucket = grouped.get(key) ?? [];
+    bucket.push(item);
+    grouped.set(key, bucket);
+  }
+  const ordered = MISTAKE_GROUPS
+    .filter((group) => grouped.has(group.key))
+    .map((group) => ({ ...group, items: grouped.get(group.key) ?? [] }));
+  for (const [key, items] of grouped.entries()) {
+    if (!MISTAKE_GROUPS.some((group) => group.key === key)) {
+      ordered.push({ key, label: humanize(key), items });
+    }
+  }
+  return ordered;
+}
+
+export function ProgressComparisonSection({ report }: { report: Report }) {
+  const comparison = report.progressComparison;
+  const minorFromTest = report.minorImprovements ?? [];
+  const minorFromTrends = comparison?.minorGains ?? [];
+  const minorItems = [...minorFromTest, ...minorFromTrends.filter((item) => !minorFromTest.includes(item))];
+  if (!comparison?.hasPrevious && minorFromTest.length === 0) return null;
+
+  return (
+    <section className="card stack comparison-panel">
+      <div className="section-head">
+        <h2>Compared with your last test</h2>
+        <p className="caption">
+          {comparison?.hasPrevious && comparison.previousTestAt
+            ? `Previous scored test: ${formatDate(comparison.previousTestAt)}.`
+            : "Complete another test to unlock side-by-side progress."}
+        </p>
+      </div>
+      {comparison?.hasPrevious && (
+        <div className="comparison-grid">
+          {(comparison.improvedAreas ?? []).length > 0 && (
+            <div className="comparison-block comparison-block--up">
+              <h3>What improved</h3>
+              <ul className="list">
+                {(comparison.improvedAreas ?? []).map((item) => <li key={item}>{item}</li>)}
+              </ul>
+            </div>
+          )}
+          {minorItems.length > 0 && (
+            <div className="comparison-block comparison-block--minor">
+              <h3>Minor improvements</h3>
+              <ul className="list">
+                {minorItems.map((item) => <li key={item}>{item}</li>)}
+              </ul>
+            </div>
+          )}
+          {(comparison.stillWorkingOn ?? []).length > 0 && (
+            <div className="comparison-block comparison-block--focus">
+              <h3>Still working on</h3>
+              <ul className="list">
+                {(comparison.stillWorkingOn ?? []).map((item) => <li key={item}>{item}</li>)}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+      {comparison?.mistakeTrends && comparison.hasPrevious && (
+        <div className="stack-sm">
+          {(comparison.mistakeTrends.resolved?.length ?? 0) > 0 && (
+            <p className="caption">
+              <strong>Resolved since last test:</strong>{" "}
+              {comparison.mistakeTrends.resolved.map((item) => humanize(item.type ?? "issue")).join(", ")}
+            </p>
+          )}
+          {(comparison.mistakeTrends.newIssues?.length ?? 0) > 0 && (
+            <p className="caption">
+              <strong>New this test:</strong>{" "}
+              {comparison.mistakeTrends.newIssues.map((item) => humanize(item.type ?? "issue")).join(", ")}
+            </p>
+          )}
+        </div>
+      )}
+      {!comparison?.hasPrevious && minorFromTest.length > 0 && (
+        <div className="comparison-block comparison-block--minor">
+          <h3>Small wins in this test</h3>
+          <ul className="list">
+            {minorFromTest.map((item) => <li key={item}>{item}</li>)}
+          </ul>
+        </div>
+      )}
+    </section>
+  );
+}
 
 export function InsightPair({ report }: { report: Report }) {
   return (
     <div className="grid-2">
       <section className="card">
         <div className="section-head">
-          <h2>Strengths</h2>
+          <h2>Strengths in this test</h2>
         </div>
         <ul className="list">
           {report.strengths.map((item) => (
