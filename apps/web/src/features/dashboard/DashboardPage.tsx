@@ -119,11 +119,6 @@ export function DashboardPage() {
   }
 
   const data = progress.data;
-  const scored =
-    data?.timeline.filter((p) => Number.isFinite(p.overallBand)) ?? [];
-  const best = scored.length
-    ? Math.max(...scored.map((p) => p.overallBand!))
-    : undefined;
   const filtered = [...tests]
     .sort(
       (a, b) =>
@@ -131,6 +126,10 @@ export function DashboardPage() {
         (Date.parse(a.createdAt ?? "") || 0),
     )
     .filter((test) => filter === "all" || test.state === "COMPLETED");
+  const resumable = [...tests]
+    .sort((a, b) => Date.parse(b.createdAt ?? "") - Date.parse(a.createdAt ?? ""))
+    .find((test) => !["COMPLETED", "PROCESSING", "SUBMITTED", "FAILED"].includes(test.state) && attemptLink(test));
+  const resumeLink = resumable ? attemptLink(resumable) : null;
   const pageCount = Math.max(1, Math.ceil(filtered.length / 5));
   const currentPage = Math.min(page, pageCount);
   const visible = filtered.slice((currentPage - 1) * 5, currentPage * 5);
@@ -142,14 +141,14 @@ export function DashboardPage() {
       <div className="stack-lg">
         <section className="dashboard-heading row between">
           <div className="stack-sm">
-            <p className="kicker">Your personal speaking studio</p>
+            <p className="kicker">Practice overview</p>
             <h1>
               {user?.displayName
                 ? `Welcome back, ${user.displayName.split(" ")[0]}.`
-                : "Make room for your voice."}
+                : "Your speaking practice"}
             </h1>
             <p className="muted">
-              A little practice today. A more confident you tomorrow.
+              Practise your speaking, review your feedback, and track your next step.
             </p>
           </div>
           <span className="date-label">
@@ -166,26 +165,26 @@ export function DashboardPage() {
         )}
         <section className="practice-hero">
           <div className="stack">
-            <span className="hero-tag">
-              <span className="dot on" /> YOUR AI SPEAKING PARTNER
-            </span>
-            <h2>
-              Find your flow.
-              <br />
-              <span>One conversation at a time.</span>
-            </h2>
-            <p>
-              A real conversation. Thoughtful feedback. Practise all three parts
-              of the speaking test with your AI examiner.
-            </p>
-            <div className="row">
-              <Button size="lg" onClick={start} loading={busy} disabled={!user}>
-                <Icon name="mic" size={18} />
-                {busy ? "Opening your room…" : "Start speaking"}
-                <Icon name="arrow" size={18} />
-              </Button>
-              <span className="hero-meta">11–14 min · Parts 1–3</span>
+            <span className="hero-tag">IELTS SPEAKING PRACTICE</span>
+            <h2>Your next conversation<br /><span>starts here.</span></h2>
+            <p>Practise a full speaking test with an AI examiner. Get an estimated band, detailed feedback, and a plan for your next session.</p>
+            <div className="practice-facts">
+              <span><Icon name="clock" size={16} /> 11–14 minutes</span>
+              <span><Icon name="mic" size={16} /> Microphone required</span>
             </div>
+            <div className="row hero-actions">
+              {resumeLink ? (
+                <>
+                  <Link className="btn btn--primary btn--lg" to={resumeLink}>Resume practice <Icon name="arrow" size={18} /></Link>
+                  <Button variant="secondary" onClick={start} loading={busy} disabled={!user}>Start a new test</Button>
+                </>
+              ) : (
+                <Button size="lg" onClick={start} loading={busy} disabled={!user}>
+                  {busy ? "Preparing your test…" : "Start practice test"}<Icon name="arrow" size={18} />
+                </Button>
+              )}
+            </div>
+            <p className="hero-helper">{resumeLink ? "You have an unfinished session. Continue where you left off." : "First, we’ll help you check your microphone."}</p>
             {user?.consentRequired && (
               <p className="consent-note">
                 By starting, you consent to private audio recording for scoring
@@ -193,13 +192,11 @@ export function DashboardPage() {
               </p>
             )}
           </div>
-          <div className="hero-visual" aria-hidden="true">
+          <div className="hero-visual home-orb" aria-hidden="true">
             <div className="orb-halo">
               <div className="voice-orb" />
             </div>
-            <span className="orb-caption">
-              <i /> A space to speak freely
-            </span>
+            <span className="orb-caption">Your speaking partner</span>
           </div>
         </section>
         {progress.error && (
@@ -213,28 +210,28 @@ export function DashboardPage() {
         <section className="stats-grid" aria-label="Your speaking statistics">
           {[
             {
-              label: "Latest band",
+              label: "Latest test band",
               value: bandText(data?.latestBand),
               note: "Your most recent estimate",
               icon: "chart" as const,
             },
             {
-              label: "Personal best",
-              value: bandText(best),
-              note: "Best band in your history",
+              label: "Overall practice estimate",
+              value: bandText(data?.overallEstimate ?? undefined),
+              note: data?.estimateSampleSize ? `Based on ${data.estimateSampleSize} recent scored test${data.estimateSampleSize === 1 ? "" : "s"}` : "Available after one usable test",
               icon: "spark" as const,
             },
             {
               label: "Tests completed",
               value: data?.testsCompleted ?? 0,
-              note: "Conversations that count",
+              note: "Completed speaking sessions",
               icon: "check" as const,
             },
             {
               label: "Your target",
               value: bandText(data?.activeGoal?.targetBand),
               note: data?.activeGoal
-                ? "Keep moving toward your goal"
+                ? "Your target band estimate"
                 : "Set a goal in My progress",
               icon: "target" as const,
             },
@@ -249,9 +246,15 @@ export function DashboardPage() {
             </div>
           ))}
         </section>
+        {data && (data.testsCompleted ?? 0) > 0 && !Number.isFinite(data.latestBand) && (
+          <Alert tone="info">
+            <strong>Your latest test has no reliable band yet.</strong> One usable test is enough; more tests are not required to unlock a score. Open the report to see what prevented scoring.
+            {data.latestReportId && <Link className="text-link" to={`/reports/${data.latestReportId}`}>Review latest report <Icon name="arrow" size={16} /></Link>}
+          </Alert>
+        )}
         {progress.loading && !data ? (
           <div className="card loading-panel" role="status">
-            Loading your speaking journey…
+            Loading your progress…
           </div>
         ) : (
           data && (
@@ -272,11 +275,10 @@ export function DashboardPage() {
             </span>
             <span>
               <strong>
-                Your next small step: {criterionLabel(data.weakestSkill)}
+                Recommended focus: {criterionLabel(data.weakestSkill)}
               </strong>
               <span className="caption">
-                Explore your practice plan and give this skill a little extra
-                attention.
+                View targeted activities in your practice plan.
               </span>
             </span>
             <Icon name="arrow" />
@@ -285,7 +287,7 @@ export function DashboardPage() {
         <section className="card stack" aria-label="Attempt history">
           <div className="row between">
             <div>
-              <p className="kicker">Keep showing up</p>
+              <p className="kicker">Session history</p>
               <h2>Recent practice</h2>
             </div>
             <div className="segmented" aria-label="Filter attempts">
@@ -322,7 +324,7 @@ export function DashboardPage() {
             <div className="empty">
               {filter === "completed"
                 ? "No completed tests yet. Finish a conversation to see your report here."
-                : "Your first conversation is the start of your story. Start speaking when you’re ready."}
+                : "No practice sessions yet. Start your first test above; your saved sessions and reports will appear here."}
             </div>
           ) : (
             <div className="attempt-list">
