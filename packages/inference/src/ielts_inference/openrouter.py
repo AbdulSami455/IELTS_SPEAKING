@@ -103,6 +103,7 @@ class ScoreSchema(BaseModel):
     criteria: list[CriterionScore]
     strengths: list[str] = Field(default_factory=list, max_length=10)
     improvements: list[str] = Field(default_factory=list, max_length=10)
+    minorImprovements: list[str] = Field(default_factory=list, max_length=6)
     mistakes: list[FeedbackMistake] = Field(default_factory=list)
     fluencyNotes: list[str] = Field(default_factory=list)
     exampleRewrites: list[dict] = Field(default_factory=list)
@@ -257,7 +258,11 @@ class OpenRouterClient:
         errors: list[str] = []
         for model in models:
             messages = [
-                {"role": "system", "content": "You are an IELTS speaking practice coach. Score only from the provided transcript and acoustic measurements. Never invent quotes. Return JSON only."},
+                {"role": "system", "content": (
+                    "You are a fair IELTS speaking practice coach. Score communicative success from the transcript "
+                    "and acoustic measurements only. Be consistent and neat: half-band increments, constructive evidence, "
+                    "no harsh nitpicking. Never invent quotes. Return JSON only."
+                )},
                 {"role": "user", "content": prompt},
             ]
             for attempt in range(2):
