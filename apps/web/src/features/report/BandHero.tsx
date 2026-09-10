@@ -71,7 +71,7 @@ export function BandHero({ report }: { report: Report }) {
         <p>
           {report.isInconclusive
             ? "There wasn’t enough reliable evidence for an overall band. Review the feedback below before your next attempt."
-            : "This band uses only this test. Your progress page separately summarises your recent scored tests."}
+            : "A fair practice estimate for this test — rounded to the nearest half band. Your progress page separately summarises recent scored tests."}
         </p>
         {report.isInconclusive && (
           <div className="stack-sm">
