@@ -19,6 +19,7 @@ from ielts_inference.examiner import (
     PART3_INSTRUCTIONS,
     PART3_TARGET_QUESTIONS,
     GeneratedTurn,
+    first_part1_turn_after_intro,
     parse_cue_card,
     parse_follow_up,
     parse_spoken_question,
@@ -96,6 +97,16 @@ class ConversationOrchestrator:
         test.revision = result.new_revision
 
     async def _advance_part1(self, test: TestSession) -> None:
+        last_question = self._last_part1_question(test)
+        if last_question and last_question.examiner_asset_version == "intro":
+            plan = self._topic_plan(test)
+            topic = part1_topic_for_index(plan, 0)
+            turn = first_part1_turn_after_intro(
+                topic["label"],
+                part1_question_angle(topic["id"], part1_questions_on_topic(plan, 0)),
+            )
+            self._append_turn(test, turn, part=1)
+            return
         count = self._part1_main_question_count(test)
         if count < PART1_TARGET_QUESTIONS:
             last_answer = self._last_answer_for_part(test, 1)
@@ -132,6 +143,14 @@ class ConversationOrchestrator:
             self._append_turn(test, turn, part=3)
             return
         self._transition(test, TestEvent.COMPLETE_PART3)
+
+    def _last_part1_question(self, test: TestSession) -> SessionQuestion | None:
+        part1 = [
+            question
+            for question in test.session_questions
+            if question.part == 1
+        ]
+        return part1[-1] if part1 else None
 
     def _last_answer_for_part(self, test: TestSession, part: int) -> str | None:
         history = sorted(test.conversation_events, key=lambda item: (item.sequence_index, item.id))
