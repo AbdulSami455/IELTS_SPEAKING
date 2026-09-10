@@ -1,6 +1,7 @@
 from ielts_inference.examiner import (
     PART1_INTRO_TEXT,
     PART2_INTRO_PREFIX,
+    first_part1_turn_after_intro,
     parse_cue_card,
     parse_follow_up,
     parse_spoken_question,
@@ -51,6 +52,14 @@ def test_part1_intro_is_mandatory_examiner_script():
     assert "full name" in turn.prompt_text.lower()
     assert PART1_INTRO_TEXT in turn.prompt_text
     assert turn.asset_version == "intro"
+    assert turn.timing_seconds == 25
+
+
+def test_first_part1_turn_after_intro_is_instant_template():
+    turn = first_part1_turn_after_intro("travel", "the last trip you took")
+    assert "travel" in turn.prompt_text
+    assert "last trip" in turn.prompt_text
+    assert "?" in turn.prompt_text
 
 
 def test_part2_cue_card_includes_examiner_intro():
