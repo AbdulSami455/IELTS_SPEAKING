@@ -13,6 +13,7 @@ interface RoomCopyArgs {
   listening: boolean;
   micPaused: boolean;
   pendingRecording?: boolean;
+  isIntro?: boolean;
 }
 
 export function roomCopy(args: RoomCopyArgs): RoomCopy {
@@ -35,9 +36,11 @@ export function roomCopy(args: RoomCopyArgs): RoomCopy {
   if (args.examinerSpeaking) {
     return {
       mode: "listen",
-      kicker: "Your AI examiner",
-      title: "Listen to the question",
-      hint: "Start answering when you’re ready. Speaking will stop the question.",
+      kicker: args.isIntro ? "Introduction" : "Your AI examiner",
+      title: args.isIntro ? "Listen to the introduction" : "Listen to the question",
+      hint: args.isIntro
+        ? "Wait for the examiner to finish, then say your full name."
+        : "Start answering when you’re ready. Speaking will stop the question.",
     };
   }
   if (args.busy) {
@@ -45,15 +48,19 @@ export function roomCopy(args: RoomCopyArgs): RoomCopy {
       mode: "think",
       kicker: "Now",
       title: "One moment",
-      hint: "The examiner is moving to the next question.",
+      hint: args.isIntro
+        ? "Preparing your first topic question."
+        : "The examiner is moving to the next question.",
     };
   }
   if (args.recording) {
     return {
       mode: "speak",
       kicker: "Recording",
-      title: "Keep speaking",
-      hint: "Your answer saves automatically after a longer pause.",
+      title: args.isIntro ? "Say your full name" : "Keep speaking",
+      hint: args.isIntro
+        ? "A short pause or Done speaking will save your answer."
+        : "Pause when finished, or tap Done speaking.",
     };
   }
   if (args.micPaused) {
