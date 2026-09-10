@@ -68,10 +68,10 @@ export type TestStatus = {
 
 export type CriterionScore = {
   criterion: string;
-  band: number;
+  band: number | null;
   confidence: string;
   subdimensions: { key: string; band: number }[];
-  evidence?: { quote?: string; note?: string }[];
+  evidence?: { quote?: string; note?: string; practice?: string }[];
 };
 
 export type PronunciationPart = {
@@ -85,6 +85,7 @@ export type PronunciationPart = {
 };
 
 export type Report = {
+  scoreReadiness?: { reasons: string[]; recordedSeconds?: number; audioCoverage?: number; minimumTests: number };
   reportId: string;
   testId: string;
   overallBand?: number;
@@ -93,7 +94,7 @@ export type Report = {
   strengths: string[];
   improvements: string[];
   exampleRewrites: { original?: string; saferRewrite?: string }[];
-  practicePlan: { days?: { day: number; focus: string; task: string }[] };
+  practicePlan: { days?: { day: number; focus: string; task: string; minutes?: number; successCriteria?: string }[] };
   disclaimer: string;
   evaluatorVersion: string;
   rubricVersion: string;
@@ -102,11 +103,17 @@ export type Report = {
   isInconclusive?: boolean;
   transcripts?: { part: number; promptText: string; text: string }[];
   pronunciation?: PronunciationPart[];
-  mistakes?: { type?: string; quote?: string; correction?: string; note?: string }[];
+  mistakes?: { type?: string; quote?: string; correction?: string; note?: string; practice?: string }[];
   fluency?: string[];
 };
 
 export type ProgressOverview = {
+  overallEstimate?: number | null;
+  scoredTests?: number;
+  estimateSampleSize?: number;
+  observedLow?: number | null;
+  observedHigh?: number | null;
+  latestReportId?: string | null;
   overallTrend: string;
   sampleSize: number;
   confidence: string;
@@ -145,4 +152,21 @@ export type UploadCompletePayload = {
   mimeType?: string;
   sizeBytes?: number;
   [key: string]: unknown;
+};
+
+export type LeaderboardPeriod = "today" | "week" | "overall";
+export type LeaderboardEntry = {
+  rank: number;
+  displayName: string;
+  bestBand: number;
+  testsCompleted: number;
+  isYou: boolean;
+};
+export type Leaderboard = {
+  period: LeaderboardPeriod;
+  startsAt: string | null;
+  updatedAt: string;
+  totalParticipants: number;
+  entries: LeaderboardEntry[];
+  yourEntry: LeaderboardEntry | null;
 };
