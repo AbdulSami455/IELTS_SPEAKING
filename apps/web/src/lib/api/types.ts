@@ -18,6 +18,7 @@ export type Turn = {
   answerStatus: string;
   hasExaminerAudio: boolean;
   isFollowUp?: boolean;
+  isIntro?: boolean;
   playbackAvailable?: boolean;
   transcriptText?: string | null;
   speechRateWpm?: number;
