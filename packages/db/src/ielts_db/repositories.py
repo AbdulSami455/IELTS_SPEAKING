@@ -254,6 +254,26 @@ class ReportRepository:
         )
         return result.scalars().all()
 
+    async def previous_comparable(
+        self,
+        user_id: int,
+        before_created_at,
+        evaluator_version: str,
+    ) -> tuple[TestSession, Report] | None:
+        result = await self._session.execute(
+            select(TestSession, Report)
+            .join(Report, Report.test_session_id == TestSession.id)
+            .where(TestSession.user_id == user_id)
+            .where(TestSession.status == "COMPLETED")
+            .where(Report.evaluator_version == evaluator_version)
+            .where(Report.is_inconclusive.is_(False))
+            .where(Report.created_at < before_created_at)
+            .order_by(Report.created_at.desc())
+            .limit(1)
+        )
+        row = result.first()
+        return row if row is None else (row[0], row[1])
+
 
 class ProgressRepository:
     def __init__(self, session: AsyncSession) -> None:
