@@ -92,6 +92,7 @@ export function TestRunnerPage() {
     listening: room.listening,
     micPaused: room.micPaused,
     pendingRecording: room.restoredDraftAvailable,
+    isIntro: room.turn?.isIntro,
   });
   const youHot = copy.mode === "speak";
   const showRing = room.secondsLeft !== null && room.recording;
