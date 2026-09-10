@@ -318,9 +318,9 @@ class ProgressRepository:
             .where(TestSession.status == "COMPLETED")
             .order_by(Report.created_at.asc())
         )
-        return result.all()
+        return result.tuples().all()
 
-    async def criterion_stats(self, user_id: int) -> list[dict]:
+    async def criterion_stats(self, user_id: int, evaluator_version: str) -> list[dict]:
         from sqlalchemy import func
 
         result = await self._session.execute(
@@ -332,6 +332,8 @@ class ProgressRepository:
             .join(TestSession, TestSession.id == CriterionScore.test_session_id)
             .where(TestSession.user_id == user_id)
             .where(TestSession.status == "COMPLETED")
+            .where(CriterionScore.confidence != "inconclusive")
+            .where(CriterionScore.evaluator_version == evaluator_version)
             .group_by(CriterionScore.criterion)
         )
         rows = []

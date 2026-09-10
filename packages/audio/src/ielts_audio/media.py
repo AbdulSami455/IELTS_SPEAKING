@@ -59,19 +59,20 @@ def measure_wav(data: bytes) -> AcousticQuality:
             rate = handle.getframerate()
             duration_ms = int(handle.getnframes() / max(rate, 1) * 1000)
             rms = _pcm_rms(frames, width)
-            silent = 0
-            clipped = 0
+            # Silence is a property of a short audio frame, not an individual
+            # waveform sample: voiced sounds also cross zero repeatedly.
+            frame_bytes = max(1, rate // 50) * width * handle.getnchannels()
+            frame_levels = [
+                _pcm_rms(frames[offset:offset + frame_bytes], width)
+                for offset in range(0, len(frames), frame_bytes)
+            ]
+            silence_ratio = sum(level < 0.02 for level in frame_levels) / max(len(frame_levels), 1)
             peak = 2 ** (8 * width - 1) - 1
-            step = width
-            for index in range(0, len(frames) - width + 1, step * 80 or step):
-                sample = int.from_bytes(frames[index : index + width], "little", signed=True)
-                if abs(sample) < peak * 0.02:
-                    silent += 1
-                if abs(sample) > peak * 0.98:
-                    clipped += 1
-            windows = max((len(frames) // width) // 80, 1)
-            silence_ratio = min(1.0, silent / windows)
-            clipping_ratio = min(1.0, clipped / windows)
+            samples = [
+                int.from_bytes(frames[index:index + width], "little", signed=True)
+                for index in range(0, len(frames) - width + 1, width * 80)
+            ]
+            clipping_ratio = sum(abs(sample) > peak * 0.98 for sample in samples) / max(len(samples), 1)
             return AcousticQuality(
                 duration_ms=duration_ms,
                 rms=round(rms, 4),
@@ -125,7 +126,7 @@ def pause_features(words: list[dict], duration_ms: int = 0) -> dict:
     timestamp_duration = spans[-1][1] if spans else 0.0
     acoustic_duration = duration_ms / 1000 if duration_ms else 0.0
     duration = max(acoustic_duration, timestamp_duration, 1.0)
-    word_count = len(words)
+    word_count = sum(len(str(word.get("w") or word.get("word") or "").split()) for word in words)
     wpm = word_count / duration * 60
     return {
         "pause_count": len(gaps),
