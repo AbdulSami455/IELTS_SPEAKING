@@ -236,6 +236,16 @@ export function TestRunnerPage() {
           )}
 
           <div className="room-controls row no-print">
+            {room.recording && (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => void room.finishAnswer()}
+                disabled={room.busy}
+              >
+                Done speaking
+              </Button>
+            )}
             {room.restoredDraftAvailable && (
               <>
                 <Button
