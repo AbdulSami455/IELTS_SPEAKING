@@ -10,6 +10,7 @@ import {
   InsightPair,
   MistakesSection,
   PracticePlanSection,
+  ProgressComparisonSection,
   PronunciationSection,
   RewritesSection,
   TranscriptsSection,
@@ -117,6 +118,7 @@ export function ReportPage() {
           <CriterionGrid criteria={report.criteria} />
         </div>
         <div id="feedback" className="stack-lg">
+          <ProgressComparisonSection report={report} />
           <InsightPair report={report} />
           <div className="report-feedback-grid">
             <div className="stack-lg">

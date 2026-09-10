@@ -7,16 +7,22 @@ import { clearDraft, loadDraft, saveDraft } from "../../lib/drafts";
 const SPEECH_START_RMS = 0.05;
 const SPEECH_HOLD_RMS = 0.028;
 const MIN_VOICED_MS = 2200;
+const INTRO_MIN_VOICED_MS = 700;
 const NOISE_BLIP_MS = 400;
 const MIN_BLOB_BYTES = 2500;
 const BARGE_IN_MS = 280;
 
 export type ConnectionState = "idle" | "connecting" | "live" | "offline";
 
-function silenceBudget(state: string): number {
+function silenceBudget(state: string, turn?: Turn): number {
+  if (turn?.isIntro) return 1600;
   if (state === "PART2_SPEAK") return 8000;
   if (state === "PART3") return 4500;
-  return 3800;
+  return 3200;
+}
+
+function minVoicedMs(turn?: Turn): number {
+  return turn?.isIntro ? INTRO_MIN_VOICED_MS : MIN_VOICED_MS;
 }
 
 export function currentTurn(test: TestSession): Turn | undefined {
@@ -303,11 +309,13 @@ export function useVoiceRoom(testId: string) {
         lastMeterAtRef.current = now;
         setMicLevel(level);
       }
+      const activeTurn = session ? currentTurn(session) : undefined;
       if (
         examinerSpeakingRef.current &&
         roomOpen &&
         !recordingRef.current &&
         !startingRef.current &&
+        !activeTurn?.isIntro &&
         level >= SPEECH_START_RMS
       ) {
         bargeMsRef.current += dt;
