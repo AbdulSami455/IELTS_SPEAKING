@@ -12,7 +12,7 @@ def check_pronunciation(
     for item in words:
         token = str(item.get("w") or "").strip()
         confidence = item.get("confidence")
-        if not token:
+        if not token or item.get("granularity") == "segment" or len(token.split()) > 1:
             continue
         if isinstance(confidence, (int, float)) and confidence < 0.55:
             unclear.append(token)

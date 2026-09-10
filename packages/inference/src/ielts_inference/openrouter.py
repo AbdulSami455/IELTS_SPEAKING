@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 import httpx
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, ValidationError, field_validator
 
 from ielts_config import EnvironmentConfig
 from ielts_observability import record_model_call_error, record_scoring_call, record_stt_call
@@ -79,14 +79,34 @@ class CriterionScore(BaseModel):
         return v
 
 
+class FeedbackMistake(BaseModel):
+    type: str = "grammar"
+    quote: str = ""
+    correction: str = ""
+    note: str = ""
+    practice: str = ""
+
+
+class PracticeDay(BaseModel):
+    day: int = Field(ge=1, le=7)
+    focus: str
+    task: str
+    minutes: int = Field(default=15, ge=1, le=120)
+    successCriteria: str = ""
+
+
+class PracticePlan(BaseModel):
+    days: list[PracticeDay] = Field(default_factory=list, max_length=7)
+
+
 class ScoreSchema(BaseModel):
     criteria: list[CriterionScore]
     strengths: list[str] = Field(default_factory=list, max_length=10)
     improvements: list[str] = Field(default_factory=list, max_length=10)
-    mistakes: list[dict] = Field(default_factory=list)
+    mistakes: list[FeedbackMistake] = Field(default_factory=list)
     fluencyNotes: list[str] = Field(default_factory=list)
     exampleRewrites: list[dict] = Field(default_factory=list)
-    practicePlan: dict = Field(default_factory=lambda: {"days": []})
+    practicePlan: PracticePlan = Field(default_factory=PracticePlan)
 
     @field_validator("criteria")
     @classmethod
@@ -162,7 +182,8 @@ class OpenRouterClient:
                             "w": segment.get("text", "").strip(),
                             "startMs": int(float(segment.get("start", 0)) * 1000),
                             "endMs": int(float(segment.get("end", 0)) * 1000),
-                            "confidence": segment.get("avg_logprob"),
+                            "confidence": None,
+                            "granularity": "segment",
                         }
                     )
             detected_language = body.get("language") or "en"
@@ -207,7 +228,11 @@ class OpenRouterClient:
                     "role": "system",
                     "content": (
                         "You check IELTS-style pronunciation using only the supplied measurements "
-                        "and transcript. Do not assign a band. Accent is not an error. Return JSON only."
+                        "and transcript. Do not assign a band. Accent is not an error. "
+                        "These measurements do not identify mispronounced phonemes. Never infer sound, stress, "
+                        "or intonation errors from transcript text or recognizer confidence. "
+                        "Return JSON with findings (supported pace, pause, and recording observations) and notes "
+                        "(specific practice drills and limitations), both lists of strings."
                     ),
                 },
                 {"role": "user", "content": prompt},
@@ -229,47 +254,48 @@ class OpenRouterClient:
             self._config.openrouter_scoring_model,
             self._config.openrouter_scoring_fallback_model,
         )
-        last_error = "scoring failed"
+        errors: list[str] = []
         for model in models:
-            body = {
-                "model": model,
-                "temperature": 0.1,
-                "response_format": {"type": "json_object"},
-                "messages": [
-                    {
-                        "role": "system",
-                        "content": (
-                            "You are an IELTS speaking practice coach. Score only from the provided transcript "
-                            "and acoustic measurements. Never invent quotes. Return JSON only."
-                        ),
-                    },
-                    {"role": "user", "content": prompt},
-                ],
-            }
-            record_scoring_call()
-            response = self._client.post("/chat/completions", json=body)
-            if response.status_code >= 400:
-                record_model_call_error()
-                last_error = response.text[:300]
-                continue
-            payload = response.json()
-            content = payload["choices"][0]["message"]["content"]
-            parsed = json.loads(content)
-            if not isinstance(parsed, dict):
-                record_model_call_error()
-                raise InferenceError(f"Scoring returned non-object for model {model}")
-            try:
-                ScoreSchema.model_validate(parsed)
-            except Exception as exc:
-                record_model_call_error()
-                last_error = f"Schema validation failed for model {model}: {exc}"
-                continue
-            return ScoreResult(
-                raw=parsed,
-                model=model,
-                generation_id=payload.get("id") or response.headers.get("X-Generation-Id"),
-            )
-        raise InferenceError(f"Scoring failed: {last_error}", retryable=True)
+            messages = [
+                {"role": "system", "content": "You are an IELTS speaking practice coach. Score only from the provided transcript and acoustic measurements. Never invent quotes. Return JSON only."},
+                {"role": "user", "content": prompt},
+            ]
+            for attempt in range(2):
+                body = {"model": model, "temperature": 0.1,
+                        "response_format": {"type": "json_object"}, "messages": messages}
+                record_scoring_call()
+                response = self._client.post("/chat/completions", json=body)
+                if response.status_code >= 400:
+                    record_model_call_error()
+                    errors.append(f"{model}: {response.text[:300]}")
+                    break
+                payload = response.json()
+                content = payload["choices"][0]["message"]["content"]
+                try:
+                    parsed = json.loads(content)
+                    validated = ScoreSchema.model_validate(parsed)
+                except (json.JSONDecodeError, ValidationError) as exc:
+                    record_model_call_error()
+                    if isinstance(exc, ValidationError):
+                        details = "; ".join(
+                            f"{'.'.join(str(part) for part in error['loc'])}: {error['msg']}"
+                            for error in exc.errors(include_input=False, include_url=False)
+                        )
+                    else:
+                        details = "Response must be valid JSON without markdown fences."
+                    errors.append(f"{model}: {details}")
+                    if attempt == 0:
+                        messages.extend([
+                            {"role": "assistant", "content": content},
+                            {"role": "user", "content": "Correct the response format using the original evidence. Do not add unsupported claims. "
+                             + details + "\nReturn a JSON instance matching this schema: " + json.dumps(ScoreSchema.model_json_schema())},
+                        ])
+                    continue
+                return ScoreResult(
+                    raw=validated.model_dump(), model=model,
+                    generation_id=payload.get("id") or response.headers.get("X-Generation-Id"),
+                )
+        raise InferenceError(f"Scoring failed: {'; '.join(errors)}", retryable=True)
 
     def chat_json(self, system: str, prompt: str, models: list[str] | None = None) -> dict:
         chosen = _dedupe_models(

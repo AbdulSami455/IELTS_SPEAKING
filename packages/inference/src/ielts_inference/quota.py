@@ -5,7 +5,8 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import select
+from sqlalchemy import select, update
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ielts_config import EnvironmentConfig
@@ -21,30 +22,35 @@ async def reserve_model_call(
     config: EnvironmentConfig,
 ) -> None:
     day = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
-    result = await session.execute(
-        select(UsageLedger).where(UsageLedger.user_id == user_id, UsageLedger.date == day)
-    )
-    ledger = result.scalar_one_or_none()
-    if ledger is None:
-        ledger = UsageLedger(
-            user_id=user_id,
-            date=day,
-            free_requests_used=0,
-            paid_cost_microdollars=0,
-            free_budget_microdollars=0,
+    # Both API and worker reserve calls. Create the daily row safely, then
+    # increment in SQL so concurrent sessions cannot reuse a stale counter.
+    await session.execute(
+        insert(UsageLedger).values(
+            user_id=user_id, date=day, free_requests_used=0,
+            paid_cost_microdollars=0, free_budget_microdollars=0,
             paid_budget_microdollars=int(config.paid_daily_budget_usd * 1_000_000),
             version=0,
+        ).on_conflict_do_nothing(index_elements=[UsageLedger.user_id, UsageLedger.date])
+    )
+    result = await session.execute(
+        update(UsageLedger)
+        .where(
+            UsageLedger.user_id == user_id, UsageLedger.date == day,
+            UsageLedger.free_requests_used < config.free_request_daily_hard_limit,
         )
-        session.add(ledger)
-        await session.flush()
-    if ledger.free_requests_used >= config.free_request_daily_hard_limit:
+        .values(
+            free_requests_used=UsageLedger.free_requests_used + 1,
+            version=UsageLedger.version + 1,
+        )
+        .returning(UsageLedger.free_requests_used)
+    )
+    if result.scalar_one_or_none() is None:
         raise InferenceError("Daily free request limit reached", retryable=False)
-    ledger.free_requests_used += 1
-    ledger.version += 1
+    attempt_id = str(uuid.uuid4())
     session.add(
         ModelCallAttempt(
-            id=str(uuid.uuid4()),
-            idempotency_key=f"{test_id}:{stage}:{ledger.free_requests_used}",
+            id=attempt_id,
+            idempotency_key=f"{test_id}:{stage}:{attempt_id}",
             test_session_id=test_id,
             stage=stage,
             route=stage,

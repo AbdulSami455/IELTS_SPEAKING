@@ -108,3 +108,20 @@ def test_score_speaking_requires_json_object():
     scored = client.score_speaking("score this")
     assert scored.raw["criteria"][0]["band"] == 6.5
     assert scored.generation_id == "gen-1"
+
+
+def test_score_repairs_malformed_primary_response_before_fallback():
+    import json
+    calls = []
+    def handler(request):
+        body = json.loads(request.content)
+        calls.append(body)
+        content = '{"criteria":[{"criterion":"fluency_and_coherence|lexical_resource","band":6,"confidence":"medium"}],"practicePlan":[]}' if len(calls) == 1 else '{"criteria":[{"criterion":"fluency_and_coherence","band":6,"confidence":"medium"}],"practicePlan":{"days":[]}}'
+        return httpx.Response(200, json={"choices":[{"message":{"content":content}}]})
+    client = OpenRouterClient(_config())
+    client._client = httpx.Client(transport=httpx.MockTransport(handler), base_url="https://openrouter.ai/api/v1")
+    result = client.score_speaking("Use the supplied evidence")
+    assert result.raw["criteria"][0]["criterion"] == "fluency_and_coherence"
+    assert len(calls) == 2
+    assert calls[0]["model"] == calls[1]["model"]
+    assert len(calls[1]["messages"]) == 4
