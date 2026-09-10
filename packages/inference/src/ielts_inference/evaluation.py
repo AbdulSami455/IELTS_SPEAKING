@@ -73,12 +73,15 @@ Each mistake needs type, quote, correction, note (the rule), and practice (a sho
 Use grammar, phrase, sentence_completion, or fluency as the mistake type.
 practicePlan must be an OBJECT containing a days ARRAY, not an array at the top level.
 Each day needs day, focus, task, minutes, and successCriteria.
-Use strengths and improvements arrays, exampleRewrites (original/saferRewrite), and fluencyNotes.
+Use strengths, improvements, minorImprovements, exampleRewrites (original/saferRewrite), and fluencyNotes.
 
 Rules:
+- strengths: what already works well in this test.
+- improvements: the three highest-priority focus areas for the NEXT attempt (not things that already improved).
+- minorImprovements: 2-5 specific small wins from THIS test only (e.g. clearer linking, one tense used correctly, a stronger collocation) even if the band did not change.
 - Review grammar (tense, articles, agreement), phrase choice/collocations, unfinished sentences and coherence separately. Report only mistakes actually supported by the transcript; do not fill a category with invented errors.
 - Give each correction an explanation and a brief practice drill, preserving the candidate's intended meaning.
-- Create seven distinct daily activities with duration, clear steps and a measurable success check; progress from targeted corrections to a recorded retest.
+- Create seven distinct daily activities with duration, clear steps and a measurable success check; start with the mistake types from this test, then build fluency, then end with a timed retest.
 - This is one test's score only. Never use prior test scores or imply an official IELTS result.
 - Do not identify specific mispronounced sounds from text or recognition confidence. Phoneme-level assessment is unavailable in the supplied measurements; use only supported pace, pause and recording observations.
 - Grammar and vocabulary from the candidate transcripts only. Quote the exact span.
