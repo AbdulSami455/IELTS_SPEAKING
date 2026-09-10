@@ -81,6 +81,7 @@ def _serialize_turn(question: SessionQuestion) -> dict:
         "answer_status": answer.status if answer else "PENDING",
         "has_examiner_audio": True,
         "is_follow_up": question.examiner_asset_version == "follow-up",
+        "is_intro": question.examiner_asset_version == "intro",
         "playback_available": bool(
             answer and answer.status in {AnswerState.VALID.value, AnswerState.READY.value}
         ),
