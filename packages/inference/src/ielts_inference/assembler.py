@@ -102,38 +102,52 @@ def assemble(model_json: dict, features: dict, acoustic_coverage: float) -> dict
 
     for key in CRITERIA:
         item = _criterion(model_json, key)
-        band = BandScore.round_to_nearest_half(item["band"])
         confidence = item["confidence"]
-        if not transcript_text.strip() or (
-            key in {"fluency_and_coherence", "pronunciation"} and (acoustic_coverage < 0.4 or voiced_ms < 90_000)
-        ):
+        band_value = None
+        if item["band"] is not None:
+            band_value = BandScore.round_to_nearest_half(item["band"]).value
+        if not transcript_text.strip():
             confidence = "inconclusive"
+            band_value = None
+        elif key in {"fluency_and_coherence", "pronunciation"} and (low_audio or voiced_ms < MIN_VOICED_MS):
+            confidence = "inconclusive"
+            band_value = None
         validated_evidence = _validate_evidence(key, item["evidence"], transcript_text, rejected_evidence)
         if item["evidence"] and not validated_evidence:
-            inconclusive = True
             if confidence != "inconclusive":
                 confidence = "low"
-            reasons.append(f"{key.replace('_', ' ')}: the score evidence could not be verified in your transcript.")
+            reasons.append(f"{key.replace('_', ' ')}: some score evidence could not be verified in your transcript.")
         elif validated_evidence and len(validated_evidence) < len(item["evidence"]) * 0.5:
-            confidence = "low"
+            if confidence == "high":
+                confidence = "medium"
         criteria.append(
             {
                 "criterion": key,
-                "band": band.value,
+                "band": band_value,
                 "confidence": confidence,
                 "subdimensions": item["subdimensions"],
                 "evidence": validated_evidence,
             }
         )
         if confidence == "inconclusive":
-            inconclusive = True
             reasons.append(f"{key.replace('_', ' ')}: not enough evidence to assign a band.")
 
-    mean = sum(item["band"] for item in criteria) / 4
-    overall = None if inconclusive else BandScore.round_to_nearest_half(mean).value
+    scorable = [
+        item["band"] for item in criteria
+        if item["band"] is not None and item["confidence"] != "inconclusive"
+    ]
+    if len(scorable) < MIN_SCORABLE_CRITERIA:
+        inconclusive = True
+    overall = None
+    if not inconclusive and scorable:
+        overall = BandScore.round_to_nearest_half(sum(scorable) / len(scorable)).value
     strengths = _strings(model_json.get("strengths"), 3)
     improvements = _strings(model_json.get("improvements"), 3)
-    mistakes = _validate_mistakes(model_json.get("mistakes") or [], transcript_text, rejected_evidence)
+    minor_improvements = _strings(
+        model_json.get("minorImprovements") or model_json.get("minor_improvements"),
+        5,
+    )
+    mistakes = _validate_mistakes(model_json.get("mistakes") or [], transcript_text, rejected_evidence)[:MAX_MISTAKES]
     return {
         "score_readiness": {
             "reasons": reasons,
@@ -148,6 +162,7 @@ def assemble(model_json: dict, features: dict, acoustic_coverage: float) -> dict
         "criteria": criteria,
         "strengths": strengths,
         "improvements": improvements,
+        "minor_improvements": minor_improvements,
         "example_rewrites": _validate_rewrites(model_json.get("exampleRewrites") or model_json.get("example_rewrites") or [], transcript_text),
         "mistakes": mistakes,
         "fluency": model_json.get("fluencyNotes") or model_json.get("fluency") or [],
@@ -195,7 +210,7 @@ def _criterion(model_json: dict, key: str) -> dict:
             break
     if not block:
         return {
-            "band": 0.0,
+            "band": None,
             "confidence": "inconclusive",
             "subdimensions": {},
             "evidence": [],
