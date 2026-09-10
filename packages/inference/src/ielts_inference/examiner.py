@@ -143,7 +143,15 @@ def parse_spoken_question(raw: dict, *, timing_seconds: int, asset_version: str 
 
 
 def part1_intro_turn() -> GeneratedTurn:
-    return GeneratedTurn(PART1_INTRO_TEXT, 60, None, "intro")
+    return GeneratedTurn(PART1_INTRO_TEXT, 25, None, "intro")
+
+
+def first_part1_turn_after_intro(topic_label: str, question_angle: str) -> GeneratedTurn:
+    question = (
+        f"Thank you. Now let's talk about {topic_label}. "
+        f"Could you tell me about {question_angle}?"
+    )
+    return GeneratedTurn(question, 45, None, "generated")
 
 
 def parse_cue_card(raw: dict, *, include_part2_intro: bool = True) -> GeneratedTurn | None:
