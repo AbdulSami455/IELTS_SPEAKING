@@ -18,10 +18,13 @@ DISCLAIMER = (
     "It is not an official IELTS score and does not predict a future examination result."
 )
 
-EVALUATOR_VERSION = "eval-2026.09.10"
-RUBRIC_VERSION = "ielts-speaking-practice-v1"
+EVALUATOR_VERSION = "eval-2026.09.11"
+RUBRIC_VERSION = "ielts-speaking-practice-v2"
 
 HALLUCINATION_THRESHOLD = 0.7
+MIN_VOICED_MS = 60_000
+MIN_SCORABLE_CRITERIA = 3
+MAX_MISTAKES = 6
 
 
 def _gather_transcripts(features: dict, model_json: dict, mean_coverage: float) -> str:
