@@ -317,6 +317,7 @@ async def evaluate_test(session: AsyncSession, test_id: str, config: Environment
                     "score_readiness": assembled["score_readiness"],
                     "mistakes": assembled["mistakes"],
                     "fluency": assembled["fluency"],
+                    "minor_improvements": assembled["minor_improvements"],
                 },
                 strengths=assembled["strengths"],
                 improvements=assembled["improvements"],
@@ -333,7 +334,7 @@ async def evaluate_test(session: AsyncSession, test_id: str, config: Environment
                 CriterionScore(
                     test_session_id=test_id,
                     criterion=item["criterion"],
-                    band=item["band"],
+                    band=item["band"] if item["band"] is not None else 0.0,
                     confidence=item["confidence"],
                     evidence=item["evidence"],
                     subdimensions=item["subdimensions"] if isinstance(item["subdimensions"], dict) else {},
