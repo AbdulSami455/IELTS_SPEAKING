@@ -37,10 +37,9 @@ Rules:
 
 PART1_INTRO_TEXT = (
     "Good morning. My name is Sarah, and I will be your examiner today. "
-    "This is an IELTS Speaking practice test with three parts. "
-    "I will explain each part before we begin. "
-    "In Part 1, I will ask you some questions about familiar topics. "
-    "To start, could you tell me your full name, please?"
+    "This is a three-part IELTS Speaking practice test. "
+    "In Part 1 I will ask short questions about familiar topics. "
+    "To begin, could you tell me your full name, please?"
 )
 
 PART2_INTRO_PREFIX = (
