@@ -52,7 +52,7 @@ def test_missing_model_criteria_are_inconclusive():
     assert all(item["confidence"] == "inconclusive" for item in result["criteria"])
 
 
-def test_hallucination_guard_rejects_mismatched_evidence():
+def test_hallucination_guard_softens_single_criterion_without_killing_whole_report():
     result = assemble(
         {
             "criteria": [
@@ -62,13 +62,19 @@ def test_hallucination_guard_rejects_mismatched_evidence():
                     "confidence": "high",
                     "evidence": [{"quote": "this quote appears nowhere in the transcript", "note": "test"}],
                 },
+                {"criterion": "lexical_resource", "band": 6.5, "confidence": "medium", "evidence": []},
+                {"criterion": "grammatical_range_and_accuracy", "band": 6.0, "confidence": "medium", "evidence": []},
+                {"criterion": "pronunciation", "band": 6.5, "confidence": "medium", "evidence": []},
             ],
             "transcripts": [{"text": "I went to the market today"}],
         },
         {"speaking_duration_ms": 120_000, "silence_ratio": 0.1},
         acoustic_coverage=0.8,
     )
-    assert result["is_inconclusive"] is True
+    assert result["is_inconclusive"] is False
+    assert result["overall_band"] == 6.5
+    fluency = next(item for item in result["criteria"] if item["criterion"] == "fluency_and_coherence")
+    assert fluency["confidence"] == "low"
     assert len(result["_hallucination_flags"]) > 0
 
 

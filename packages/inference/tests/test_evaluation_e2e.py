@@ -88,7 +88,10 @@ def test_evaluate_test_filters_hallucinated_evidence():
     response = json.loads(json.dumps(SCORING_RESPONSE))
     response["criteria"][0]["evidence"] = [{"quote": "invented quote not in transcript", "note": "test"}]
     result = assemble(response, FEATURES, 0.8)
-    assert result["is_inconclusive"] is True
+    assert result["is_inconclusive"] is False
+    assert result["overall_band"] is not None
+    fluency = next(item for item in result["criteria"] if item["criterion"] == "fluency_and_coherence")
+    assert fluency["confidence"] == "low"
     assert len(result["_hallucination_flags"]) > 0
 
 
