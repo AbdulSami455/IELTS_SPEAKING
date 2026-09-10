@@ -12,8 +12,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ielts_api.errors import AppError, conflict, not_found, validation
 from ielts_api.services.conversation import ConversationOrchestrator
+from ielts_audio.media import inspect_audio
 from ielts_config import EnvironmentConfig
-from ielts_db.models import Answer, MediaObject, SessionQuestion, TestSession, Transcript
+from ielts_db.models import Answer, MediaObject, Report, SessionQuestion, TestSession, Transcript
 from ielts_db.repositories import (
     AnswerRepository,
     ProgressRepository,
@@ -33,6 +34,8 @@ from ielts_domain import (
     apply_transition,
 )
 from ielts_inference.evaluation import PUBLIC_STAGES
+from ielts_inference.assembler import EVALUATOR_VERSION
+from ielts_inference.score_summary import summarize_scores
 from ielts_inference.openrouter import InferenceError, OpenRouterClient
 from ielts_inference.transcript import clean_transcript
 
@@ -106,7 +109,7 @@ def serialize_test(test: TestSession) -> dict:
         "permitted_actions": permitted_actions(test.status),
         "started_at": test.created_at.isoformat() if test.created_at else None,
         "expires_at": test.expires_at.isoformat() if test.expires_at else None,
-        "report_id": test.report.id if test.report else None,
+        "report_id": test.report.id if test.report and test.status == TestState.COMPLETED.value else None,
         "part2_prep_seconds": 60,
     }
 
@@ -520,7 +523,7 @@ class TestService:
             "state": test.status,
             "stage": stage,
             "progress": progress,
-            "report_id": test.report.id if test.report else None,
+            "report_id": test.report.id if test.report and test.status == TestState.COMPLETED.value else None,
             "error": error,
         }
 
@@ -577,6 +580,27 @@ class TestService:
             "expires_in_seconds": self.config.minio_signed_url_ttl_seconds,
         }
 
+    async def reassess_report(self, user_id: int, report_id: str) -> str:
+        report = await self.reports.get_by_id(report_id)
+        if report is None:
+            raise not_found("Report not found")
+        await self.session.execute(
+            select(TestSession.id).where(
+                TestSession.id == report.test_session_id, TestSession.user_id == user_id,
+            ).with_for_update()
+        )
+        test = await self.tests.get_owned(report.test_session_id, user_id)
+        if test is None:
+            raise not_found("Report not found")
+        if test.status not in {TestState.COMPLETED.value, TestState.FAILED.value}:
+            raise conflict("This test is already being processed")
+        if not test.answers or any(answer.media_object is None for answer in test.answers):
+            raise validation("Saved recordings are unavailable. Please start a new test.")
+        test.status = TestState.SUBMITTED.value
+        test.revision += 1
+        await self.session.commit()
+        return test.id
+
     async def get_report(self, user_id: int, report_id: str) -> dict:
         report = await self.reports.get_by_id(report_id)
         if report is None:
@@ -593,7 +617,7 @@ class TestService:
             "criteria": [
                 {
                     "criterion": item.criterion,
-                    "band": item.band,
+                    "band": item.band if item.confidence != "inconclusive" else None,
                     "confidence": item.confidence,
                     "subdimensions": [
                         {"key": key, "band": value} for key, value in (item.subdimensions or {}).items()
@@ -612,6 +636,10 @@ class TestService:
             "model_policy_version": report.model_policy_version,
             "created_at": report.created_at.isoformat(),
             "is_inconclusive": report.is_inconclusive,
+            "score_readiness": (report.parts or {}).get("score_readiness") or {
+                "reasons": ["This older report did not retain scoring diagnostics. Reassess the saved test with the current evaluator."] if report.is_inconclusive else [],
+                "minimum_tests": 1,
+            },
             "transcripts": await self._transcripts(test.id),
             "pronunciation": (report.parts or {}).get("pronunciation") or [],
             "mistakes": (report.parts or {}).get("mistakes") or [],
@@ -710,21 +738,23 @@ class TestService:
         rows = await self.progress.completed_reports(user_id)
         goal = await self.progress.current_goal(user_id)
         actions = await self.progress.list_actions(user_id)
-        criteria = await self.progress.criterion_stats(user_id)
+        criteria = await self.progress.criterion_stats(user_id, EVALUATOR_VERSION)
+        summary = summarize_scores([report for _test, report in rows])
         timeline = [
             {
                 "testId": test.id,
                 "date": report.created_at.isoformat(),
-                "overallBand": report.overall_band,
+                "overallBand": report.overall_band if not report.is_inconclusive and report.evaluator_version == EVALUATOR_VERSION else None,
                 "reportId": report.id,
             }
             for test, report in rows
         ]
         latest = timeline[-1]["overallBand"] if timeline else None
+        bands = [item["overallBand"] for item in timeline if item["overallBand"] is not None]
         trend = "insufficient_data"
-        if len(timeline) >= 2 and timeline[-1]["overallBand"] and timeline[0]["overallBand"]:
-            trend = "up" if timeline[-1]["overallBand"] >= timeline[0]["overallBand"] else "down"
-        elif timeline:
+        if len(bands) >= 2:
+            trend = "up" if bands[-1] > bands[0] else "down" if bands[-1] < bands[0] else "stable"
+        elif bands:
             trend = "stable"
         weakest = None
         scored = [item for item in criteria if item["average_band"] is not None]
@@ -736,8 +766,14 @@ class TestService:
         priorities.extend(["Extend Part 2 answers", "Practise linking phrases"])
         return {
             "overall_trend": trend,
-            "sample_size": len(timeline),
-            "confidence": "medium" if len(timeline) >= 2 else "low",
+            "sample_size": summary.scored_tests,
+            "confidence": "medium" if summary.scored_tests >= 2 else "low",
+            "overall_estimate": summary.overall_estimate,
+            "scored_tests": summary.scored_tests,
+            "estimate_sample_size": summary.estimate_sample_size,
+            "observed_low": summary.observed_low,
+            "observed_high": summary.observed_high,
+            "latest_report_id": rows[-1][1].id if rows else None,
             "latest_band": latest,
             "tests_completed": len(timeline),
             "criterion_stats": criteria,

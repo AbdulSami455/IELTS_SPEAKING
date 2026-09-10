@@ -438,3 +438,17 @@ async def patch_action(
     svc: TestService = Depends(service),
 ) -> dict:
     return envelope(await svc.patch_action(user.user_id, action_id, payload.model_dump()))
+
+
+@router.post("/reports/{report_id}/reassess")
+async def reassess_report(
+    report_id: str,
+    background: BackgroundTasks,
+    user: AuthenticatedUser = Depends(require_user),
+    svc: TestService = Depends(service),
+) -> dict:
+    from ielts_api.jobs import enqueue_evaluate
+
+    test_id = await svc.reassess_report(user.user_id, report_id)
+    background.add_task(enqueue_evaluate, test_id)
+    return envelope({"test_id": test_id})
