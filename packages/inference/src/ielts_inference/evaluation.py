@@ -48,7 +48,17 @@ PUBLIC_STAGES = (
     "failed",
 )
 
-SCORING_INSTRUCTIONS = """Score this IELTS-style speaking practice test.
+SCORING_INSTRUCTIONS = """Score this IELTS-style speaking PRACTICE test as a supportive coach, not a live examiner.
+
+Calibration (practice bands — neat, fair, evidence-based):
+- 5.5: the candidate keeps going and the message is usually understandable despite noticeable slips.
+- 6.0: competent everyday communication with some errors that rarely block meaning.
+- 6.5: generally clear, with good range and only occasional issues.
+- 7.0+: only when range, control, and delivery are consistently strong across the attempt.
+- Do not mark down more than 0.5 for isolated slips, fillers, or one weak answer if the rest is solid.
+- Never punish accent, L1 influence, or STT/recognition artefacts.
+- Report at most 4–6 mistakes — only the highest-impact issues with clear transcript evidence.
+- Evidence notes must be constructive and specific; avoid harsh or sweeping labels.
 
 Return one JSON object matching the response schema supplied below.
 The criteria array must have four SEPARATE objects with these exact criterion names:
