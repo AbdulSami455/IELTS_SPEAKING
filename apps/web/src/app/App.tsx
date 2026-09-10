@@ -8,6 +8,8 @@ import { ProcessingPage } from "../features/processing/ProcessingPage";
 import { ReportPage } from "../features/report/ReportPage";
 import { ProgressPage } from "../features/progress/ProgressPage";
 
+import { LeaderboardPage } from "../features/leaderboard/LeaderboardPage";
+
 export default function App() {
   return (
     <Routes>
@@ -68,6 +70,7 @@ export default function App() {
           </RequireAuth>
         }
       />
+      <Route path="/leaderboard" element={<RequireAuth><LeaderboardPage /></RequireAuth>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

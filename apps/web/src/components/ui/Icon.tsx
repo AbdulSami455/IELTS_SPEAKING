@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 
 const paths = {
+  trophy: "M8 3h8v6a4 4 0 0 1-8 0V3ZM8 5H4v2a4 4 0 0 0 4 4m8-6h4v2a4 4 0 0 1-4 4M12 13v5m-4 3h8m-7-3h6v3H9v-3Z",
   spark: "m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5L12 3Z",
   arrow: "M5 12h14m-5-5 5 5-5 5",
   chart: "M4 4v16h16M8 15l4-5 4 2 4-7",
