@@ -22,6 +22,7 @@ from ielts_inference.examiner import (
     parse_cue_card,
     parse_follow_up,
     parse_spoken_question,
+    part1_intro_turn,
     part1_prompt_input,
     part2_prompt_input,
     part3_prompt_input,
@@ -31,6 +32,8 @@ from ielts_inference.quota import reserve_model_call
 from ielts_inference.topics import (
     SessionTopicPlan,
     choose_session_topics,
+    part1_question_angle,
+    part1_questions_on_topic,
     part1_topic_for_index,
     part2_theme,
 )
@@ -47,8 +50,7 @@ class ConversationOrchestrator:
     async def start(self, test: TestSession) -> None:
         test.topic_plan = await self._assign_topic_plan(test)
         self._transition(test, TestEvent.READY_TO_START)
-        turn = await self._generate_part1_turn(test)
-        self._append_turn(test, turn, part=1)
+        self._append_turn(test, part1_intro_turn(), part=1, asset_version="intro")
 
     async def on_answer_completed(self, test: TestSession, answer: Answer) -> None:
         question = answer.session_question
@@ -94,7 +96,7 @@ class ConversationOrchestrator:
         test.revision = result.new_revision
 
     async def _advance_part1(self, test: TestSession) -> None:
-        count = self._answered_count(test, 1)
+        count = self._part1_main_question_count(test)
         if count < PART1_TARGET_QUESTIONS:
             last_answer = self._last_answer_for_part(test, 1)
             if last_answer and len(last_answer.split()) < 15:
@@ -165,18 +167,18 @@ class ConversationOrchestrator:
 
             theme_info = get_part2_theme(test.topic_plan["part2"])
             part2_theme = theme_info["label"]
-        prompt = part3_prompt_input(
-            history,
-            asked,
-            theme=plan["part3_theme"],
-            part2_theme=part2_theme,
-        )
-        payload = json.loads(prompt)
-        payload["is_nervous"] = is_nervous
+        part3_count = self._answered_count(test, 3)
         return await self._chat_turn(
             test,
             PART3_INSTRUCTIONS,
-            json.dumps(payload),
+            part3_prompt_input(
+                history,
+                asked,
+                theme=plan["part3_theme"],
+                part2_theme=part2_theme,
+                is_first_part3_question=part3_count == 0,
+                is_nervous=is_nervous,
+            ),
             timing_seconds=40,
         )
 
@@ -224,6 +226,16 @@ class ConversationOrchestrator:
             if question.part == part and question.answer and question.answer.status in VALID_ANSWER_STATES
         )
 
+    def _part1_main_question_count(self, test: TestSession) -> int:
+        return sum(
+            1
+            for question in test.session_questions
+            if question.part == 1
+            and question.examiner_asset_version not in {"intro", "follow-up"}
+            and question.answer
+            and question.answer.status in VALID_ANSWER_STATES
+        )
+
     async def _history(self, test_id: str, part: int | None = None) -> list[dict]:
         stmt = (
             select(SessionQuestion.prompt_text, SessionQuestion.part, Transcript.text)
@@ -263,9 +275,16 @@ class ConversationOrchestrator:
         return choose_session_topics([])
 
     async def _generate_part1_turn(self, test: TestSession) -> GeneratedTurn:
-        asked = [item.prompt_text for item in test.session_questions if item.part == 1]
+        asked = [
+            item.prompt_text
+            for item in test.session_questions
+            if item.part == 1 and item.examiner_asset_version not in {"intro", "follow-up"}
+        ]
         history = await self._history(test.id, 1)
-        topic = part1_topic_for_index(self._topic_plan(test), len(asked))
+        plan = self._topic_plan(test)
+        main_index = self._part1_main_question_count(test)
+        topic = part1_topic_for_index(plan, main_index)
+        on_topic = part1_questions_on_topic(plan, main_index)
         return await self._chat_turn(
             test,
             PART1_INSTRUCTIONS,
@@ -274,6 +293,8 @@ class ConversationOrchestrator:
                 asked,
                 topic_label=topic["label"],
                 topic_guidance=topic["guidance"],
+                question_angle=part1_question_angle(topic["id"], on_topic),
+                is_first_topic_question=main_index == 0,
             ),
             timing_seconds=45,
         )
@@ -316,17 +337,6 @@ class ConversationOrchestrator:
         if follow_up is None:
             return None
         return GeneratedTurn(prompt_text=follow_up, timing_seconds=35, asset_version="follow-up")
-
-    async def _generate_part3_turn(self, test: TestSession) -> GeneratedTurn:
-        asked = [item.prompt_text for item in test.session_questions if item.part == 3]
-        history = await self._history(test.id)
-        plan = self._topic_plan(test)
-        return await self._chat_turn(
-            test,
-            PART3_INSTRUCTIONS,
-            part3_prompt_input(history, asked, theme=plan["part3_theme"]),
-            timing_seconds=40,
-        )
 
     async def _chat_turn(self, test: TestSession, system: str, prompt: str, *, timing_seconds: int) -> GeneratedTurn:
         retry_prompt = (
