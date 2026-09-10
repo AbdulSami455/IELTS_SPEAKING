@@ -12,9 +12,18 @@ interface RoomCopyArgs {
   busy: boolean;
   listening: boolean;
   micPaused: boolean;
+  pendingRecording?: boolean;
 }
 
 export function roomCopy(args: RoomCopyArgs): RoomCopy {
+  if (args.pendingRecording) {
+    return {
+      mode: "wait",
+      kicker: "Recording saved locally",
+      title: "Retry your answer",
+      hint: "The last request did not finish. Retry the saved recording below to continue. Your microphone is paused.",
+    };
+  }
   if (args.state === "PART2_PREP") {
     return {
       mode: "prep",

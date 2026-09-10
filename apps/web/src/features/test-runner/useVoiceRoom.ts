@@ -146,15 +146,15 @@ export function useVoiceRoom(testId: string) {
 
   useEffect(() => {
     const session = test;
-    if (!session || !canSpeak(session.state) || micPaused) {
-      setListening(false);
+    if (!session || !canSpeak(session.state) || micPaused || restoredDraftAvailable) {
+      stopVad();
       return;
     }
     void startVad().catch((err: Error) =>
       setError(err.message || "Could not open the microphone."),
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [test?.state, test?.testId, micPaused]);
+  }, [test?.state, test?.testId, micPaused, restoredDraftAvailable]);
 
   async function beginLiveRoom() {
     if (!test) return;
@@ -471,6 +471,7 @@ export function useVoiceRoom(testId: string) {
       return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not send audio");
+      stopVad();
       restoredDraftRef.current = blob;
       setRestoredDraftAvailable(true);
       return false;

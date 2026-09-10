@@ -91,6 +91,7 @@ export function TestRunnerPage() {
     busy: room.busy,
     listening: room.listening,
     micPaused: room.micPaused,
+    pendingRecording: room.restoredDraftAvailable,
   });
   const youHot = copy.mode === "speak";
   const showRing = room.secondsLeft !== null && room.recording;
@@ -139,10 +140,12 @@ export function TestRunnerPage() {
                 ? "Connected"
                 : room.connection === "connecting"
                   ? "Connecting"
-                  : "Offline"}
+                  : "Live updates disconnected"}
             </span>
           </div>
 
+          <div className="room-workspace">
+            <div className="room-presence">
           <RoomStage
             room={copy}
             showMeter={youHot || room.recording}
@@ -151,6 +154,15 @@ export function TestRunnerPage() {
             totalSeconds={room.totalSeconds}
           />
 
+          {showRing && (
+            <TimerRing
+              seconds={room.secondsLeft ?? 0}
+              total={room.totalSeconds}
+            />
+          )}
+
+            </div>
+            <div className="room-interaction stack">
           {room.turn && (
             <div className="current-prompt stack">
               <div className="row between">
@@ -189,13 +201,6 @@ export function TestRunnerPage() {
                 <Icon name="play" size={15} /> Replay question
               </Button>
             </div>
-          )}
-
-          {showRing && (
-            <TimerRing
-              seconds={room.secondsLeft ?? 0}
-              total={room.totalSeconds}
-            />
           )}
 
           {test.state === "PART2_PREP" && (
@@ -238,7 +243,7 @@ export function TestRunnerPage() {
                   onClick={room.sendRestoredDraft}
                   disabled={room.busy}
                 >
-                  Send restored recording
+                  Retry saved answer
                 </Button>
                 <Button
                   variant="ghost"
@@ -246,7 +251,7 @@ export function TestRunnerPage() {
                   onClick={room.discardRestoredDraft}
                   disabled={room.busy}
                 >
-                  Discard restored recording
+                  Discard saved answer
                 </Button>
               </>
             )}
@@ -255,7 +260,7 @@ export function TestRunnerPage() {
               size="sm"
               aria-pressed={room.micPaused}
               onClick={room.toggleMicrophone}
-              disabled={room.busy}
+              disabled={room.busy || room.restoredDraftAvailable}
             >
               {room.micPaused ? "Resume microphone" : "Pause microphone"}
             </Button>
@@ -303,6 +308,8 @@ export function TestRunnerPage() {
             </Button>
             </div>
           </details>
+            </div>
+          </div>
         </section>
 
         <details className="session-details">
