@@ -117,7 +117,8 @@ export function InsightPair({ report }: { report: Report }) {
       </section>
       <section className="card">
         <div className="section-head">
-          <h2>Highest-value changes</h2>
+          <h2>Priority focus for next time</h2>
+          <p className="caption">Highest-impact changes to practise before your next attempt.</p>
         </div>
         <ul className="list">
           {report.improvements.map((item) => (
@@ -130,30 +131,45 @@ export function InsightPair({ report }: { report: Report }) {
 }
 
 export function MistakesSection({ report }: { report: Report }) {
-  if (!report.mistakes || report.mistakes.length === 0) return null;
+  const groups = groupMistakes(report);
+  if (groups.length === 0) return null;
+  const trends = report.progressComparison?.mistakeTrends;
   return (
     <section className="card stack">
       <div className="section-head">
-        <h2>Fine-tune your answers</h2>
+        <h2>Corrections from your transcript</h2>
         <p className="caption">
-          Specific corrections from your transcript, with explanations and practice.
+          Grouped by issue type with the rule, correction, and a short drill for each.
         </p>
       </div>
-      <ul className="list list--neutral">
-        {report.mistakes.map((item, index) => (
-          <li key={index} className="stack-sm">
-            <Badge>{humanize(item.type ?? "issue")}</Badge>
-            {item.quote && <div className="quote">“{item.quote}”</div>}
-            {item.correction && (
-              <p>
-                Try: <strong>{item.correction}</strong>
-              </p>
-            )}
-            {item.note && <p className="muted"><strong>Why: </strong>{item.note}</p>}
-            {item.practice && <p><strong>Practise: </strong>{item.practice}</p>}
-          </li>
+      {trends && report.progressComparison?.hasPrevious && (
+        <div className="mistake-trend-row">
+          {(trends.resolved?.length ?? 0) > 0 && <span className="pill pill--good">{trends.resolved.length} resolved</span>}
+          {(trends.recurring?.length ?? 0) > 0 && <span className="pill pill--warn">{trends.recurring.length} recurring</span>}
+          {(trends.newIssues?.length ?? 0) > 0 && <span className="pill">{trends.newIssues.length} new</span>}
+        </div>
+      )}
+      <div className="mistake-groups">
+        {groups.map((group) => (
+          <div key={group.key} className="mistake-group stack-sm">
+            <h3>{group.label}</h3>
+            <ul className="list list--neutral">
+              {group.items.map((item, index) => (
+                <li key={`${group.key}-${index}`} className="stack-sm">
+                  {item.quote && <div className="quote">“{item.quote}”</div>}
+                  {item.correction && (
+                    <p>
+                      <strong>Correction: </strong>{item.correction}
+                    </p>
+                  )}
+                  {item.note && <p className="muted"><strong>Rule: </strong>{item.note}</p>}
+                  {item.practice && <p><strong>Drill: </strong>{item.practice}</p>}
+                </li>
+              ))}
+            </ul>
+          </div>
         ))}
-      </ul>
+      </div>
     </section>
   );
 }
@@ -300,11 +316,24 @@ export function PronunciationSection({ report }: { report: Report }) {
 export function PracticePlanSection({ report }: { report: Report }) {
   const days = report.practicePlan.days ?? [];
   if (days.length === 0) return null;
+  const focusAreas = [
+    ...(report.progressComparison?.stillWorkingOn ?? []).slice(0, 2),
+    ...report.improvements.slice(0, 2),
+  ];
   return (
     <section className="card stack">
       <div className="section-head">
         <h2>Seven-day practice plan</h2>
+        <p className="caption">
+          Built from this test’s corrections
+          {report.progressComparison?.hasPrevious ? " and what changed since your last attempt" : ""}.
+        </p>
       </div>
+      {focusAreas.length > 0 && (
+        <p className="caption plan-focus">
+          <strong>Plan focus:</strong> {focusAreas.join(" · ")}
+        </p>
+      )}
       <ul className="list list--neutral practice-plan-grid">
         {days.map((day) => (
           <li key={day.day}>
