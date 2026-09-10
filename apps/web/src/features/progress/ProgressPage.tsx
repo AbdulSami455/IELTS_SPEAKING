@@ -94,19 +94,25 @@ export function ProgressPage() {
   return (
     <AppShell>
       <div className="stack-lg">
-        <section className="row between">
+        <section className="page-heading row between">
           <div className="stack-sm">
-            <p className="kicker">Small steps. Real progress.</p>
-            <h1>Look how far you’ve come.</h1>
+            <p className="kicker">Your development</p>
+            <h1>My progress</h1>
             <p className="muted">
-              Understand your strengths, find your focus, and keep the
-              conversation going.
+              Track your band estimates and set a focused practice goal.
             </p>
           </div>
           <Link className="btn btn--primary" to="/">
             Practise again <Icon name="arrow" size={17} />
           </Link>
         </section>
+        {data && (
+          <section className="card stack" aria-label="Overall practice estimate">
+            <div className="row between"><div><p className="kicker">Across your recent tests</p><h2>Overall practice estimate: {bandText(data.overallEstimate ?? undefined)}</h2></div><Badge>{data.scoredTests ?? 0} scored tests</Badge></div>
+            <p className="muted">Average of up to five recent, conclusive tests scored with the same evaluator, rounded to the nearest half band. Your individual test bands stay separate.</p>
+            {(data.estimateSampleSize ?? 0) > 0 ? <p className="caption">Based on {data.estimateSampleSize} test(s). Observed bands: {bandText(data.observedLow ?? undefined)}–{bandText(data.observedHigh ?? undefined)}. More comparable tests show whether your performance is consistent; this is not a guarantee of exam accuracy.</p> : <p className="caption">One usable test can provide your first estimate. Inconclusive and older scoring versions are excluded.</p>}
+          </section>
+        )}
         {error && (
           <Alert tone="error">
             {error}{" "}
