@@ -117,6 +117,8 @@ export type Report = {
   criteria: CriterionScore[];
   strengths: string[];
   improvements: string[];
+  minorImprovements?: string[];
+  progressComparison?: ReportComparison;
   exampleRewrites: { original?: string; saferRewrite?: string }[];
   practicePlan: { days?: { day: number; focus: string; task: string; minutes?: number; successCriteria?: string }[] };
   disclaimer: string;
