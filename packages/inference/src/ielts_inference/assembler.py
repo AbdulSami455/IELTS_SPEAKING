@@ -18,7 +18,7 @@ DISCLAIMER = (
     "It is not an official IELTS score and does not predict a future examination result."
 )
 
-EVALUATOR_VERSION = "eval-2026.08.18"
+EVALUATOR_VERSION = "eval-2026.09.10"
 RUBRIC_VERSION = "ielts-speaking-practice-v1"
 
 HALLUCINATION_THRESHOLD = 0.7
@@ -76,25 +76,39 @@ def _validate_evidence(criterion_name: str, evidence_list: list, transcript: str
 def assemble(model_json: dict, features: dict, acoustic_coverage: float) -> dict:
     criteria = []
     inconclusive = False
+    reasons: list[str] = []
     speaking_ms = int(features.get("speaking_duration_ms") or 0)
-    if speaking_ms < 90_000:
+    voiced_ms = int(features.get("voiced_duration_ms", speaking_ms * (1 - float(features.get("silence_ratio") or 0))))
+    if voiced_ms < 90_000:
         inconclusive = True
-    if features.get("silence_ratio", 0) > 0.4:
+        reasons.append("Less than 90 seconds of usable speech was detected. Complete all three speaking parts with developed answers.")
+    if features.get("silence_ratio", 0) > 0.4 and voiced_ms < 90_000:
         inconclusive = True
+        reasons.append("Too much silence or very quiet audio was detected. Check microphone distance and replay your sample before starting.")
     if acoustic_coverage < 0.4:
         inconclusive = True
+        reasons.append("Audio coverage is too low for reliable fluency and pronunciation bands.")
 
     transcript_text = _gather_transcripts(features, model_json, acoustic_coverage)
+    if not transcript_text.strip():
+        inconclusive = True
+        reasons.append("No usable transcript was available for language scoring.")
     rejected_evidence: list[str] = []
 
     for key in CRITERIA:
         item = _criterion(model_json, key)
         band = BandScore.round_to_nearest_half(item["band"])
         confidence = item["confidence"]
+        if not transcript_text.strip() or (
+            key in {"fluency_and_coherence", "pronunciation"} and (acoustic_coverage < 0.4 or voiced_ms < 90_000)
+        ):
+            confidence = "inconclusive"
         validated_evidence = _validate_evidence(key, item["evidence"], transcript_text, rejected_evidence)
         if item["evidence"] and not validated_evidence:
             inconclusive = True
-            confidence = "low"
+            if confidence != "inconclusive":
+                confidence = "low"
+            reasons.append(f"{key.replace('_', ' ')}: the score evidence could not be verified in your transcript.")
         elif validated_evidence and len(validated_evidence) < len(item["evidence"]) * 0.5:
             confidence = "low"
         criteria.append(
@@ -108,6 +122,7 @@ def assemble(model_json: dict, features: dict, acoustic_coverage: float) -> dict
         )
         if confidence == "inconclusive":
             inconclusive = True
+            reasons.append(f"{key.replace('_', ' ')}: not enough evidence to assign a band.")
 
     mean = sum(item["band"] for item in criteria) / 4
     overall = None if inconclusive else BandScore.round_to_nearest_half(mean).value
@@ -115,6 +130,13 @@ def assemble(model_json: dict, features: dict, acoustic_coverage: float) -> dict
     improvements = _strings(model_json.get("improvements"), 3)
     mistakes = _validate_mistakes(model_json.get("mistakes") or [], transcript_text, rejected_evidence)
     return {
+        "score_readiness": {
+            "reasons": reasons,
+            "recorded_seconds": round(speaking_ms / 1000),
+            "voiced_seconds": round(voiced_ms / 1000),
+            "audio_coverage": round(acoustic_coverage, 3),
+            "minimum_tests": 1,
+        },
         "overall_band": overall,
         "is_inconclusive": inconclusive,
         "confidence_label": "inconclusive" if inconclusive else _overall_confidence(criteria),
@@ -140,8 +162,6 @@ def _validate_mistakes(mistakes: list, transcript: str, rejected: list[str]) -> 
             continue
         quote = str(item.get("quote") or "")
         if quote and _evidence_is_grounded(quote, transcript):
-            validated.append(item)
-        elif not quote:
             validated.append(item)
         else:
             rejected.append(f"mistake: evidence quote not found in transcript: {quote[:80]}")

@@ -24,6 +24,7 @@ def extract_features(text: str, words: list[dict], acoustic: dict) -> dict:
     }
     ttr = round(len(unique) / max(len(tokens), 1), 3)
     return {
+        "voiced_duration_ms": round(duration_ms * float(acoustic.get("speech_ratio") or 0)),
         "word_count": len(tokens),
         "unique_word_count": len(unique),
         "type_token_ratio": ttr,
