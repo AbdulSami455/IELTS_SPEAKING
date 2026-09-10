@@ -8,7 +8,7 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -30,7 +30,7 @@ from ielts_db.storage import ObjectStore
 from ielts_domain import AnswerEvent, AnswerState, TestEvent, TestState, apply_answer_transition, apply_transition
 from ielts_inference.assembler import EVALUATOR_VERSION, assemble
 from ielts_inference.features import extract_features
-from ielts_inference.openrouter import InferenceError, OpenRouterClient, TranscriptResult
+from ielts_inference.openrouter import InferenceError, OpenRouterClient, ScoreSchema, TranscriptResult
 from ielts_inference.progress import rebuild_progress_snapshot
 from ielts_inference.pronunciation import check_pronunciation
 from ielts_inference.quota import reserve_model_call
@@ -50,28 +50,27 @@ PUBLIC_STAGES = (
 
 SCORING_INSTRUCTIONS = """Score this IELTS-style speaking practice test.
 
-Return JSON with:
-{
-  "criteria": [
-    {
-      "criterion": "fluency_and_coherence|lexical_resource|grammatical_range_and_accuracy|pronunciation",
-      "band": 0-9 in 0.5 steps,
-      "confidence": "high|medium|low|inconclusive",
-      "subdimensions": {"key": number},
-      "evidence": [{"quote": "exact transcript span", "note": "why"}]
-    }
-  ],
-  "strengths": ["..."],
-  "improvements": ["three highest-value changes"],
-  "mistakes": [
-    {"type": "grammar|lexical|fluency|pronunciation", "quote": "exact transcript span", "correction": "...", "note": "..."}
-  ],
-  "fluencyNotes": ["grounded in WPM, pauses, silence — not accent"],
-  "exampleRewrites": [{"original": "...", "saferRewrite": "..."}],
-  "practicePlan": {"days": [{"day": 1, "focus": "...", "task": "..."}]}
-}
+Return one JSON object matching the response schema supplied below.
+The criteria array must have four SEPARATE objects with these exact criterion names:
+1. fluency_and_coherence
+2. lexical_resource
+3. grammatical_range_and_accuracy
+4. pronunciation
+Each criterion needs band (number from 0 to 9), confidence (high, medium, low or inconclusive),
+subdimensions (an object mapping skill names to numeric bands), and evidence (quote/note objects).
+Never combine criterion names or copy schema/type instructions into a field value.
+Each mistake needs type, quote, correction, note (the rule), and practice (a short drill).
+Use grammar, phrase, sentence_completion, or fluency as the mistake type.
+practicePlan must be an OBJECT containing a days ARRAY, not an array at the top level.
+Each day needs day, focus, task, minutes, and successCriteria.
+Use strengths and improvements arrays, exampleRewrites (original/saferRewrite), and fluencyNotes.
 
 Rules:
+- Review grammar (tense, articles, agreement), phrase choice/collocations, unfinished sentences and coherence separately. Report only mistakes actually supported by the transcript; do not fill a category with invented errors.
+- Give each correction an explanation and a brief practice drill, preserving the candidate's intended meaning.
+- Create seven distinct daily activities with duration, clear steps and a measurable success check; progress from targeted corrections to a recorded retest.
+- This is one test's score only. Never use prior test scores or imply an official IELTS result.
+- Do not identify specific mispronounced sounds from text or recognition confidence. Phoneme-level assessment is unavailable in the supplied measurements; use only supported pace, pause and recording observations.
 - Grammar and vocabulary from the candidate transcripts only. Quote the exact span.
 - Fluency and coherence from acoustics (WPM, pauses, silence, clipping) plus how ideas connect in the transcript.
 - Pronunciation from the pronunciation checker and acoustics. Accent is not an error.
@@ -94,6 +93,8 @@ def _build_scoring_prompt(part_payloads: list[dict], merged_features: dict, mean
         guarded_payloads.append(guarded)
     return (
         SCORING_INSTRUCTIONS
+        + "\nRequired response JSON schema (return an instance, not the schema):\n"
+        + json.dumps(ScoreSchema.model_json_schema())
         + "\n\nAcoustic/feature summary:\n"
         + json.dumps({"merged": merged_features, "coverage": mean_coverage}, indent=2)
         + "\n\nConversation summary:\n"
@@ -279,15 +280,17 @@ async def evaluate_test(session: AsyncSession, test_id: str, config: Environment
         await reserve_model_call(session, test.user_id, test_id, "holistic_scoring", config)
         scoring_prompt = _build_scoring_prompt(part_payloads, merged_features, mean_coverage, conversation_context)
         scored = client.score_speaking(scoring_prompt)
+        merged_features["transcripts"] = [item["transcript"] for item in part_payloads]
         assembled = assemble(scored.raw, merged_features, mean_coverage)
         _set_stage(job, "building_report", 90)
         await session.commit()
 
         report_row = await session.execute(select(Report).where(Report.test_session_id == test_id))
         existing_report = report_row.scalar_one_or_none()
-        if existing_report is None:
-            existing_report = Report(
-                id=str(uuid.uuid4()),
+        is_new_report = existing_report is None
+        report_id = existing_report.id if existing_report is not None else str(uuid.uuid4())
+        existing_report = await session.merge(Report(
+                id=report_id,
                 test_session_id=test_id,
                 evaluator_version=assembled["evaluator_version"],
                 rubric_version=assembled["rubric_version"],
@@ -298,6 +301,7 @@ async def evaluate_test(session: AsyncSession, test_id: str, config: Environment
                 parts={
                     "answers": len(part_payloads),
                     "pronunciation": [item["pronunciation"] for item in part_payloads],
+                    "score_readiness": assembled["score_readiness"],
                     "mistakes": assembled["mistakes"],
                     "fluency": assembled["fluency"],
                 },
@@ -307,38 +311,40 @@ async def evaluate_test(session: AsyncSession, test_id: str, config: Environment
                 practice_plan=assembled["practice_plan"],
                 disclaimer=assembled["disclaimer"],
                 is_inconclusive=assembled["is_inconclusive"],
+        ))
+        await session.execute(delete(CriterionScore).where(CriterionScore.test_session_id == test_id))
+        await session.execute(delete(SkillObservation).where(SkillObservation.test_session_id == test_id))
+        await session.flush()
+        for item in assembled["criteria"]:
+            session.add(
+                CriterionScore(
+                    test_session_id=test_id,
+                    criterion=item["criterion"],
+                    band=item["band"],
+                    confidence=item["confidence"],
+                    evidence=item["evidence"],
+                    subdimensions=item["subdimensions"] if isinstance(item["subdimensions"], dict) else {},
+                    evaluator_version=assembled["evaluator_version"],
+                )
             )
-            session.add(existing_report)
-            await session.flush()
-            for item in assembled["criteria"]:
+            subdims = item["subdimensions"] if isinstance(item["subdimensions"], dict) else {}
+            for skill_key, band in subdims.items():
+                try:
+                    numeric = float(band)
+                except (TypeError, ValueError):
+                    continue
                 session.add(
-                    CriterionScore(
+                    SkillObservation(
                         test_session_id=test_id,
-                        criterion=item["criterion"],
-                        band=item["band"],
-                        confidence=item["confidence"],
+                        skill_key=_skill_observation_key(item["criterion"], str(skill_key)),
+                        comparability_group=assembled["evaluator_version"],
+                        band=numeric,
+                        confidence_label=item["confidence"],
                         evidence=item["evidence"],
-                        subdimensions=item["subdimensions"] if isinstance(item["subdimensions"], dict) else {},
                         evaluator_version=assembled["evaluator_version"],
                     )
                 )
-                subdims = item["subdimensions"] if isinstance(item["subdimensions"], dict) else {}
-                for skill_key, band in subdims.items():
-                    try:
-                        numeric = float(band)
-                    except (TypeError, ValueError):
-                        continue
-                    session.add(
-                        SkillObservation(
-                            test_session_id=test_id,
-                            skill_key=_skill_observation_key(item["criterion"], str(skill_key)),
-                            comparability_group=assembled["evaluator_version"],
-                            band=numeric,
-                            confidence_label=item["confidence"],
-                            evidence=item["evidence"],
-                            evaluator_version=assembled["evaluator_version"],
-                        )
-                    )
+        if is_new_report:
             for day in (assembled["practice_plan"].get("days") or [])[:7]:
                 session.add(
                     PracticeAction(
@@ -364,8 +370,10 @@ async def evaluate_test(session: AsyncSession, test_id: str, config: Environment
         job.status = "COMPLETED"
         job.completed_at = datetime.now(timezone.utc)
         _set_stage(job, "completed", 100)
+        await session.flush()
         await rebuild_progress_snapshot(session, test.user_id)
-        record_test_completed()
+        if is_new_report:
+            record_test_completed()
         await session.commit()
         await session.refresh(existing_report)
         return existing_report
@@ -434,6 +442,9 @@ async def _job(session: AsyncSession, test_id: str, job_type: str) -> Processing
     if existing:
         existing.status = "RUNNING"
         existing.started_at = datetime.now(timezone.utc)
+        existing.completed_at = None
+        existing.error_code = None
+        existing.error_message = None
         return existing
     job = ProcessingJob(
         id=str(uuid.uuid4()),
@@ -457,12 +468,17 @@ def _merge_features(left: dict, right: dict) -> dict:
     if not left:
         return dict(right)
     merged = dict(left)
+    left_duration = float(left.get("speaking_duration_ms") or 0)
+    right_duration = float(right.get("speaking_duration_ms") or 0)
+    duration = left_duration + right_duration
+    averages = {"type_token_ratio", "rms", "mean_sentence_words", "mean_pause_seconds", "mean_length_of_run"}
     for key, value in right.items():
         if isinstance(value, (int, float)) and isinstance(merged.get(key), (int, float)):
-            if key.endswith("ratio") or key in {"type_token_ratio", "rms"}:
-                merged[key] = round((float(merged[key]) + float(value)) / 2, 4)
+            if key.endswith("ratio") or key in averages:
+                merged[key] = round((float(merged[key]) * left_duration + value * right_duration) / max(duration, 1), 4)
             else:
                 merged[key] = merged[key] + value
         else:
             merged[key] = value
+    merged["words_per_minute"] = round(float(merged.get("word_count") or 0) / max(duration / 60000, 1 / 60), 1)
     return merged

@@ -35,6 +35,26 @@ Rules:
 - If the transcript is empty or unusable, ask_follow_up false.
 """
 
+PART1_INTRO_TEXT = (
+    "Good morning. My name is Sarah, and I will be your examiner today. "
+    "This is an IELTS Speaking practice test with three parts. "
+    "I will explain each part before we begin. "
+    "In Part 1, I will ask you some questions about familiar topics. "
+    "To start, could you tell me your full name, please?"
+)
+
+PART2_INTRO_PREFIX = (
+    "That is the end of Part 1. Now we move on to Part 2. "
+    "I am going to give you a topic, and I would like you to speak for one to two minutes. "
+    "You have one minute to think about what you are going to say. You may make notes if you wish. "
+    "Here is your topic. "
+)
+
+PART3_INTRO_PREFIX = (
+    "Thank you. That is the end of Part 2. "
+    "Now I would like to ask you some more general questions related to what we have been discussing. "
+)
+
 PART1_INSTRUCTIONS = """You are an IELTS Speaking examiner for a practice test.
 
 Generate exactly one short spoken Part 1 question in English.
@@ -42,10 +62,14 @@ Generate exactly one short spoken Part 1 question in English.
 Rules:
 - Ask only one question.
 - Sound natural, formal, and brief, like a real Cambridge examiner.
-- Stay strictly on the assigned topic in the user payload.
-- If the previous answer was very short (< 15 words), ask a simpler, more guided question.
-- If the previous answer was long (> 30 words), ask a deeper or more complex question.
-- Cover a typical IELTS angle for that topic (habits, preferences, how often, change, people you do it with).
+- Stay strictly on the assigned topic and the assigned question angle in the user payload.
+- Use the assigned angle to make the question specific and concrete — not a vague opener.
+- If is_first_topic_question is true, begin with: "Thank you. Now let's talk about {assigned_topic}." then your question.
+- If the previous answer was very short (< 15 words), ask a simpler, more guided question on the same angle.
+- If the previous answer was long (> 30 words), ask a deeper or more specific follow-on on the same topic.
+- Avoid generic questions such as "Do you like X?", "Tell me about X", or "What do you think about X?" without a concrete angle.
+- Good examples: "How often do you take public transport in your city, and has that changed since you were younger?"
+- Bad examples: "Do you like travel?", "Tell me about music."
 - Do not switch to food, cooking, restaurants, or meals unless the assigned topic is food.
 - Do not explain the test, give feedback, or score.
 - Do not repeat earlier prompts.
@@ -60,8 +84,9 @@ Generate one Part 2 cue-card task in English for the assigned theme.
 
 Rules:
 - Stay on the assigned theme. You may rephrase the task slightly so it sounds natural.
-- The spoken prompt should tell the candidate what to describe.
-- Include 3 or 4 bullet prompts (who/what/where, when, what happened, and why it matters).
+- Make the task specific and vivid — not a generic "describe something important".
+- Bullet prompts must ask for concrete details (who, where, when, what happened, how you felt, why it matters).
+- Include 3 or 4 bullet prompts.
 - Do not switch to an unrelated theme such as food unless that is the assigned theme.
 - Do not score, teach, or add extra commentary.
 
@@ -80,7 +105,8 @@ Generate exactly one Part 3 discussion question in English.
 Rules:
 - Ask only one question.
 - Stay on the assigned Part 3 theme (provided as "assigned_theme"). You may reference the candidate's Part 2 topic ("part2_theme") to build continuity.
-- Prefer why, compare, impact, or future angles.
+- Prefer why, compare, impact, or future angles. Be specific — avoid vague "What do you think about society?"
+- If is_first_part3_question is true, begin with the provided part3_intro_prefix, then ask your question.
 - If the candidate flag "is_nervous" is true, use encouraging, supportive language and avoid challenging or judgmental phrasing.
 - Do not score, teach, or correct.
 
@@ -117,7 +143,11 @@ def parse_spoken_question(raw: dict, *, timing_seconds: int, asset_version: str 
     return GeneratedTurn(question, timing_seconds, None, asset_version)
 
 
-def parse_cue_card(raw: dict) -> GeneratedTurn | None:
+def part1_intro_turn() -> GeneratedTurn:
+    return GeneratedTurn(PART1_INTRO_TEXT, 60, None, "intro")
+
+
+def parse_cue_card(raw: dict, *, include_part2_intro: bool = True) -> GeneratedTurn | None:
     topic = str(raw.get("topic") or "").strip()
     task = str(raw.get("task") or "").strip()
     prompts = [str(item).strip() for item in (raw.get("prompts") or []) if str(item).strip()]
@@ -126,7 +156,11 @@ def parse_cue_card(raw: dict) -> GeneratedTurn | None:
     if len(prompts) < 3 or len(prompts) > 4:
         return None
     cue = {"title": topic or "Part 2", "prompts": prompts}
-    spoken = " ".join([task, cue["title"], *prompts])
+    spoken_parts = []
+    if include_part2_intro:
+        spoken_parts.append(PART2_INTRO_PREFIX)
+    spoken_parts.extend([task, cue["title"], *prompts])
+    spoken = " ".join(spoken_parts)
     return GeneratedTurn(spoken, 120, cue, "generated-part2")
 
 
@@ -136,12 +170,16 @@ def part1_prompt_input(
     *,
     topic_label: str,
     topic_guidance: str,
+    question_angle: str,
+    is_first_topic_question: bool = False,
 ) -> str:
     return json.dumps(
         {
             "part": 1,
             "assigned_topic": topic_label,
             "stay_on": topic_guidance,
+            "question_angle": question_angle,
+            "is_first_topic_question": is_first_topic_question,
             "asked_prompts": asked_prompts[-8:],
             "candidate_history": history[-3:],
         }
@@ -160,12 +198,23 @@ def part2_prompt_input(history: list[dict], *, theme_label: str, task: str, part
     )
 
 
-def part3_prompt_input(history: list[dict], asked_prompts: list[str], *, theme: str, part2_theme: str = "") -> str:
+def part3_prompt_input(
+    history: list[dict],
+    asked_prompts: list[str],
+    *,
+    theme: str,
+    part2_theme: str = "",
+    is_first_part3_question: bool = False,
+    is_nervous: bool = False,
+) -> str:
     return json.dumps(
         {
             "part": 3,
             "assigned_theme": theme,
             "part2_theme": part2_theme,
+            "part3_intro_prefix": PART3_INTRO_PREFIX,
+            "is_first_part3_question": is_first_part3_question,
+            "is_nervous": is_nervous,
             "asked_prompts": asked_prompts[-8:],
             "candidate_history": history[-5:],
         }

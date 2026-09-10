@@ -4,6 +4,7 @@ from ielts_inference.topics import (
     PART1_TOPICS,
     PART2_THEMES,
     choose_session_topics,
+    part1_question_angle,
     part1_topic_for_index,
 )
 
@@ -18,12 +19,18 @@ def test_catalog_covers_core_ielts_ranges():
     assert len(PART2_THEMES) >= 20
 
 
-def test_part1_uses_two_questions_per_topic():
-    plan = {"part1": ["travel", "music"], "part2": "journey", "part3_theme": "travel"}
+def test_part1_rotates_across_three_topics():
+    plan = {"part1": ["travel", "music", "sport"], "part2": "journey", "part3_theme": "travel"}
     assert part1_topic_for_index(plan, 0)["id"] == "travel"
-    assert part1_topic_for_index(plan, 1)["id"] == "travel"
-    assert part1_topic_for_index(plan, 2)["id"] == "music"
-    assert part1_topic_for_index(plan, 3)["id"] == "music"
+    assert part1_topic_for_index(plan, 1)["id"] == "music"
+    assert part1_topic_for_index(plan, 2)["id"] == "sport"
+    assert part1_topic_for_index(plan, 3)["id"] == "travel"
+
+
+def test_part1_question_angle_is_specific():
+    angle = part1_question_angle("travel", 0)
+    assert "trip" in angle or "travel" in angle
+    assert angle != "Do you like travel?"
 
 
 def test_recent_food_is_not_selected_again_immediately():
