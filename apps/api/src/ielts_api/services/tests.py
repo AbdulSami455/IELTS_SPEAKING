@@ -35,6 +35,7 @@ from ielts_domain import (
 )
 from ielts_inference.evaluation import PUBLIC_STAGES
 from ielts_inference.assembler import EVALUATOR_VERSION
+from ielts_inference.report_compare import compare_reports
 from ielts_inference.score_summary import summarize_scores
 from ielts_inference.openrouter import InferenceError, OpenRouterClient
 from ielts_inference.transcript import clean_transcript
@@ -610,25 +611,53 @@ class TestService:
         if test is None:
             raise not_found("Report not found")
         criteria = await self.reports.list_criteria(test.id)
+        criteria_payload = [
+            {
+                "criterion": item.criterion,
+                "band": item.band if item.confidence != "inconclusive" else None,
+                "confidence": item.confidence,
+                "subdimensions": [
+                    {"key": key, "band": value} for key, value in (item.subdimensions or {}).items()
+                ],
+                "evidence": item.evidence or [],
+            }
+            for item in criteria
+        ]
+        parts = report.parts or {}
+        minor_improvements = parts.get("minor_improvements") or []
+        progress_comparison = {"has_previous": False}
+        previous = await self.reports.previous_comparable(
+            user_id, report.created_at, report.evaluator_version,
+        )
+        if previous is not None:
+            _prev_test, prev_report = previous
+            prev_criteria = await self.reports.list_criteria(_prev_test.id)
+            prev_criteria_payload = [
+                {
+                    "criterion": item.criterion,
+                    "band": item.band,
+                    "confidence": item.confidence,
+                }
+                for item in prev_criteria
+            ]
+            progress_comparison = compare_reports(
+                current_criteria=criteria_payload,
+                previous_criteria=prev_criteria_payload,
+                current_mistakes=parts.get("mistakes"),
+                previous_mistakes=(prev_report.parts or {}).get("mistakes"),
+                current_overall=report.overall_band,
+                previous_overall=prev_report.overall_band,
+                previous_created_at=prev_report.created_at.isoformat(),
+            )
         return {
             "report_id": report.id,
             "test_id": test.id,
             "overall_band": report.overall_band,
             "confidence_label": report.confidence_label,
-            "criteria": [
-                {
-                    "criterion": item.criterion,
-                    "band": item.band if item.confidence != "inconclusive" else None,
-                    "confidence": item.confidence,
-                    "subdimensions": [
-                        {"key": key, "band": value} for key, value in (item.subdimensions or {}).items()
-                    ],
-                    "evidence": item.evidence or [],
-                }
-                for item in criteria
-            ],
+            "criteria": criteria_payload,
             "strengths": report.strengths or [],
             "improvements": report.improvements or [],
+            "minor_improvements": minor_improvements,
             "example_rewrites": report.example_rewrites or [],
             "practice_plan": report.practice_plan or {},
             "disclaimer": report.disclaimer,
@@ -637,14 +666,15 @@ class TestService:
             "model_policy_version": report.model_policy_version,
             "created_at": report.created_at.isoformat(),
             "is_inconclusive": report.is_inconclusive,
-            "score_readiness": (report.parts or {}).get("score_readiness") or {
+            "score_readiness": parts.get("score_readiness") or {
                 "reasons": ["This older report did not retain scoring diagnostics. Reassess the saved test with the current evaluator."] if report.is_inconclusive else [],
                 "minimum_tests": 1,
             },
+            "progress_comparison": progress_comparison,
             "transcripts": await self._transcripts(test.id),
-            "pronunciation": (report.parts or {}).get("pronunciation") or [],
-            "mistakes": (report.parts or {}).get("mistakes") or [],
-            "fluency": (report.parts or {}).get("fluency") or [],
+            "pronunciation": parts.get("pronunciation") or [],
+            "mistakes": parts.get("mistakes") or [],
+            "fluency": parts.get("fluency") or [],
             "accent_note": self._accent_note(report),
         }
 
