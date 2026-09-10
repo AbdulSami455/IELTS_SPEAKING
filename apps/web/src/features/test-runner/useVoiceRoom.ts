@@ -346,8 +346,9 @@ export function useVoiceRoom(testId: string) {
           void beginUtterance();
       } else if (recordingRef.current) {
         const quietFor = now - lastVoiceAtRef.current;
-        const budget = silenceBudget(session?.state ?? "PART1");
-        if (quietFor >= budget && voicedMsRef.current >= MIN_VOICED_MS) {
+        const budget = silenceBudget(session?.state ?? "PART1", activeTurn);
+        const voicedNeeded = minVoicedMs(activeTurn);
+        if (quietFor >= budget && voicedMsRef.current >= voicedNeeded) {
           void finishUtterance();
         } else if (quietFor >= 2000 && voicedMsRef.current < NOISE_BLIP_MS) {
           void cancelUtterance();
@@ -631,6 +632,7 @@ export function useVoiceRoom(testId: string) {
     startPrep,
     finishPrep,
     finish,
+    finishAnswer: finishUtterance,
     sendRestoredDraft,
     discardRestoredDraft,
     reconnect: () => connectSocket(api.realtimeSocketUrl(testId)),
