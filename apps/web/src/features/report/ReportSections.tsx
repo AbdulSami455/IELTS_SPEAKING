@@ -1,5 +1,5 @@
 import type { Report } from "../../lib/api";
-import { criterionLabel, humanize } from "../../lib/format";
+import { humanize } from "../../lib/format";
 import { Badge } from "../../components/ui";
 
 export function InsightPair({ report }: { report: Report }) {
@@ -36,21 +36,21 @@ export function MistakesSection({ report }: { report: Report }) {
       <div className="section-head">
         <h2>Fine-tune your answers</h2>
         <p className="caption">
-          Grounded in your transcript. Low-confidence items are marked as
-          possible.
+          Specific corrections from your transcript, with explanations and practice.
         </p>
       </div>
       <ul className="list list--neutral">
         {report.mistakes.map((item, index) => (
           <li key={index} className="stack-sm">
-            <Badge>{criterionLabel(item.type ?? "issue")}</Badge>
+            <Badge>{humanize(item.type ?? "issue")}</Badge>
             {item.quote && <div className="quote">“{item.quote}”</div>}
             {item.correction && (
               <p>
                 Try: <strong>{item.correction}</strong>
               </p>
             )}
-            {item.note && <p className="muted">{item.note}</p>}
+            {item.note && <p className="muted"><strong>Why: </strong>{item.note}</p>}
+            {item.practice && <p><strong>Practise: </strong>{item.practice}</p>}
           </li>
         ))}
       </ul>
@@ -157,8 +157,7 @@ export function PronunciationSection({ report }: { report: Report }) {
       <div className="section-head">
         <h2>Pronunciation</h2>
         <p className="caption">
-          Accent is never treated as an error. Only acoustic evidence appears
-          here.
+          Pace and recording feedback come from audio measurements. Specific sound, stress, and intonation mistakes cannot be reliably identified by the current checker. Accent is not an error.
         </p>
       </div>
       {report.pronunciation.map((item, index) => (
@@ -174,7 +173,7 @@ export function PronunciationSection({ report }: { report: Report }) {
           </div>
           {(item.unclearWords ?? []).length > 0 && (
             <p>
-              <span className="caption">Words to revisit: </span>
+              <span className="caption">Uncertain recognition (not confirmed pronunciation mistakes): </span>
               {(item.unclearWords ?? []).join(", ")}
             </p>
           )}
@@ -206,11 +205,14 @@ export function PracticePlanSection({ report }: { report: Report }) {
       <div className="section-head">
         <h2>Seven-day practice plan</h2>
       </div>
-      <ul className="list list--neutral">
+      <ul className="list list--neutral practice-plan-grid">
         {days.map((day) => (
           <li key={day.day}>
             <strong>Day {day.day}</strong>
-            {day.focus ? ` · ${humanize(day.focus)}` : ""} — {day.task}
+            {day.focus ? ` · ${humanize(day.focus)}` : ""}
+            {day.minutes && <span className="caption"> · {day.minutes} min</span>}
+            <p>{day.task}</p>
+            {day.successCriteria && <p className="muted"><strong>Success check: </strong>{day.successCriteria}</p>}
           </li>
         ))}
       </ul>

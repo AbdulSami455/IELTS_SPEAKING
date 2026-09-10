@@ -25,9 +25,9 @@ export function CriterionGrid({ criteria }: CriterionGridProps) {
             className="band-display"
             style={{ fontSize: "clamp(2.4rem, 5vw, 3.4rem)" }}
           >
-            {item.band.toFixed(1)}
+            {item.band == null ? "—" : item.band.toFixed(1)}
           </p>
-          <Meter value={item.band} label={criterionLabel(item.criterion)} />
+          {item.band != null && <Meter value={item.band} label={criterionLabel(item.criterion)} />}
           <div className="chips">
             <span className="pill">{item.confidence}</span>
             {item.subdimensions.map((sub) => (

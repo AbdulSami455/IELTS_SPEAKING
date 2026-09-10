@@ -90,10 +90,10 @@ export function ReportPage() {
   return (
     <AppShell>
       <div className="stack-lg">
-        <div className="row between">
+        <div className="page-heading row between">
           <div className="stack-sm">
-            <p className="kicker">A moment of reflection</p>
-            <h1>Your speaking report.</h1>
+            <p className="kicker">Results & feedback</p>
+            <h1>Your speaking report</h1>
           </div>
           <Link to="/progress" className="btn btn--secondary">
             View my progress →
@@ -118,11 +118,15 @@ export function ReportPage() {
         </div>
         <div id="feedback" className="stack-lg">
           <InsightPair report={report} />
-          <MistakesSection report={report} />
-          <RewritesSection report={report} />
-          <FluencySection report={report} />
+          <div className="report-feedback-grid">
+            <div className="stack-lg">
+              <MistakesSection report={report} />
+              <RewritesSection report={report} />
+            </div>
+            <FluencySection report={report} />
+          </div>
         </div>
-        <div id="answers" className="stack-lg">
+        <div id="answers" className="report-feedback-grid">
           <TranscriptsSection report={report} />
           <PronunciationSection report={report} />
         </div>
