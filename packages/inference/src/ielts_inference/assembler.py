@@ -82,15 +82,17 @@ def assemble(model_json: dict, features: dict, acoustic_coverage: float) -> dict
     reasons: list[str] = []
     speaking_ms = int(features.get("speaking_duration_ms") or 0)
     voiced_ms = int(features.get("voiced_duration_ms", speaking_ms * (1 - float(features.get("silence_ratio") or 0))))
-    if voiced_ms < 90_000:
+    if voiced_ms < MIN_VOICED_MS:
         inconclusive = True
-        reasons.append("Less than 90 seconds of usable speech was detected. Complete all three speaking parts with developed answers.")
-    if features.get("silence_ratio", 0) > 0.4 and voiced_ms < 90_000:
+        reasons.append(
+            "Less than one minute of usable speech was detected. Complete all three parts with developed answers."
+        )
+    if features.get("silence_ratio", 0) > 0.45 and voiced_ms < MIN_VOICED_MS:
         inconclusive = True
-        reasons.append("Too much silence or very quiet audio was detected. Check microphone distance and replay your sample before starting.")
-    if acoustic_coverage < 0.4:
-        inconclusive = True
-        reasons.append("Audio coverage is too low for reliable fluency and pronunciation bands.")
+        reasons.append("Too much silence or very quiet audio was detected. Check microphone distance before starting.")
+    low_audio = acoustic_coverage < 0.35
+    if low_audio:
+        reasons.append("Audio coverage is limited; fluency and pronunciation bands use extra caution.")
 
     transcript_text = _gather_transcripts(features, model_json, acoustic_coverage)
     if not transcript_text.strip():
