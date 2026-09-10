@@ -1,6 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import type { ReactNode } from "react";
 import { logout } from "../../lib/api";
+import { Brand } from "./Brand";
 import { Icon } from "../ui/Icon";
 
 async function signOut() {
@@ -20,11 +21,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       </a>
       <header className="topbar">
         <div className="topbar-inner">
-          <Link to="/" className="brand">
-            <img className="brand-mark" src="/hinterbuild-logo.svg" alt="" width="40" height="40" />
-            <span>
-              IELTS Speaking<span className="brand-subtitle">by Hinterbuild</span>
-            </span>
+          <Link to="/" className="brand-link" aria-label="IELTS Speaking by Hinterbuild home">
+            <Brand />
           </Link>
           <nav className="nav" aria-label="Primary">
             <Link
@@ -40,6 +38,13 @@ export function AppShell({ children }: { children: ReactNode }) {
               to="/progress"
             >
               <Icon name="chart" size={17} /> My progress
+            </Link>
+            <Link
+              className={`nav-link${location.pathname === "/leaderboard" ? " active" : ""}`}
+              aria-current={location.pathname === "/leaderboard" ? "page" : undefined}
+              to="/leaderboard"
+            >
+              <Icon name="trophy" size={17} /> Leaderboard
             </Link>
             <button
               type="button"

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Brand } from "../../components/layout/Brand";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../lib/api";
 import { Alert, Button, Field, TextInput } from "../../components/ui";
@@ -34,7 +35,7 @@ export function LoginPage() {
     <div className="auth-shell">
       <div className="auth-grid">
         <div className="auth-story">
-          <p className="kicker">IELTS Speaking by Hinterbuild</p>
+          <Brand />
           <h1>Practice a full IELTS speaking test.</h1>
           <div className="auth-story-body">
             <p>Live Part 1–3 interview with an AI examiner.</p>
