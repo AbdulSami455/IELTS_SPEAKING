@@ -11,6 +11,7 @@ import { AppShell } from "../../components/layout/AppShell";
 import { Alert, Badge, Button, Field, SelectInput } from "../../components/ui";
 import { Icon } from "../../components/ui/Icon";
 import { ProgressChart } from "./ProgressChart";
+import { ExamJourneyChart } from "./ExamJourneyChart";
 import { SkillBars } from "./SkillBars";
 import { useProgress } from "./useProgress";
 
@@ -157,6 +158,9 @@ export function ProgressPage() {
                 </span>
               </div>
             </section>
+            {data.examHistory && (
+              <ExamJourneyChart examHistory={data.examHistory} />
+            )}
             <div className="dashboard-charts">
               <ProgressChart
                 timeline={data.timeline}

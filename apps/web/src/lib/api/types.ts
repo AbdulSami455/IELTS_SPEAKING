@@ -85,6 +85,33 @@ export type PronunciationPart = {
   modelNotes?: { findings?: string[]; notes?: string[] } | null;
 };
 
+export type VocabularyInsights = {
+  hasContent: boolean;
+  stats: { label: string; value: string }[];
+  wordsYouUsed: string[];
+  lexicalHighlights: { quote?: string; note?: string; practice?: string }[];
+  phraseFixes: { type?: string; quote?: string; correction?: string; note?: string; practice?: string }[];
+  grammarWordChoices: { type?: string; quote?: string; correction?: string; note?: string; practice?: string }[];
+  coachingTips: string[];
+};
+
+export type FluencyInsights = {
+  band?: number | null;
+  confidence?: string;
+  metrics: { label: string; value: string; status: "good" | "watch" | "low"; hint?: string }[];
+  observations: { kind: string; title: string; body: string; quote?: string }[];
+  focusNext: string[];
+};
+
+export type PronunciationInsights = {
+  practiceWords: string[];
+  improvements: { title: string; detail: string; action: string }[];
+  findings: string[];
+  notes: string[];
+  accentNote?: string | null;
+  disclaimer: string;
+};
+
 export type ReportComparison = {
   hasPrevious: boolean;
   previousTestAt?: string;
@@ -131,6 +158,41 @@ export type Report = {
   pronunciation?: PronunciationPart[];
   mistakes?: { type?: string; quote?: string; correction?: string; note?: string; practice?: string }[];
   fluency?: string[];
+  accentNote?: string | null;
+  vocabularyInsights?: VocabularyInsights;
+  fluencyInsights?: FluencyInsights;
+  pronunciationInsights?: PronunciationInsights;
+};
+
+export type ExamHistoryEntry = {
+  testId: string;
+  reportId: string;
+  date: string;
+  examIndex: number;
+  label: string;
+  overallBand: number;
+  criteria: Record<string, number>;
+};
+
+export type ExamJourney = {
+  fromLabel: string;
+  toLabel: string;
+  firstOverallBand: number;
+  lastOverallBand: number;
+  overallDelta: number;
+  criteria: {
+    criterion: string;
+    firstBand: number;
+    lastBand: number;
+    delta: number;
+  }[];
+};
+
+export type ExamHistoryOverview = {
+  exams: ExamHistoryEntry[];
+  lifetimeOverallBand?: number | null;
+  scoredExamCount: number;
+  journey?: ExamJourney | null;
 };
 
 export type ProgressOverview = {
@@ -150,6 +212,7 @@ export type ProgressOverview = {
   activeGoal?: { targetBand: number; targetDate: string; focusSkills: string[] };
   priorities: string[];
   timeline: { testId: string; date: string; overallBand?: number; reportId: string }[];
+  examHistory?: ExamHistoryOverview;
   actions: { id: string; description: string; category: string; completed: boolean; skipped: boolean }[];
 };
 

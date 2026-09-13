@@ -109,6 +109,7 @@ export type {
   CriterionScore,
   DeviceCheckPayload,
   GoalInput,
+  ExamHistoryOverview,
   ProgressOverview,
   PronunciationPart,
   RealtimeSession,

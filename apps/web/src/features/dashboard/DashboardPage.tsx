@@ -13,6 +13,7 @@ import { Icon } from "../../components/ui/Icon";
 import { useUser } from "../auth/useUser";
 import { useProgress } from "../progress/useProgress";
 import { ProgressChart } from "../progress/ProgressChart";
+import { ExamJourneyChart } from "../progress/ExamJourneyChart";
 import { SkillBars } from "../progress/SkillBars";
 
 function attemptLink(test: TestListItem) {
@@ -216,9 +217,17 @@ export function DashboardPage() {
               icon: "chart" as const,
             },
             {
-              label: "Overall practice estimate",
-              value: bandText(data?.overallEstimate ?? undefined),
-              note: data?.estimateSampleSize ? `Based on ${data.estimateSampleSize} recent scored test${data.estimateSampleSize === 1 ? "" : "s"}` : "Available after one usable test",
+              label: "Lifetime overall (all tests)",
+              value: bandText(
+                data?.examHistory?.lifetimeOverallBand ??
+                  data?.overallEstimate ??
+                  undefined,
+              ),
+              note: data?.examHistory?.scoredExamCount
+                ? `Mean band across ${data.examHistory.scoredExamCount} scored test${data.examHistory.scoredExamCount === 1 ? "" : "s"}`
+                : data?.estimateSampleSize
+                  ? `Based on ${data.estimateSampleSize} recent scored test${data.estimateSampleSize === 1 ? "" : "s"}`
+                  : "Available after one usable test",
               icon: "spark" as const,
             },
             {
@@ -258,13 +267,18 @@ export function DashboardPage() {
           </div>
         ) : (
           data && (
-            <div className="dashboard-charts">
-              <ProgressChart
-                timeline={data.timeline}
-                target={data.activeGoal?.targetBand}
-                compact
-              />
-              <SkillBars stats={data.criterionStats} />
+            <div className="stack-lg dashboard-progress">
+              {data.examHistory && (
+                <ExamJourneyChart examHistory={data.examHistory} />
+              )}
+              <div className="dashboard-charts">
+                <ProgressChart
+                  timeline={data.timeline}
+                  target={data.activeGoal?.targetBand}
+                  compact
+                />
+                <SkillBars stats={data.criterionStats} />
+              </div>
             </div>
           )
         )}
@@ -333,6 +347,9 @@ export function DashboardPage() {
                 const point = data?.timeline.find(
                   (p) => p.testId === test.testId,
                 );
+                const exam = data?.examHistory?.exams.find(
+                  (e) => e.testId === test.testId,
+                );
                 return (
                   <div className="attempt-row" key={test.testId}>
                     <span className="attempt-icon">
@@ -349,11 +366,23 @@ export function DashboardPage() {
                     >
                       {prettyState(test.state)}
                     </Badge>
-                    <strong className="attempt-band">
-                      {point?.overallBand !== undefined
-                        ? `${bandText(point.overallBand)} band`
-                        : "—"}
-                    </strong>
+                    <div className="attempt-scores stack-sm">
+                      <strong className="attempt-band">
+                        {exam?.overallBand !== undefined
+                          ? `${bandText(exam.overallBand)} overall`
+                          : point?.overallBand !== undefined
+                            ? `${bandText(point.overallBand)} band`
+                            : "—"}
+                      </strong>
+                      {exam && (
+                        <span className="caption attempt-criteria">
+                          F {bandText(exam.criteria.fluency_and_coherence)} · V{" "}
+                          {bandText(exam.criteria.lexical_resource)} · G{" "}
+                          {bandText(exam.criteria.grammatical_range_and_accuracy)} · P{" "}
+                          {bandText(exam.criteria.pronunciation)}
+                        </span>
+                      )}
+                    </div>
                     {link ? (
                       <Link className="text-link" to={link}>
                         {test.state === "COMPLETED"
