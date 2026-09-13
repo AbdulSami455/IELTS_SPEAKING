@@ -46,11 +46,11 @@ export function roomCopy(args: RoomCopyArgs): RoomCopy {
   if (args.busy) {
     return {
       mode: "think",
-      kicker: "Now",
-      title: "One moment",
+      kicker: "Next question",
+      title: "Preparing your next question",
       hint: args.isIntro
-        ? "Preparing your first topic question."
-        : "The examiner is moving to the next question.",
+        ? "Your introduction is saved. The examiner is choosing your first topic question."
+        : "Take a breath — the examiner is listening to your answer and lining up what comes next.",
     };
   }
   if (args.recording) {

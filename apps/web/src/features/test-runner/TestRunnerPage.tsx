@@ -8,6 +8,7 @@ import { RoomStage } from "./RoomStage";
 import { roomCopy } from "./roomCopy";
 import { useVoiceRoom } from "./useVoiceRoom";
 import { QuestionPanel } from "./QuestionPanel";
+import { NextQuestionLoader } from "./NextQuestionLoader";
 import { Icon } from "../../components/ui/Icon";
 
 export function TestRunnerPage() {
@@ -95,6 +96,7 @@ export function TestRunnerPage() {
     isIntro: room.turn?.isIntro,
   });
   const youHot = copy.mode === "speak";
+  const awaitingNextQuestion = copy.mode === "think";
   const showRing = room.secondsLeft !== null && room.recording;
   const lastCompletedTurn = [...test.turns]
     .reverse()
@@ -164,44 +166,48 @@ export function TestRunnerPage() {
 
             </div>
             <div className="room-interaction stack">
-          {room.turn && (
-            <div className="current-prompt stack">
-              <div className="row between">
-                <span className="kicker">Current question</span>
+          {awaitingNextQuestion ? (
+            <NextQuestionLoader title={copy.title} hint={copy.hint} />
+          ) : (
+            room.turn && (
+              <div className="current-prompt stack">
+                <div className="row between">
+                  <span className="kicker">Current question</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    aria-expanded={showQuestion}
+                    onClick={() => setShowQuestion(!showQuestion)}
+                  >
+                    {showQuestion ? "Hide question" : "Show question"}
+                  </Button>
+                </div>
+                {showQuestion && <p>{room.turn.promptText}</p>}
+                {room.turn.cueCard && (
+                  <div className="cue-card stack-sm">
+                    <strong>{room.turn.cueCard.title}</strong>
+                    <ul className="list">
+                      {room.turn.cueCard.prompts?.map((prompt) => (
+                        <li key={prompt}>{prompt}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
                 <Button
-                  variant="ghost"
+                  variant="secondary"
                   size="sm"
-                  aria-expanded={showQuestion}
-                  onClick={() => setShowQuestion(!showQuestion)}
+                  onClick={room.replayExaminer}
+                  disabled={
+                    room.recording ||
+                    room.busy ||
+                    room.examinerSpeaking ||
+                    !room.turn.hasExaminerAudio
+                  }
                 >
-                  {showQuestion ? "Hide question" : "Show question"}
+                  <Icon name="play" size={15} /> Replay question
                 </Button>
               </div>
-              {showQuestion && <p>{room.turn.promptText}</p>}
-              {room.turn.cueCard && (
-                <div className="cue-card stack-sm">
-                  <strong>{room.turn.cueCard.title}</strong>
-                  <ul className="list">
-                    {room.turn.cueCard.prompts?.map((prompt) => (
-                      <li key={prompt}>{prompt}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={room.replayExaminer}
-                disabled={
-                  room.recording ||
-                  room.busy ||
-                  room.examinerSpeaking ||
-                  !room.turn.hasExaminerAudio
-                }
-              >
-                <Icon name="play" size={15} /> Replay question
-              </Button>
-            </div>
+            )
           )}
 
           {test.state === "PART2_PREP" && (
