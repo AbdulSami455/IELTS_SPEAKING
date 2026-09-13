@@ -74,6 +74,7 @@ Use grammar, phrase, sentence_completion, or fluency as the mistake type.
 practicePlan must be an OBJECT containing a days ARRAY, not an array at the top level.
 Each day needs day, focus, task, minutes, and successCriteria.
 Use strengths, improvements, minorImprovements, exampleRewrites (original/saferRewrite), and fluencyNotes.
+- fluencyNotes: provide 4–6 specific bullets on pace, pauses, coherence, linking, and development — not generic praise.
 
 Rules:
 - strengths: what already works well in this test.
