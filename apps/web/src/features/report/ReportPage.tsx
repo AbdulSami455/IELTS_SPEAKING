@@ -5,6 +5,7 @@ import { AppShell } from "../../components/layout/AppShell";
 import { Alert } from "../../components/ui";
 import { BandHero } from "./BandHero";
 import { CriterionGrid } from "./CriterionGrid";
+import { ReportTopBar } from "./ReportTopBar";
 import {
   FluencySection,
   InsightPair,
@@ -14,7 +15,18 @@ import {
   PronunciationSection,
   RewritesSection,
   TranscriptsSection,
+  VocabularySection,
 } from "./ReportSections";
+
+const NAV = [
+  { href: "#skills", label: "Skills" },
+  { href: "#vocabulary", label: "Vocabulary" },
+  { href: "#fluency", label: "Fluency" },
+  { href: "#pronunciation", label: "Pronunciation" },
+  { href: "#corrections", label: "Corrections" },
+  { href: "#transcript", label: "Transcript" },
+  { href: "#practice", label: "Plan" },
+] as const;
 
 export function ReportPage() {
   const { reportId, testId } = useParams();
@@ -60,6 +72,7 @@ export function ReportPage() {
   if (error) {
     return (
       <AppShell>
+        <ReportTopBar />
         <div className="stack" style={{ maxWidth: 640, margin: "0 auto" }}>
           <Alert tone="error">{error}</Alert>
           <div className="row">
@@ -81,6 +94,7 @@ export function ReportPage() {
   if (!report) {
     return (
       <AppShell>
+        <ReportTopBar />
         <div className="center-page">
           <p>Opening your report…</p>
         </div>
@@ -90,11 +104,16 @@ export function ReportPage() {
 
   return (
     <AppShell>
-      <div className="stack-lg">
-        <div className="page-heading row between">
+      <div className="stack-lg report-page">
+        <ReportTopBar />
+        <div className="page-heading row between wrap-gap">
           <div className="stack-sm">
             <p className="kicker">Results & feedback</p>
             <h1>Your speaking report</h1>
+            <p className="muted caption">
+              Scroll by section — vocabulary, fluency, pronunciation, and fixes are separated so you
+              can focus on one thing at a time.
+            </p>
           </div>
           <Link to="/progress" className="btn btn--secondary">
             View my progress →
@@ -102,36 +121,33 @@ export function ReportPage() {
         </div>
         <BandHero report={report} />
         <nav className="report-nav no-print" aria-label="Report sections">
-          <a href="#skills">Skill breakdown</a>
-          <a href="#feedback">Feedback</a>
-          <a href="#answers">Your answers</a>
-          <a href="#practice">Practice plan</a>
+          {NAV.map((item) => (
+            <a key={item.href} href={item.href}>{item.label}</a>
+          ))}
         </nav>
+        <div id="overview" className="stack-lg">
+          <ProgressComparisonSection report={report} />
+          <InsightPair report={report} />
+        </div>
         <div id="skills" className="stack">
           <div className="section-head">
             <h2>The skills behind your score</h2>
             <p className="caption">
-              Four perspectives on your speaking, with evidence from this
-              attempt.
+              Four perspectives on your speaking, with evidence from this attempt.
             </p>
           </div>
           <CriterionGrid criteria={report.criteria} />
         </div>
-        <div id="feedback" className="stack-lg">
-          <ProgressComparisonSection report={report} />
-          <InsightPair report={report} />
-          <div className="report-feedback-grid">
-            <div className="stack-lg">
-              <MistakesSection report={report} />
-              <RewritesSection report={report} />
-            </div>
-            <FluencySection report={report} />
-          </div>
-        </div>
-        <div id="answers" className="report-feedback-grid">
-          <TranscriptsSection report={report} />
+        <VocabularySection report={report} />
+        <div className="report-delivery-grid">
+          <FluencySection report={report} />
           <PronunciationSection report={report} />
         </div>
+        <div className="stack-lg">
+          <MistakesSection report={report} />
+          <RewritesSection report={report} />
+        </div>
+        <TranscriptsSection report={report} />
         <div id="practice">
           <PracticePlanSection report={report} />
         </div>
