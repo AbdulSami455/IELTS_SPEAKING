@@ -35,6 +35,12 @@ from ielts_domain import (
 )
 from ielts_inference.evaluation import PUBLIC_STAGES
 from ielts_inference.assembler import EVALUATOR_VERSION
+from ielts_inference.exam_journey import build_exam_history
+from ielts_inference.report_insights import (
+    build_fluency_insights,
+    build_pronunciation_insights,
+    build_vocabulary_insights,
+)
 from ielts_inference.report_compare import compare_reports
 from ielts_inference.score_summary import summarize_scores
 from ielts_inference.openrouter import InferenceError, OpenRouterClient
@@ -649,6 +655,22 @@ class TestService:
                 previous_overall=prev_report.overall_band,
                 previous_created_at=prev_report.created_at.isoformat(),
             )
+        transcripts = await self._transcripts(test.id)
+        pronunciation = parts.get("pronunciation") or []
+        fluency_notes = parts.get("fluency") or []
+        accent_note = self._accent_note(report)
+        vocabulary_insights = build_vocabulary_insights(
+            transcripts,
+            criteria_payload,
+            parts.get("mistakes"),
+        )
+        fluency_insights = build_fluency_insights(
+            fluency_notes,
+            pronunciation,
+            criteria_payload,
+            transcripts,
+        )
+        pronunciation_insights = build_pronunciation_insights(pronunciation, accent_note)
         return {
             "report_id": report.id,
             "test_id": test.id,
@@ -671,11 +693,14 @@ class TestService:
                 "minimum_tests": 1,
             },
             "progress_comparison": progress_comparison,
-            "transcripts": await self._transcripts(test.id),
-            "pronunciation": parts.get("pronunciation") or [],
+            "transcripts": transcripts,
+            "pronunciation": pronunciation,
             "mistakes": parts.get("mistakes") or [],
-            "fluency": parts.get("fluency") or [],
-            "accent_note": self._accent_note(report),
+            "fluency": fluency_notes,
+            "accent_note": accent_note,
+            "vocabulary_insights": vocabulary_insights,
+            "fluency_insights": fluency_insights,
+            "pronunciation_insights": pronunciation_insights,
         }
 
     def _accent_note(self, report: Report) -> str | None:
@@ -795,6 +820,20 @@ class TestService:
         if weakest:
             priorities.append(f"Focus on {weakest.replace('_', ' ')}")
         priorities.extend(["Extend Part 2 answers", "Practise linking phrases"])
+        criteria_by_test: dict[str, list[dict]] = {}
+        for test, report in rows:
+            if report.evaluator_version != EVALUATOR_VERSION:
+                continue
+            crit = await self.reports.list_criteria(test.id)
+            criteria_by_test[test.id] = [
+                {
+                    "criterion": item.criterion,
+                    "band": item.band,
+                    "confidence": item.confidence,
+                }
+                for item in crit
+            ]
+        exam_history = build_exam_history(rows, criteria_by_test, evaluator_version=EVALUATOR_VERSION)
         return {
             "overall_trend": trend,
             "sample_size": summary.scored_tests,
@@ -819,6 +858,7 @@ class TestService:
             else None,
             "priorities": priorities[:3],
             "timeline": timeline,
+            "exam_history": exam_history,
             "actions": [
                 {
                     "id": action.id,
