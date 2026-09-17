@@ -1,7 +1,10 @@
+import json
+
 import httpx
+import pytest
 
 from ielts_config.config import EnvironmentConfig
-from ielts_inference.openrouter import OpenRouterClient
+from ielts_inference.openrouter import InferenceError, OpenRouterClient
 
 
 def _config() -> EnvironmentConfig:
@@ -78,6 +81,7 @@ def test_transcribe_parses_verbose_json(monkeypatch):
 def test_synthesize_returns_audio_bytes():
     def handler(request: httpx.Request) -> httpx.Response:
         assert request.url.path.endswith("/audio/speech")
+        assert json.loads(request.content)["response_format"] == "mp3"
         return httpx.Response(200, content=b"ID3fake", headers={"content-type": "audio/mpeg"})
 
     client = OpenRouterClient(_config())
@@ -85,6 +89,23 @@ def test_synthesize_returns_audio_bytes():
     audio, content_type = client.synthesize("Where are you from?")
     assert audio.startswith(b"ID3")
     assert content_type == "audio/mpeg"
+
+
+@pytest.mark.parametrize("content_type, content", [
+    ("audio/pcm", b"raw-pcm"),
+    ("application/json", b'{"error":"provider failed"}'),
+    ("audio/mpeg", b""),
+    ("", b"unknown"),
+])
+def test_synthesize_rejects_unplayable_response(content_type, content):
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, content=content, headers={"content-type": content_type})
+
+    client = OpenRouterClient(_config())
+    client._client = httpx.Client(transport=httpx.MockTransport(handler), base_url="https://openrouter.ai/api/v1")
+    with pytest.raises(InferenceError, match="MP3 audio") as exc:
+        client.synthesize("Where are you from?")
+    assert exc.value.retryable
 
 
 def test_score_speaking_requires_json_object():

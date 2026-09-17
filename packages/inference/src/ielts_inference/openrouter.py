@@ -211,12 +211,15 @@ class OpenRouterClient:
             "model": self._config.openrouter_tts_model,
             "input": spoken[:4000],
             "voice": self._config.openrouter_tts_voice,
+            "response_format": "mp3",
         }
         response = self._client.post("/audio/speech", json=body)
         if response.status_code >= 400:
             raise InferenceError(f"TTS failed: {response.text[:300]}", retryable=True)
-        content_type = response.headers.get("content-type") or "audio/mpeg"
-        return response.content, content_type.split(";")[0]
+        content_type = response.headers.get("content-type", "").split(";")[0].strip().lower()
+        if content_type != "audio/mpeg" or not response.content:
+            raise InferenceError("TTS did not return non-empty MP3 audio", retryable=True)
+        return response.content, content_type
 
     def pronunciation_notes(self, prompt: str) -> dict:
         model = self._config.openrouter_pronunciation_model

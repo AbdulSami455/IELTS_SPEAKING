@@ -550,7 +550,7 @@ class TestService:
             voice=user_voice,
         )
         head = self.store.head(self.config.minio_examiner_bucket, object_key)
-        if not head.exists:
+        if not head.exists or head.content_type != "audio/mpeg" or head.size_bytes == 0:
             from ielts_api.errors import AppError
             from ielts_inference.openrouter import InferenceError, OpenRouterClient
             from ielts_inference.quota import reserve_model_call
