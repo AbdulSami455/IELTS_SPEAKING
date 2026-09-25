@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 interface BadgeProps {
   children: ReactNode;
-  tone?: "neutral" | "accent" | "dark";
+  tone?: "neutral" | "accent" | "dark" | "success" | "warning" | "danger";
 }
 
 export function Badge({ children, tone = "neutral" }: BadgeProps) {
