@@ -20,6 +20,7 @@ from ielts_inference.examiner import (
     PART3_TARGET_QUESTIONS,
     GeneratedTurn,
     first_part1_turn_after_intro,
+    first_part3_turn_after_part2,
     parse_cue_card,
     parse_follow_up,
     parse_spoken_question,
@@ -187,18 +188,28 @@ class ConversationOrchestrator:
             theme_info = get_part2_theme(test.topic_plan["part2"])
             part2_theme = theme_info["label"]
         part3_count = self._answered_count(test, 3)
+        theme = str(plan.get("part3_theme") or "society")
+        fallback = (
+            first_part3_turn_after_part2(theme, part2_theme)
+            if part3_count == 0
+            else GeneratedTurn(
+                f"Looking at {theme}, what differences do you see between younger and older generations?",
+                40,
+            )
+        )
         return await self._chat_turn(
             test,
             PART3_INSTRUCTIONS,
             part3_prompt_input(
                 history,
                 asked,
-                theme=plan["part3_theme"],
+                theme=theme,
                 part2_theme=part2_theme,
                 is_first_part3_question=part3_count == 0,
                 is_nervous=is_nervous,
             ),
             timing_seconds=40,
+            fallback=fallback,
         )
 
     def _detect_nervousness(self, test: TestSession, history: list[dict]) -> bool:
@@ -357,7 +368,15 @@ class ConversationOrchestrator:
             return None
         return GeneratedTurn(prompt_text=follow_up, timing_seconds=35, asset_version="follow-up")
 
-    async def _chat_turn(self, test: TestSession, system: str, prompt: str, *, timing_seconds: int) -> GeneratedTurn:
+    async def _chat_turn(
+        self,
+        test: TestSession,
+        system: str,
+        prompt: str,
+        *,
+        timing_seconds: int,
+        fallback: GeneratedTurn | None = None,
+    ) -> GeneratedTurn:
         retry_prompt = (
             f"{prompt}\n\n"
             'Your previous reply was unusable. Return JSON only: {"question": "one spoken examiner question"}'
@@ -369,6 +388,8 @@ class ConversationOrchestrator:
                 return parsed
             if attempt == 0:
                 continue
+        if fallback is not None:
+            return fallback
         raise InferenceError("Examiner prompt generation returned invalid JSON", retryable=True)
 
     async def _chat_json(self, test: TestSession, system: str, prompt: str) -> dict:

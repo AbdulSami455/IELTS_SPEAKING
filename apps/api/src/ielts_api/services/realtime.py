@@ -174,6 +174,7 @@ class RealtimeSessionService:
             turn = next((item for item in test.session_questions if str(item.id) == turn_id), None)
             assert turn is not None and turn.answer is not None
             answer = turn.answer
+        await self._ensure_answer_transcript(test, answer, audio)
         try:
             await self._test_service.conversation.on_answer_completed(test, answer)
         except (InferenceError, StateConflictError) as extra:
@@ -190,7 +191,12 @@ class RealtimeSessionService:
         next_audio = None
         if next_turn is not None and next_test.status not in {TestState.PART2_SPEAK.value, TestState.UPLOADING.value}:
             self._ensure_examiner_prompt_event(next_test, live, next_turn)
-            next_audio = await self._examiner_playback_url(user_id, test_id, str(next_turn.id))
+            try:
+                next_audio = await self._examiner_playback_url(user_id, test_id, str(next_turn.id))
+            except AppError as exc:
+                if exc.code != "EXAMINER_TTS_FAILED":
+                    raise
+                next_audio = None
         if live is not None and next_test.status == TestState.UPLOADING.value:
             live.status = "FINISHED"
             live.finished_at = datetime.now(timezone.utc)
@@ -277,6 +283,26 @@ class RealtimeSessionService:
         test.conversation_events.append(event)
         self._session.add(event)
         return event
+
+    async def _ensure_answer_transcript(
+        self,
+        test,
+        answer: Answer,
+        audio: bytes | None,
+    ) -> None:
+        if answer.transcript is not None and (answer.transcript.text or "").strip():
+            return
+        payload = audio
+        if payload is None and answer.media_object is not None:
+            payload = self._store.get_bytes(answer.media_object.bucket, answer.media_object.object_key)
+        if not payload:
+            return
+        try:
+            await self._test_service.persist_transcript(test, answer, payload)
+            await self._session.flush()
+        except InferenceError:
+            # Conversation can still advance; worker transcription may catch up later.
+            return
 
     async def _examiner_playback_url(self, user_id: int, test_id: str, turn_id: str) -> str:
         audio = await self._test_service.examiner_audio(user_id, test_id, turn_id)

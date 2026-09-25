@@ -1,7 +1,9 @@
 from ielts_inference.examiner import (
     PART1_INTRO_TEXT,
     PART2_INTRO_PREFIX,
+    PART3_INTRO_PREFIX,
     first_part1_turn_after_intro,
+    first_part3_turn_after_part2,
     parse_cue_card,
     parse_follow_up,
     parse_spoken_question,
@@ -53,6 +55,21 @@ def test_part1_intro_is_mandatory_examiner_script():
     assert PART1_INTRO_TEXT in turn.prompt_text
     assert turn.asset_version == "intro"
     assert turn.timing_seconds == 25
+
+
+def test_first_part3_turn_includes_intro_and_question():
+    turn = first_part3_turn_after_part2("education", "online learning")
+    assert PART3_INTRO_PREFIX in turn.prompt_text
+    assert "online learning" in turn.prompt_text
+    assert turn.prompt_text.endswith("?")
+
+
+def test_parse_spoken_question_accepts_part3_intro_length():
+    intro = PART3_INTRO_PREFIX
+    long_q = intro + "Why do you think technology has changed the way people learn languages today?"
+    turn = parse_spoken_question({"question": long_q}, timing_seconds=40)
+    assert turn is not None
+    assert "?" in turn.prompt_text
 
 
 def test_first_part1_turn_after_intro_is_instant_template():

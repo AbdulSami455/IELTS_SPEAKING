@@ -54,6 +54,8 @@ PART3_INTRO_PREFIX = (
     "Now I would like to ask you some more general questions related to what we have been discussing. "
 )
 
+MAX_SPOKEN_PROMPT_CHARS = 480
+
 PART1_INSTRUCTIONS = """You are an IELTS Speaking examiner for a practice test.
 
 Generate exactly one short spoken Part 1 question in English.
@@ -135,10 +137,18 @@ def _spoken_question_text(raw: dict) -> str:
 
 def parse_spoken_question(raw: dict, *, timing_seconds: int, asset_version: str = "generated") -> GeneratedTurn | None:
     question = _spoken_question_text(raw)
-    if len(question) < 8 or len(question) > 280:
+    if len(question) < 8:
+        return None
+    if len(question) > MAX_SPOKEN_PROMPT_CHARS and "?" in question:
+        end = question.rfind("?") + 1
+        start = max(0, end - MAX_SPOKEN_PROMPT_CHARS)
+        question = question[start:end].strip()
+    if len(question) > MAX_SPOKEN_PROMPT_CHARS:
         return None
     if "?" not in question:
         question = question.rstrip(".") + "?"
+    if len(question) > MAX_SPOKEN_PROMPT_CHARS:
+        return None
     return GeneratedTurn(question, timing_seconds, None, asset_version)
 
 
@@ -152,6 +162,15 @@ def first_part1_turn_after_intro(topic_label: str, question_angle: str) -> Gener
         f"Could you tell me about {question_angle}?"
     )
     return GeneratedTurn(question, 45, None, "generated")
+
+
+def first_part3_turn_after_part2(theme: str, part2_theme: str = "") -> GeneratedTurn:
+    anchor = (part2_theme or theme or "this topic").strip().rstrip(".")
+    question = (
+        f"{PART3_INTRO_PREFIX}"
+        f"How has {anchor} changed in recent years, and do you think that change is mostly positive?"
+    )
+    return GeneratedTurn(question, 40, None, "generated-part3")
 
 
 def parse_cue_card(raw: dict, *, include_part2_intro: bool = True) -> GeneratedTurn | None:
