@@ -49,6 +49,9 @@ export function useVoiceRoom(testId: string) {
   const [muted, setMuted] = useState(false);
   const [micPaused, setMicPaused] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Non-blocking hints (a short sound, audio that didn't autoplay) — shown
+  // calmly instead of as errors.
+  const [notice, setNotice] = useState<string | null>(null);
   const [examinerUrl, setExaminerUrl] = useState<string | null>(null);
   const [micLevel, setMicLevel] = useState(0);
   const [restoredDraftAvailable, setRestoredDraftAvailable] = useState(false);
@@ -91,23 +94,29 @@ export function useVoiceRoom(testId: string) {
       .then(setTest)
       .catch((err: Error) => setError(err.message));
     void _checkDraft().catch(() =>
-      setError("Local recording recovery is unavailable in this browser."),
+      setNotice("Answer recovery isn’t available in this browser, so keep this tab open while you speak."),
     );
   }, [testId]);
 
+  // An answer that never reached the server is offered back through the
+  // room's "Send saved answer" / "Discard" controls rather than a popup.
   async function _checkDraft() {
     const saved = await loadDraft(testId, "current-turn");
     if (saved) {
-      const shouldRestore = window.confirm("Restore your unsaved recording?");
-      if (shouldRestore) {
-        restoredDraftRef.current = saved;
-        setRestoredDraftAvailable(true);
-        setError("Unsaved recording restored. Send it when you are ready.");
-      } else {
-        await clearDraft(testId, "current-turn");
-      }
+      restoredDraftRef.current = saved;
+      setRestoredDraftAvailable(true);
     }
   }
+
+  useEffect(() => {
+    if (!recording && !busy) return;
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [recording, busy]);
 
   useEffect(() => {
     return () => {
@@ -144,8 +153,8 @@ export function useVoiceRoom(testId: string) {
     void audioRef.current
       .play()
       .catch(() =>
-        setError(
-          "Question audio could not play. Use Replay question to try again.",
+        setNotice(
+          "The question audio didn’t start automatically. Use Replay question to hear it.",
         ),
       );
   }, [examinerUrl]);
@@ -351,9 +360,10 @@ export function useVoiceRoom(testId: string) {
         if (quietFor >= budget && voicedMsRef.current >= voicedNeeded) {
           void finishUtterance();
         } else if (quietFor >= 2000 && voicedMsRef.current < NOISE_BLIP_MS) {
+          const caughtSomething = voicedMsRef.current > 0;
           void cancelUtterance();
-          if (voicedMsRef.current > 0 && voicedMsRef.current < 2200) {
-            setError(
+          if (caughtSomething) {
+            setNotice(
               "We only caught a short sound. Start speaking again when you’re ready.",
             );
           }
@@ -396,6 +406,7 @@ export function useVoiceRoom(testId: string) {
         if (event.data.size > 0) chunksRef.current.push(event.data);
       };
       recorderRef.current = recorder;
+      setNotice(null);
       recorder.start(200);
       speechStartedAtRef.current = performance.now();
       lastVoiceAtRef.current = performance.now();
@@ -457,13 +468,14 @@ export function useVoiceRoom(testId: string) {
     const current = currentTurn(session);
     if (!current || !blob || blob.size < MIN_BLOB_BYTES) {
       submittingRef.current = false;
-      setError(
-        "That recording was too short to save. Please try your answer again.",
+      setNotice(
+        "That answer was too short to save. Please try it again.",
       );
       return false;
     }
     setBusy(true);
     setError(null);
+    setNotice(null);
     try {
       await saveDraft(testId, "current-turn", blob);
       const next = await api.realtimeTurnAudio(
@@ -518,6 +530,7 @@ export function useVoiceRoom(testId: string) {
   async function replayExaminer() {
     if (!turn || recordingRef.current || busyRef.current) return;
     setError(null);
+    setNotice(null);
     try {
       const playback = await api.examinerAudio(testId, turn.id);
       if (audioRef.current) {
@@ -618,6 +631,8 @@ export function useVoiceRoom(testId: string) {
     muted,
     micPaused,
     error,
+    notice,
+    dismissNotice: () => setNotice(null),
     micLevel,
     restoredDraftAvailable,
     turn,

@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Icon } from "../../components/ui/Icon";
 
 export function ReportTopBar() {
@@ -13,15 +13,11 @@ export function ReportTopBar() {
   }
 
   return (
-    <header className="report-topbar no-print">
+    <div className="report-topbar no-print">
       <button type="button" className="report-back-btn" onClick={goBack}>
-        <Icon name="arrow" size={18} style={{ transform: "rotate(180deg)" }} />
+        <Icon name="arrowLeft" size={18} />
         Back
       </button>
-      <Link to="/" className="report-topbar-link">
-        <Icon name="home" size={17} />
-        Overview
-      </Link>
-    </header>
+    </div>
   );
 }
