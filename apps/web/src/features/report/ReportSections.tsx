@@ -206,8 +206,8 @@ export function MistakesSection({ report }: { report: Report }) {
       </div>
       {trends && report.progressComparison?.hasPrevious && (
         <div className="mistake-trend-row">
-          {(trends.resolved?.length ?? 0) > 0 && <span className="pill pill--good">{trends.resolved.length} resolved</span>}
-          {(trends.recurring?.length ?? 0) > 0 && <span className="pill pill--warn">{trends.recurring.length} recurring</span>}
+          {(trends.resolved?.length ?? 0) > 0 && <span className="pill pill--success">{trends.resolved.length} resolved</span>}
+          {(trends.recurring?.length ?? 0) > 0 && <span className="pill pill--warning">{trends.recurring.length} recurring</span>}
           {(trends.newIssues?.length ?? 0) > 0 && <span className="pill">{trends.newIssues.length} new</span>}
         </div>
       )}
@@ -239,16 +239,16 @@ export function MistakesSection({ report }: { report: Report }) {
 export function RewritesSection({ report }: { report: Report }) {
   if (report.exampleRewrites.length === 0) return null;
   return (
-    <section className="card stack">
+    <section id="rewrites" className="card stack">
       <div className="section-head">
         <h2>Same idea. A stronger answer.</h2>
         <p className="caption">
           Examples that keep your meaning — not model answers.
         </p>
       </div>
-      <ul className="list list--neutral">
+      <ul className="rewrite-list">
         {report.exampleRewrites.map((item, index) => (
-          <li key={index} className="stack-sm">
+          <li key={index}>
             <div className="rewrite-original">
               <span className="kicker">You said</span>
               <p>{item.original}</p>
@@ -526,9 +526,9 @@ export function PracticePlanSection({ report }: { report: Report }) {
     ...report.improvements.slice(0, 2),
   ];
   return (
-    <section className="card stack">
+    <section id="practice" className="card stack">
       <div className="section-head">
-        <h2>Seven-day practice plan</h2>
+        <h2>{days.length === 7 ? "Seven-day" : `${days.length}-day`} practice plan</h2>
         <p className="caption">
           Built from this test’s corrections
           {report.progressComparison?.hasPrevious ? " and what changed since your last attempt" : ""}.

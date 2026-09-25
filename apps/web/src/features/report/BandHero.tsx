@@ -2,13 +2,16 @@ import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import type { CSSProperties } from "react";
 import { api, type Report } from "../../lib/api";
-import { bandText, formatDate } from "../../lib/format";
+import { bandDescriptor, bandText, confidenceText } from "../../lib/format";
 import { Alert, Badge, Button } from "../../components/ui";
 import { Icon } from "../../components/ui/Icon";
 
 export function BandHero({ report }: { report: Report }) {
   const navigate = useNavigate();
   const [reassessing, setReassessing] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   async function reassess() {
     setReassessing(true);
     setError(null);
@@ -17,10 +20,11 @@ export function BandHero({ report }: { report: Report }) {
       navigate(`/tests/${result.testId}/processing`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not reassess report");
-    } finally { setReassessing(false); }
+    } finally {
+      setReassessing(false);
+    }
   }
-  const [exporting, setExporting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+
   async function exportReport() {
     setExporting(true);
     setError(null);
@@ -35,67 +39,67 @@ export function BandHero({ report }: { report: Report }) {
       link.remove();
       window.setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Could not download your report. Please try again.",
-      );
+      setError(err instanceof Error ? err.message : "Could not download your report. Please try again.");
     } finally {
       setExporting(false);
     }
   }
+
   const band = report.isInconclusive ? undefined : report.overallBand;
+  const descriptor = bandDescriptor(band);
+
   return (
-    <section className="report-hero card">
+    <section className="report-hero card" aria-labelledby="band-heading">
       <div
-        className="score-ring"
+        className={`score-ring${band === undefined ? " score-ring--empty" : ""}`}
         style={{ "--score": ((band ?? 0) / 9) * 100 } as CSSProperties}
+        role="img"
+        aria-label={band === undefined ? "No overall band for this test" : `Overall band ${bandText(band)} out of 9`}
       >
         <div>
           <span className="band-display">{bandText(band)}</span>
-          <span className="caption">THIS TEST’S BAND</span>
-          <span className="caption">out of 9.0</span>
+          <span className="score-caption">{band === undefined ? "No band" : "out of 9"}</span>
         </div>
       </div>
       <div className="stack">
-        <div className="row">
-          <Badge tone="accent">{report.confidenceLabel} confidence</Badge>
-          {report.isInconclusive && <Badge>Inconclusive</Badge>}
-          <span className="caption">{formatDate(report.createdAt)}</span>
+        <div className="row hero-badges">
+          {descriptor && <Badge tone="accent">{descriptor}</Badge>}
+          {report.isInconclusive && <Badge tone="warning">Inconclusive</Badge>}
+          <Badge>{confidenceText(report.confidenceLabel)}</Badge>
         </div>
-        <h2>
-          {report.isInconclusive
-            ? "Let’s get a clearer picture."
-            : "Your result for this test"}
+        <h2 id="band-heading">
+          {report.isInconclusive ? "Let’s get a clearer picture." : `Overall band ${bandText(band)} for this test`}
         </h2>
         <p>
           {report.isInconclusive
-            ? "There wasn’t enough reliable evidence for an overall band. Review the feedback below before your next attempt."
-            : "A fair practice estimate for this test — rounded to the nearest half band. Your progress page separately summarises recent scored tests."}
+            ? "There wasn’t enough reliable evidence for an overall band. The reasons are below — one usable test is enough, so you don’t need more tests to unlock a score."
+            : "A fair practice estimate, rounded to the nearest half band. Your progress page tracks how it compares with your other tests."}
         </p>
         {report.isInconclusive && (
           <div className="stack-sm">
-            <p><strong>One usable test is enough.</strong> Completing more tests is not a requirement to unlock a band.</p>
-            <ul className="list">{report.scoreReadiness?.reasons.map((reason) => <li key={reason}>{reason}</li>)}</ul>
-            <Button variant="secondary" onClick={reassess} loading={reassessing}>Reassess saved recordings</Button>
+            {(report.scoreReadiness?.reasons.length ?? 0) > 0 && (
+              <ul className="list">
+                {report.scoreReadiness?.reasons.map((reason) => (
+                  <li key={reason}>{reason}</li>
+                ))}
+              </ul>
+            )}
+            <Button variant="secondary" onClick={reassess} loading={reassessing} className="self-start">
+              <Icon name="refresh" size={16} /> Reassess saved recordings
+            </Button>
           </div>
         )}
-        <p className="caption">{report.disclaimer}</p>
         <div className="row no-print">
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={exportReport}
-            loading={exporting}
-          >
-            <Icon name="download" size={16} />
+          <Button variant="primary" size="sm" onClick={exportReport} loading={exporting}>
+            {!exporting && <Icon name="download" size={16} />}
             Download report
           </Button>
           <Button variant="secondary" size="sm" onClick={() => window.print()}>
-            Print / Save PDF
+            Print / Save as PDF
           </Button>
         </div>
         {error && <Alert tone="error">{error}</Alert>}
+        <p className="caption">{report.disclaimer}</p>
       </div>
     </section>
   );
