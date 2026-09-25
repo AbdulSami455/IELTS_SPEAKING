@@ -1,14 +1,16 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ApiError, api } from "../../lib/api";
+import { useDocumentTitle } from "../../lib/useDocumentTitle";
 import { AppShell } from "../../components/layout/AppShell";
-import { Alert, Button } from "../../components/ui";
+import { Alert, Spinner } from "../../components/ui";
+import { Icon } from "../../components/ui/Icon";
 
 const STAGES = [
   { id: "validating_audio", label: "Checking recordings" },
-  { id: "transcribing", label: "Transcribing speech" },
-  { id: "analyzing_language", label: "Grammar and vocabulary" },
-  { id: "analyzing_pronunciation", label: "Fluency and pronunciation" },
+  { id: "transcribing", label: "Transcribing your speech" },
+  { id: "analyzing_language", label: "Analysing grammar and vocabulary" },
+  { id: "analyzing_pronunciation", label: "Analysing fluency and pronunciation" },
   { id: "building_report", label: "Building your report" },
 ];
 
@@ -18,6 +20,8 @@ export function ProcessingPage() {
   const [progress, setProgress] = useState(0);
   const [stage, setStage] = useState("queued");
   const [error, setError] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+  useDocumentTitle(failed ? "Scoring failed" : "Preparing your report");
 
   useEffect(() => {
     let cancelled = false;
@@ -36,11 +40,12 @@ export function ProcessingPage() {
         setStage(status.stage);
         if (status.reportId) {
           cancelled = true;
-          navigate(`/reports/${status.reportId}`);
+          navigate(`/reports/${status.reportId}`, { replace: true });
           return;
         }
         if (status.stage === "failed" || status.state === "FAILED") {
           cancelled = true;
+          setFailed(true);
           setError(status.error ?? "Scoring failed. No band was invented.");
           return;
         }
@@ -69,35 +74,52 @@ export function ProcessingPage() {
 
   return (
     <AppShell>
-      <section className="card stack workflow-card">
+      <section className="card stack workflow-card" aria-labelledby="processing-title">
         <div className="section-head">
-          <p className="kicker">Results & feedback</p>
-          <h1>Preparing your report</h1>
+          <p className="kicker">Results &amp; feedback</p>
+          <h1 id="processing-title">{failed ? "We couldn’t score this test" : "Preparing your report"}</h1>
+          {!failed && (
+            <p className="muted">This usually takes a minute or two. We’ll open your report as soon as it’s ready.</p>
+          )}
         </div>
-        <progress className="progress-track" value={progress} max={100} aria-label="Scoring progress" />
-        <p className="caption">{progress}% complete</p>
-        <ul className="stage-list">
+        {!failed && (
+          <div className="stack-sm">
+            <progress className="progress-track" value={progress} max={100} aria-label="Scoring progress" />
+            <p className="caption" aria-live="polite">
+              {activeIndex === -1 ? "Waiting to start…" : `${progress}% complete`}
+            </p>
+          </div>
+        )}
+        <ol className="stage-list">
           {STAGES.map((item, index) => {
-            const done = activeIndex === -1 ? false : index < activeIndex;
-            const active = index === activeIndex;
+            const done = failed ? index < activeIndex : activeIndex !== -1 && index < activeIndex;
+            const active = !failed && index === activeIndex;
             return (
-              <li key={item.id} className={done ? "done" : active ? "active" : ""}>
-                <span className="stage-dot" aria-hidden="true" />
-                {item.label}
-                <span className="caption" style={{ marginLeft: "auto" }}>
-                  {done ? "done" : active ? "now" : ""}
+              <li key={item.id} className={done ? "done" : active ? "active" : ""} aria-current={active ? "step" : undefined}>
+                <span className="stage-marker" aria-hidden="true">
+                  {done ? <Icon name="check" size={14} /> : active ? <Spinner size={14} /> : null}
                 </span>
+                {item.label}
+                <span className="visually-hidden">{done ? " — done" : active ? " — in progress" : ""}</span>
               </li>
             );
           })}
-        </ul>
+        </ol>
         {error && (
-          <>
-            <Alert tone="error">{error}</Alert>
-            <Link to="/">
-              <Button variant="secondary">Back to studio</Button>
+          <Alert tone={failed ? "error" : "warning"} title={failed ? "Scoring failed" : "Having trouble checking status — still trying."}>
+            {error}
+          </Alert>
+        )}
+        {failed ? (
+          <div className="row workflow-actions">
+            <Link to="/" className="btn btn--primary">
+              Back to overview
             </Link>
-          </>
+          </div>
+        ) : (
+          <p className="caption tip">
+            <Icon name="info" size={16} /> You can leave this page — scoring continues, and the report will appear under Recent practice.
+          </p>
         )}
       </section>
     </AppShell>

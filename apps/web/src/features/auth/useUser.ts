@@ -1,32 +1,17 @@
-import { useCallback, useEffect, useState } from "react";
-import { ApiError, api, type User } from "../../lib/api";
+import { createContext, useContext } from "react";
+import type { User } from "../../lib/api";
 
+export interface UserContextValue {
+  user: User | null;
+  setUser: (user: User) => void;
+}
+
+export const UserContext = createContext<UserContextValue>({
+  user: null,
+  setUser: () => undefined,
+});
+
+// The signed-in user, loaded once by RequireAuth.
 export function useUser() {
-  const [user, setUser] = useState<User | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const refresh = useCallback(async () => {
-    try {
-      const next = await api.me();
-      setUser(next);
-      setError(null);
-      return next;
-    } catch (err) {
-      if (err instanceof ApiError && err.code === "AUTH_REQUIRED") {
-        setUser(null);
-        setError("AUTH_REQUIRED");
-        return null;
-      }
-      if (err instanceof ApiError && err.code !== "RATE_LIMITED") {
-        setError(err.message);
-      }
-      return null;
-    }
-  }, []);
-
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
-
-  return { user, setUser, error, refresh };
+  return useContext(UserContext);
 }
