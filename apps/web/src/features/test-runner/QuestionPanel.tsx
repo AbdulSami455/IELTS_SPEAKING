@@ -22,20 +22,14 @@ export function QuestionPanel({
   if (turn && !visible.some((item) => item.id === turn.id)) visible.push(turn);
   const ordered = [...visible].sort((a, b) => a.sortOrder - b.sortOrder);
   return (
-    <aside className="question-panel card stack" aria-label="Session companion">
-      <div className="row between">
-        <div>
-          <p className="kicker">Alongside your conversation</p>
-          <h2>Session companion</h2>
-        </div>
-        <Icon name="book" />
-      </div>
-      <div className="segmented panel-tabs" aria-label="Companion view">
+    <aside className="question-panel stack" aria-label="Session companion">
+      <div className="segmented panel-tabs" role="group" aria-label="Companion view">
         {[
-          { id: "questions", label: "Q&A", icon: "message" as const },
-          { id: "guide", label: "Session guide", icon: "book" as const },
+          { id: "questions", label: "Questions & answers", icon: "message" as const },
+          { id: "guide", label: "Guide to each part", icon: "book" as const },
         ].map((item) => (
           <button
+            type="button"
             key={item.id}
             aria-pressed={tab === item.id}
             onClick={() => setTab(item.id)}
@@ -76,7 +70,7 @@ export function QuestionPanel({
                           : "Answer saved"}
                       </small>
                     </span>
-                    <span className="caption">⌄</span>
+                    <Icon name="chevronDown" size={16} className="turn-chevron" />
                   </summary>
                   <div className="stack turn-content">
                     <div className="chat-message examiner">
@@ -144,8 +138,8 @@ export function QuestionPanel({
           <div className="companion-note">
             <Icon name="mic" />
             <p>
-              Answers save after a longer pause. You can pause the microphone
-              using the controls below the examiner.
+              Answers save after a longer pause or when you press Done
+              speaking. Use Pause mic whenever you need a moment.
             </p>
           </div>
         </div>

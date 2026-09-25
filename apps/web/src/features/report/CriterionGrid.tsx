@@ -1,53 +1,50 @@
+import type { CSSProperties } from "react";
 import type { CriterionScore } from "../../lib/api";
-import { criterionLabel } from "../../lib/format";
+import { criterionColor } from "../../lib/criteria";
+import { confidenceText, criterionLabel, humanize } from "../../lib/format";
 import { Meter } from "../../components/ui";
 
-function humanize(value: string): string {
-  return value.replaceAll("_", " ");
-}
-
-interface CriterionGridProps {
-  criteria: CriterionScore[];
-}
-
-export function CriterionGrid({ criteria }: CriterionGridProps) {
+export function CriterionGrid({ criteria }: { criteria: CriterionScore[] }) {
   return (
-    <section className="criteria-grid" aria-label="Criterion bands">
-      {criteria.map((item) => (
-        <div key={item.criterion} className="card stack criterion-card">
-          <span
-            className="caption"
-            style={{ textTransform: "uppercase", letterSpacing: "0.08em" }}
+    <div className="criteria-grid">
+      {criteria.map((item) => {
+        const color = criterionColor(item.criterion);
+        return (
+          <article
+            key={item.criterion}
+            className="card stack criterion-card"
+            style={{ "--crit": color } as CSSProperties}
+            aria-label={`${criterionLabel(item.criterion)}: ${item.band == null ? "no band" : `band ${item.band.toFixed(1)}`}`}
           >
-            {criterionLabel(item.criterion)}
-          </span>
-          <p
-            className="band-display"
-            style={{ fontSize: "clamp(2.4rem, 5vw, 3.4rem)" }}
-          >
-            {item.band == null ? "—" : item.band.toFixed(1)}
-          </p>
-          {item.band != null && <Meter value={item.band} label={criterionLabel(item.criterion)} />}
-          <div className="chips">
-            <span className="pill">{item.confidence}</span>
-            {item.subdimensions.map((sub) => (
-              <span key={sub.key} className="pill pill--accent">
-                {humanize(sub.key)} · {sub.band?.toFixed?.(1) ?? sub.band}
-              </span>
-            ))}
-          </div>
-          {item.evidence && item.evidence.length > 0 && (
-            <div className="stack-sm">
-              {item.evidence.map((item_, index) => (
-                <div key={index}>
-                  {item_.quote && <div className="quote">“{item_.quote}”</div>}
-                  {item_.note && <p className="muted">{item_.note}</p>}
-                </div>
-              ))}
+            <h3 className="criterion-name">{criterionLabel(item.criterion)}</h3>
+            <div className="criterion-score">
+              <span className="band-display">{item.band == null ? "—" : item.band.toFixed(1)}</span>
+              <span className="caption">{confidenceText(item.confidence)}</span>
             </div>
-          )}
-        </div>
-      ))}
-    </section>
+            {item.band != null && <Meter value={item.band} label={criterionLabel(item.criterion)} color={color} />}
+            {item.subdimensions.length > 0 && (
+              <dl className="subscores">
+                {item.subdimensions.map((sub) => (
+                  <div key={sub.key}>
+                    <dt>{humanize(sub.key)}</dt>
+                    <dd>{sub.band?.toFixed?.(1) ?? sub.band}</dd>
+                  </div>
+                ))}
+              </dl>
+            )}
+            {item.evidence && item.evidence.length > 0 && (
+              <div className="stack-sm criterion-evidence">
+                {item.evidence.map((evidence, index) => (
+                  <div key={index} className="stack-sm">
+                    {evidence.quote && <blockquote className="quote">“{evidence.quote}”</blockquote>}
+                    {evidence.note && <p className="caption">{evidence.note}</p>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </article>
+        );
+      })}
+    </div>
   );
 }
