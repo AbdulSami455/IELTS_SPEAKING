@@ -1974,9 +1974,9 @@ a.focus-banner:hover > svg:last-child {
   flex: 1;
 }
 
+/* Block layout on purpose: as grid rows inside this max-height scroller,
+   turns (overflow: hidden) could shrink below their content and clip. */
 .conversation-feed {
-  display: grid;
-  gap: 10px;
   max-height: 560px;
   overflow-y: auto;
   padding-right: 4px;
@@ -1988,6 +1988,10 @@ a.focus-banner:hover > svg:last-child {
   overflow: hidden;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
+}
+
+.conversation-turn + .conversation-turn {
+  margin-top: 10px;
 }
 
 .conversation-turn summary {
