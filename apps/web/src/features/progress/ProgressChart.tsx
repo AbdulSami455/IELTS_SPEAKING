@@ -1,71 +1,59 @@
 import { useId, useState } from "react";
 import { Link } from "react-router-dom";
 import type { ProgressOverview } from "../../lib/api";
-import { bandText, formatDate } from "../../lib/format";
+import { OVERALL_COLOR } from "../../lib/criteria";
+import { bandDomain, bandText, formatDate } from "../../lib/format";
 import { Icon } from "../../components/ui/Icon";
+import { useElementWidth } from "../../lib/useElementWidth";
 
 type Point = ProgressOverview["timeline"][number];
-export function ProgressChart({
-  timeline,
-  target,
-  compact = false,
-}: {
-  timeline: Point[];
-  target?: number;
-  compact?: boolean;
-}) {
+
+const RANGES = [
+  { id: "all", label: "All time" },
+  { id: "90", label: "90 days" },
+  { id: "30", label: "30 days" },
+] as const;
+
+const LEFT = 36;
+const TOP = 16;
+const BOTTOM = 204;
+const HEIGHT = 236;
+
+export function ProgressChart({ timeline, target }: { timeline: Point[]; target?: number }) {
   const gradient = useId();
-  const [range, setRange] = useState("all");
+  const [range, setRange] = useState<(typeof RANGES)[number]["id"]>("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [frameRef, width] = useElementWidth<HTMLDivElement>(670);
+  const RIGHT = width - 18;
   const sorted = [...timeline]
-    .filter(
-      (p) =>
-        Number.isFinite(p.overallBand) && Number.isFinite(Date.parse(p.date)),
-    )
+    .filter((p) => Number.isFinite(p.overallBand) && Number.isFinite(Date.parse(p.date)))
     .sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
   const cutoff = Date.now() - Number(range) * 86400000;
-  const points =
-    range === "all"
-      ? sorted
-      : sorted.filter((p) => Date.parse(p.date) >= cutoff);
+  const points = range === "all" ? sorted : sorted.filter((p) => Date.parse(p.date) >= cutoff);
   const selected = points.find((p) => p.testId === selectedId) ?? points.at(-1);
-  const left = 38,
-    right = 640,
-    top = 28,
-    bottom = 210;
+  const [low, high] = bandDomain([target, ...points.map((p) => p.overallBand)]);
+  const ticks = Array.from({ length: high - low + 1 }, (_, i) => low + i);
   const x = (index: number) =>
-    points.length === 1
-      ? (left + right) / 2
-      : left + (index * (right - left)) / (points.length - 1);
+    points.length === 1 ? (LEFT + RIGHT) / 2 : LEFT + (index * (RIGHT - LEFT)) / (points.length - 1);
   const y = (band: number) =>
-    bottom - (Math.max(0, Math.min(9, band)) / 9) * (bottom - top);
-  const path = points
-    .map((p, i) => `${i === 0 ? "M" : "L"}${x(i)},${y(p.overallBand!)}`)
-    .join(" ");
+    BOTTOM - ((Math.max(low, Math.min(high, band)) - low) / (high - low)) * (BOTTOM - TOP);
+  const path = points.map((p, i) => `${i === 0 ? "M" : "L"}${x(i)},${y(p.overallBand!)}`).join(" ");
+
   return (
-    <section
-      className="card chart-card stack"
-      aria-label="Band score improvement"
-    >
+    <section className="card chart-card stack" aria-labelledby="journey-overall-title">
       <div className="row between">
         <div>
           <p className="kicker">The bigger picture</p>
-          <h2>Your speaking journey</h2>
+          <h2 id="journey-overall-title">Overall band over time</h2>
         </div>
-        {!compact && (
-          <label className="chart-range">
-            <span className="visually-hidden">Chart time range</span>
-            <select value={range} onChange={(e) => setRange(e.target.value)}>
-              <option value="all">All time</option>
-              <option value="30">Last 30 days</option>
-              <option value="90">Last 90 days</option>
-            </select>
-          </label>
-        )}
-        {compact && (
-          <Link className="text-link" to="/progress">
-            View progress <Icon name="arrow" size={16} />
-          </Link>
+        {sorted.length > 0 && (
+          <div className="segmented segmented--sm" role="group" aria-label="Chart time range">
+            {RANGES.map((item) => (
+              <button key={item.id} type="button" aria-pressed={range === item.id} onClick={() => setRange(item.id)}>
+                {item.label}
+              </button>
+            ))}
+          </div>
         )}
       </div>
       {points.length ? (
@@ -73,83 +61,62 @@ export function ProgressChart({
           <div className="row between chart-summary">
             <p>
               <strong>{bandText(selected?.overallBand)}</strong>
-              <span className="caption">
-                {" "}
-                estimated band · {formatDate(selected?.date)}
-              </span>
+              <span className="caption"> estimated band · {formatDate(selected?.date)}</span>
             </p>
             <span className="chart-legend">
-              <i /> Overall band{" "}
-              {target !== undefined && <span>┄ Target {bandText(target)}</span>}
+              <span><i style={{ background: OVERALL_COLOR }} /> Overall band</span>
+              {target !== undefined && (
+                <span><i className="legend-dash" /> Target {bandText(target)}</span>
+              )}
             </span>
           </div>
+          <div className="chart-frame" ref={frameRef}>
           <svg
             className="band-chart"
-            viewBox="0 0 670 245"
+            viewBox={`0 0 ${width} ${HEIGHT}`}
+            width={width}
+            height={HEIGHT}
             role="img"
-            aria-label={`Overall band across ${points.length} attempts, from ${bandText(points[0].overallBand)} to ${bandText(points.at(-1)?.overallBand)}. Exact values are available below.`}
+            aria-label={`Overall band across ${points.length} attempts, from ${bandText(points[0].overallBand)} to ${bandText(points.at(-1)?.overallBand)}. Exact values are in the all tests table.`}
           >
             <defs>
               <linearGradient id={gradient} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#139e91" stopOpacity=".18" />
-                <stop offset="100%" stopColor="#139e91" stopOpacity="0" />
+                <stop offset="0%" stopColor={OVERALL_COLOR} stopOpacity=".16" />
+                <stop offset="100%" stopColor={OVERALL_COLOR} stopOpacity="0" />
               </linearGradient>
             </defs>
-            {[0, 3, 6, 9].map((band) => (
+            {ticks.map((band) => (
               <g key={band}>
-                <line
-                  x1={left}
-                  x2={right}
-                  y1={y(band)}
-                  y2={y(band)}
-                  stroke="#e5eceb"
-                  strokeDasharray="3 5"
-                />
-                <text x="12" y={y(band) + 4}>
+                <line className="chart-grid" x1={LEFT} x2={RIGHT} y1={y(band)} y2={y(band)} />
+                <text className="chart-tick" x={LEFT - 12} y={y(band) + 4} textAnchor="end">
                   {band}
                 </text>
               </g>
             ))}
             {target !== undefined && (
-              <line
-                x1={left}
-                x2={right}
-                y1={y(target)}
-                y2={y(target)}
-                stroke="#9c7d36"
-                strokeDasharray="6 5"
-              />
+              <line className="chart-target" x1={LEFT} x2={RIGHT} y1={y(target)} y2={y(target)} />
             )}
             {points.length > 1 && (
               <>
-                <path
-                  d={`${path} L${x(points.length - 1)},${bottom} L${left},${bottom} Z`}
-                  fill={`url(#${gradient})`}
-                />
-                <path
-                  d={path}
-                  stroke="#10897e"
-                  strokeWidth="3"
-                  fill="none"
-                  strokeLinejoin="round"
-                />
+                <path d={`${path} L${x(points.length - 1)},${BOTTOM} L${LEFT},${BOTTOM} Z`} fill={`url(#${gradient})`} />
+                <path d={path} stroke={OVERALL_COLOR} strokeWidth="3" fill="none" strokeLinejoin="round" strokeLinecap="round" />
               </>
             )}
             {points.map((p, i) => (
               <g key={p.testId}>
                 <circle
+                  className="chart-dot"
                   cx={x(i)}
                   cy={y(p.overallBand!)}
                   r={selected?.testId === p.testId ? 7 : 5}
-                  fill="#10897e"
-                  stroke="white"
-                  strokeWidth="3"
+                  fill={OVERALL_COLOR}
                 />
                 <circle
                   cx={x(i)}
                   cy={y(p.overallBand!)}
-                  r="14"
+                  r="16"
                   fill="transparent"
+                  className="chart-point"
                   role="button"
                   tabIndex={0}
                   aria-label={`${formatDate(p.date)}, band ${bandText(p.overallBand)}`}
@@ -165,65 +132,35 @@ export function ProgressChart({
                 />
               </g>
             ))}
-            <text x={left} y="238">
+            <text className="chart-tick" x={LEFT} y={BOTTOM + 24}>
               {formatDate(points[0].date)}
             </text>
             {points.length > 1 && (
-              <text x={right} y="238" textAnchor="end">
+              <text className="chart-tick" x={RIGHT} y={BOTTOM + 24} textAnchor="end">
                 {formatDate(points.at(-1)?.date)}
               </text>
             )}
           </svg>
+          </div>
           <div className="row between">
             <span className="caption">
               {points.length === 1
-                ? "Your baseline is set. A second scored attempt will show a trend."
-                : "Hover or focus a point to explore. Attempts are spaced equally."}
+                ? "Your baseline is set. A second scored test will show a trend."
+                : "Hover or focus a point to explore. Tests are spaced evenly."}
             </span>
             {selected && (
               <Link className="text-link" to={`/reports/${selected.reportId}`}>
-                Open report <Icon name="arrow" size={15} />
+                Open this report <Icon name="arrow" size={15} />
               </Link>
             )}
           </div>
-          {!compact && (
-            <details className="chart-data">
-              <summary>View chart data</summary>
-              <div className="table-scroll">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Attempt date</th>
-                      <th>Estimated band</th>
-                      <th>Result</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {points.map((p) => (
-                      <tr key={p.testId}>
-                        <td>{formatDate(p.date)}</td>
-                        <td>{bandText(p.overallBand)}</td>
-                        <td>
-                          <Link to={`/reports/${p.reportId}`}>View report</Link>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </details>
-          )}
         </>
       ) : (
         <div className="chart-empty">
           <span className="icon-tile">
-            <Icon name="chart" size={26} />
+            <Icon name="chart" size={24} />
           </span>
-          <h3>
-            {sorted.length
-              ? "No attempts in this period"
-              : "Every journey starts somewhere"}
-          </h3>
+          <h3>{sorted.length ? "No tests in this period" : "Every journey starts somewhere"}</h3>
           <p>
             {sorted.length
               ? "Choose a longer time range to see your results."
