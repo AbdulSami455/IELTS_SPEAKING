@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { AppShell } from "../../components/layout/AppShell";
-import { Alert, Badge, Button } from "../../components/ui";
+import { Alert, Badge, Button, LoadingState } from "../../components/ui";
 import { Icon } from "../../components/ui/Icon";
 import { api } from "../../lib/api";
 import type { Leaderboard, LeaderboardPeriod } from "../../lib/api/types";
+import { useDocumentTitle } from "../../lib/useDocumentTitle";
 
 const PERIODS: { id: LeaderboardPeriod; label: string }[] = [
   { id: "today", label: "Today" },
@@ -18,6 +19,7 @@ export function LeaderboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [revision, setRevision] = useState(0);
+  useDocumentTitle("Leaderboard");
 
   useEffect(() => {
     let active = true;
@@ -54,16 +56,16 @@ export function LeaderboardPage() {
         <section className="card stack" aria-label="Speaking leaderboard">
           <div className="row between">
             <div className="row"><span className="leaderboard-icon"><Icon name="trophy" size={24} /></span><h2>Top performers</h2></div>
-            <div className="segmented" aria-label="Leaderboard period">
+            <div className="segmented" role="group" aria-label="Leaderboard period">
               {PERIODS.map((item) => (
-                <button key={item.id} aria-pressed={period === item.id} onClick={() => { if (item.id !== period) { setPeriod(item.id); setLoading(true); } }}>{item.label}</button>
+                <button type="button" key={item.id} aria-pressed={period === item.id} onClick={() => { if (item.id !== period) { setPeriod(item.id); setLoading(true); } }}>{item.label}</button>
               ))}
             </div>
           </div>
           <p className="caption">Best estimated band per person. Equal scores share a rank. Days reset at 00:00 UTC; weeks start Monday.</p>
           <div aria-live="polite" aria-busy={loading}>
-            {loading && <div className="loading-panel" role="status">Loading {label.toLowerCase()} rankings…</div>}
-            {error && <Alert tone="error">{error} <Button variant="secondary" size="sm" onClick={() => setRevision((value) => value + 1)}>Retry</Button></Alert>}
+            {loading && <LoadingState label={`Loading ${label.toLowerCase()} rankings…`} compact />}
+            {error && <Alert tone="error" action={<Button variant="secondary" size="sm" onClick={() => setRevision((value) => value + 1)}>Retry</Button>}>{error}</Alert>}
             {current && (
               <div className="stack">
                 <div className="leaderboard-summary row between">
