@@ -19,6 +19,21 @@ def test_catalog_covers_core_ielts_ranges():
     assert len(PART2_THEMES) >= 20
 
 
+def test_part2_catalog_covers_reference_prompt_types():
+    ids = {item["id"] for item in PART2_THEMES}
+    assert {
+        "decision",
+        "team_project",
+        "solved_problem",
+        "community_tradition",
+        "outdoor_activity",
+        "local_improvement",
+        "memorable_conversation",
+        "organised_event",
+        "routine_change",
+    } <= ids
+
+
 def test_part1_rotates_across_three_topics():
     plan = {"part1": ["travel", "music", "sport"], "part2": "journey", "part3_theme": "travel"}
     assert part1_topic_for_index(plan, 0)["id"] == "travel"

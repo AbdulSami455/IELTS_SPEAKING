@@ -2,23 +2,30 @@
 
 from __future__ import annotations
 
+import asyncio
+import logging
 import os
 import uuid
 from pathlib import Path
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.responses import JSONResponse
+from ielts_db.database import DatabaseConfig
 from sqlalchemy import text
+from sqlalchemy.exc import OperationalError
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from ielts_api.api.routes import api_router
 from ielts_api.errors import AppError
-from ielts_db.database import DatabaseConfig
-from ielts_db.models import Base
+from ielts_api.middleware import RequestGuardMiddleware
 
-_db: DatabaseConfig | None = None
+_logger = logging.getLogger(__name__)
+
+DATABASE_STARTUP_ATTEMPTS = 10
+DATABASE_STARTUP_RETRY_DELAY_SECONDS = 1.0
+JSON_BODY_MAX_BYTES = 64 * 1024
 
 
 def _load_env() -> None:
@@ -57,71 +64,118 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
         return response
 
 
+async def _initialize_database(database: DatabaseConfig) -> None:
+    """Wait for the database. Schema changes are applied by Alembic, not at boot."""
+    async with database.engine.begin() as conn:
+        await conn.execute(text("SELECT 1"))
+
+
+async def _initialize_database_with_retry(database: DatabaseConfig) -> None:
+    for attempt in range(1, DATABASE_STARTUP_ATTEMPTS + 1):
+        try:
+            await _initialize_database(database)
+            return
+        except OperationalError:
+            if attempt == DATABASE_STARTUP_ATTEMPTS:
+                raise
+            _logger.warning(
+                "Database unavailable during startup; retrying in %.1f seconds (%d/%d)",
+                DATABASE_STARTUP_RETRY_DELAY_SECONDS,
+                attempt,
+                DATABASE_STARTUP_ATTEMPTS,
+            )
+            await asyncio.sleep(DATABASE_STARTUP_RETRY_DELAY_SECONDS)
+
+
+def run_migrations() -> None:
+    """Upgrade the database to the latest Alembic revision (repo-root alembic.ini)."""
+    from alembic import command
+    from alembic.config import Config
+
+    root = Path(__file__).resolve().parents[4]
+    config = Config(str(root / "alembic.ini"))
+    config.set_main_option("script_location", str(root / "migrations"))
+    command.upgrade(config, "head")
+
+
+def _validate_config_at_boot():
+    from ielts_config import get_config
+
+    config = get_config()
+    errors = config.validate()
+    if errors:
+        if config.is_production:
+            raise RuntimeError("Refusing to start with invalid configuration: " + "; ".join(errors))
+        for error in errors:
+            _logger.warning("configuration warning: %s", error)
+    return config
+
+
 def create_app() -> FastAPI:
     _load_env()
     from ielts_observability import configure_logging, metrics_response
 
     configure_logging(os.environ.get("LOG_LEVEL", "INFO"))
+    config = _validate_config_at_boot()
     app = FastAPI(
         title="IELTS Speaking API",
         version="0.1.0",
-        docs_url="/v1/docs",
-        openapi_url="/v1/openapi.json",
+        docs_url=None if config.is_production else "/v1/docs",
+        redoc_url=None,
+        openapi_url=None if config.is_production else "/v1/openapi.json",
     )
-    origin = os.environ.get("WEB_ORIGIN", "http://localhost:3000")
+    # Innermost first: the guard refuses bad requests before routing, and CORS
+    # still decorates its responses because it wraps the guard.
+    app.add_middleware(
+        RequestGuardMiddleware,
+        allowed_origins=config.allowed_origins,
+        json_max_bytes=JSON_BODY_MAX_BYTES,
+        audio_max_bytes=config.upload_max_bytes_per_answer,
+        trusted_proxy_hops=config.trusted_proxy_hops,
+    )
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[origin, "http://localhost:5173"],
+        allow_origins=config.allowed_origins,
         allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-        expose_headers=["X-Request-Id"],
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allow_headers=["Content-Type", "Authorization", "X-Request-Id"],
+        expose_headers=["X-Request-Id", "Retry-After"],
     )
     app.add_middleware(RequestIDMiddleware)
     app.add_middleware(GZipMiddleware, minimum_size=500)
 
     @app.get("/metrics", include_in_schema=False)
-    async def metrics():
+    async def metrics(request: Request) -> Response:
+        token = config.metrics_token
+        if not token:
+            return JSONResponse({"detail": "Not Found"}, status_code=404)
+        if request.headers.get("authorization") != f"Bearer {token}":
+            return JSONResponse({"detail": "Unauthorized"}, status_code=401)
         return metrics_response()
 
-    global _db
-    _db = DatabaseConfig()
+    from ielts_api.deps import database as shared_database
+
+    database = shared_database()
 
     @app.get("/health/live")
     async def live() -> dict[str, str]:
         return {"status": "ok"}
 
     @app.get("/health/ready")
-    async def ready() -> dict[str, object]:
-        from ielts_config import EnvironmentConfig
-        from ielts_db.storage import ObjectStore
-
-        config = EnvironmentConfig.from_env()
-        checks: dict[str, str] = {
-            "database": "configured" if config.database_url else "missing",
-            "redis": "configured" if config.redis_url else "missing",
-            "storage": "configured" if config.minio_endpoint else "missing",
-        }
-        try:
-            async with _db.engine.begin() as conn:
-                await conn.execute(text("SELECT 1"))
-            checks["database"] = "ok"
-        except Exception as exc:
-            checks["database"] = f"error: {type(exc).__name__}"
-        try:
-            store = ObjectStore(config)
-            store.head(config.minio_candidate_bucket, "health-check")
-            checks["storage"] = "ok"
-        except Exception as exc:
-            checks["storage"] = f"error: {type(exc).__name__}"
-        return {
-            "status": "ok" if all(v == "ok" or v == "configured" for v in checks.values()) else "degraded",
-            "checks": checks,
-        }
+    async def ready() -> JSONResponse:
+        checks = await readiness_checks(database)
+        healthy = all(value == "ok" for value in checks.values())
+        return JSONResponse(
+            {"status": "ok" if healthy else "degraded", "checks": checks},
+            status_code=200 if healthy else 503,
+        )
 
     @app.exception_handler(AppError)
     async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
         request_id = request.headers.get("X-Request-Id", str(uuid.uuid4()))
+        headers = {"X-Request-Id": request_id}
+        if exc.status_code == 429:
+            headers["Retry-After"] = "60"
         return JSONResponse(
             status_code=exc.status_code,
             content={
@@ -133,26 +187,55 @@ def create_app() -> FastAPI:
                 },
                 "requestId": request_id,
             },
-            headers={"X-Request-Id": request_id},
+            headers=headers,
         )
 
     @app.on_event("startup")
     async def startup() -> None:
-        async with _db.engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-            await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)"))
-            await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS voice_preference VARCHAR(50)"))
-            await conn.execute(text("ALTER TABLE session_questions ALTER COLUMN question_id DROP NOT NULL"))
-            await conn.execute(text("ALTER TABLE test_sessions ALTER COLUMN question_set_id DROP NOT NULL"))
-            await conn.execute(text("ALTER TABLE test_sessions ADD COLUMN IF NOT EXISTS topic_plan JSON"))
+        await _initialize_database_with_retry(database)
+        # Local convenience only; deployments run `alembic upgrade head` as a release step.
+        if os.environ.get("AUTO_MIGRATE", "").lower() in {"1", "true", "yes"}:
+            await asyncio.to_thread(run_migrations)
 
     @app.on_event("shutdown")
     async def shutdown() -> None:
-        if _db is not None:
-            await _db.dispose()
+        await database.dispose()
 
     app.include_router(api_router, prefix="/v1")
     return app
+
+
+async def readiness_checks(database: DatabaseConfig) -> dict[str, str]:
+    """Each dependency is probed with a short timeout; any failure makes the API unready."""
+    from ielts_config import get_config
+    from ielts_db.storage import ObjectStore
+
+    config = get_config()
+    checks: dict[str, str] = {}
+    try:
+        async with database.engine.connect() as conn:
+            await asyncio.wait_for(conn.execute(text("SELECT 1")), timeout=3)
+        checks["database"] = "ok"
+    except Exception as exc:  # noqa: BLE001
+        checks["database"] = f"error: {type(exc).__name__}"
+    try:
+        import redis.asyncio as redis
+
+        client = redis.from_url(config.redis_url, socket_timeout=2, socket_connect_timeout=2)
+        try:
+            await client.ping()
+        finally:
+            await client.aclose()
+        checks["redis"] = "ok"
+    except Exception as exc:  # noqa: BLE001
+        checks["redis"] = f"error: {type(exc).__name__}"
+    try:
+        store = ObjectStore(config)
+        exists = await asyncio.to_thread(store.bucket_exists, config.minio_candidate_bucket)
+        checks["storage"] = "ok" if exists else "error: bucket missing"
+    except Exception as exc:  # noqa: BLE001
+        checks["storage"] = f"error: {type(exc).__name__}"
+    return checks
 
 
 app = create_app()

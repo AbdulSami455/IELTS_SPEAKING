@@ -4,6 +4,7 @@ from ielts_inference.examiner import (
     PART3_INTRO_PREFIX,
     first_part1_turn_after_intro,
     first_part3_turn_after_part2,
+    is_repeated_question,
     parse_cue_card,
     parse_follow_up,
     parse_spoken_question,
@@ -33,6 +34,13 @@ def test_parse_spoken_question_accepts_alternate_keys():
     turn = parse_spoken_question({"prompt": "How has technology changed education?"}, timing_seconds=30)
     assert turn is not None
     assert "technology" in turn.prompt_text.lower()
+
+
+def test_repeated_question_detects_exact_and_near_duplicates():
+    asked = ["Should cities provide more opportunities for outdoor activities?"]
+    assert is_repeated_question("Should cities provide more opportunities for outdoor activities?", asked)
+    assert is_repeated_question("Should cities provide more opportunities for outdoor activities", asked)
+    assert not is_repeated_question("Why do some people spend little time outdoors?", asked)
 
 
 def test_parse_cue_card_requires_three_points():

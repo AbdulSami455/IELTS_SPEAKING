@@ -39,27 +39,27 @@ services:
       - minio_data:/data
 
   minio-setup:
-    image: minio/mc:RELEASE.2025-04-16T18-13-26Z
+    image: amazon/aws-cli:latest
     depends_on:
       - minio
+    environment:
+      AWS_ACCESS_KEY_ID: minio
+      AWS_SECRET_ACCESS_KEY: minio-development-only
+      AWS_DEFAULT_REGION: us-east-1
     entrypoint: /bin/sh
     command:
       - -c
       - |
         set -eu
-
         i=0
-        until mc alias set local http://minio:9000 minio minio-development-only; do
+        until aws --endpoint-url http://minio:9000 s3 ls; do
           i=$$((i+1))
           if [ "$$i" -gt 30 ]; then exit 1; fi
           sleep 2
         done
-        mc mb -p local/ielts-candidate-private
-        mc mb -p local/ielts-derived-private
-        mc mb -p local/ielts-examiner-private
-        mc anonymous set none local/ielts-candidate-private || true
-        mc anonymous set none local/ielts-derived-private || true
-        mc anonymous set none local/ielts-examiner-private || true
+        aws --endpoint-url http://minio:9000 s3 mb s3://ielts-candidate-private || true
+        aws --endpoint-url http://minio:9000 s3 mb s3://ielts-derived-private || true
+        aws --endpoint-url http://minio:9000 s3 mb s3://ielts-examiner-private || true
         echo "MinIO buckets ready"
 
 volumes:

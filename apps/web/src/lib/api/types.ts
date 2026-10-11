@@ -4,6 +4,7 @@ export type User = {
   email?: string;
   consentRequired: boolean;
   consentVersion?: string;
+  currentConsentVersion?: string;
 };
 
 export type Turn = {

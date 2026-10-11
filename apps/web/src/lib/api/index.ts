@@ -16,10 +16,10 @@ import type {
 } from "./types";
 
 export const api = {
-  register: (email: string, password: string, displayName: string) =>
+  register: (email: string, password: string, displayName: string, acceptTerms: boolean) =>
     request<{ user: User }>(
       "/auth/register",
-      { method: "POST", body: JSON.stringify({ email, password, displayName }) },
+      { method: "POST", body: JSON.stringify({ email, password, displayName, acceptTerms }) },
     ),
   login: (email: string, password: string) =>
     request<{ user: User }>(
@@ -27,10 +27,11 @@ export const api = {
       { method: "POST", body: JSON.stringify({ email, password }) },
     ),
   me: () => request<User>("/me"),
+  // The server records whichever consent version it currently requires.
   consent: () =>
     request<User>("/me/consent", {
       method: "POST",
-      body: JSON.stringify({ version: "2026-08-18", accepted: true }),
+      body: JSON.stringify({ accepted: true }),
     }),
   questionSets: () => request<{ slug: string; version: string; language: string }[]>("/question-sets"),
   createTest: () => request<TestSession>("/tests", { method: "POST" }),

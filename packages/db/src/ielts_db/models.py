@@ -5,26 +5,22 @@ Implements the database contract from Section 6.2 of the product plan.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from enum import Enum
+from datetime import datetime
 from typing import Any, Optional
 
 from sqlalchemy import (
     JSON,
     CheckConstraint,
-    Column,
     DateTime,
-    Enum as SQLEnum,
     ForeignKey,
     Index,
     Integer,
     String,
     Text,
     UniqueConstraint,
-    func,
     text as sql_text,
 )
-from sqlalchemy.ext.asyncio import AsyncAttrs, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -112,7 +108,7 @@ class TestSession(Base):
     __tablename__ = "test_sessions"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     question_set_id: Mapped[Optional[int]] = mapped_column(
         Integer, ForeignKey("question_sets.id"), nullable=True
     )
@@ -538,7 +534,7 @@ class ProgressSnapshot(Base):
     __tablename__ = "progress_snapshots"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     window_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     window_end: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     comparability_group: Mapped[str] = mapped_column(String(50), nullable=False)
@@ -560,7 +556,7 @@ class PracticeGoal(Base):
     __tablename__ = "practice_goals"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     target_band: Mapped[float] = mapped_column(nullable=False)
     target_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     focus_skills: Mapped[list] = mapped_column(JSON, nullable=False)
@@ -588,7 +584,7 @@ class PracticeAction(Base):
     test_session_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("test_sessions.id"), nullable=False
     )
-    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
     category: Mapped[str] = mapped_column(String(50), nullable=False)
     due_date: Mapped[Optional[datetime]] = mapped_column(
@@ -614,7 +610,7 @@ class ModelCallAttempt(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     idempotency_key: Mapped[str] = mapped_column(String(255), nullable=False)
     test_session_id: Mapped[Optional[str]] = mapped_column(
-        String(36), ForeignKey("test_sessions.id"), nullable=True
+        String(36), ForeignKey("test_sessions.id", ondelete="SET NULL"), nullable=True
     )
     stage: Mapped[str] = mapped_column(String(50), nullable=False)
     route: Mapped[str] = mapped_column(String(50), nullable=False)
@@ -647,7 +643,7 @@ class UsageLedger(Base):
     __tablename__ = "usage_ledger"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     free_requests_used: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     paid_cost_microdollars: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
@@ -664,7 +660,7 @@ class IdempotencyRecord(Base):
     __tablename__ = "idempotency_records"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     route: Mapped[str] = mapped_column(String(255), nullable=False)
     key: Mapped[str] = mapped_column(String(255), nullable=False)
     response_status: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -683,9 +679,9 @@ class DeletionRequest(Base):
     __tablename__ = "deletion_requests"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     test_session_id: Mapped[Optional[str]] = mapped_column(
-        String(36), ForeignKey("test_sessions.id"), nullable=True
+        String(36), ForeignKey("test_sessions.id", ondelete="SET NULL"), nullable=True
     )
     status: Mapped[str] = mapped_column(String(30), nullable=False, default="REQUESTED")
     requested_at: Mapped[datetime] = mapped_column(
@@ -702,12 +698,32 @@ class DeletionRequest(Base):
     )
 
 
+class ConsentRecord(Base):
+    """Append-only log of every consent acceptance, one row per version accepted."""
+
+    __tablename__ = "consent_records"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    version: Mapped[str] = mapped_column(String(32), nullable=False)
+    accepted_terms: Mapped[bool] = mapped_column(nullable=False, default=True)
+    accepted_privacy: Mapped[bool] = mapped_column(nullable=False, default=True)
+    accepted_recording: Mapped[bool] = mapped_column(nullable=False, default=True)
+    ip_address: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    user_agent: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    accepted_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=sql_text("now()"), nullable=False
+    )
+
+    __table_args__ = (Index("ix_consent_records_user_version", "user_id", "version"),)
+
+
 class AuditEvent(Base):
     __tablename__ = "audit_events"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[Optional[int]] = mapped_column(
-        Integer, ForeignKey("users.id"), nullable=True
+        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
     event_type: Mapped[str] = mapped_column(String(100), nullable=False)
     entity_type: Mapped[str] = mapped_column(String(50), nullable=False)

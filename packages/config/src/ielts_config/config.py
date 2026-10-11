@@ -55,8 +55,15 @@ class EnvironmentConfig:
     free_request_daily_soft_limit: int
     paid_daily_budget_usd: float
     paid_test_cost_ceiling_usd: float
-    consent_version: str = "2026-08-18"
+    consent_version: str = "2026-10-12"
     minio_public_endpoint: str = ""
+    # Launch hardening knobs (all overridable from the environment).
+    tests_per_day_limit: int = 10
+    cors_extra_origins: str = ""
+    metrics_token: str = ""
+    trusted_proxy_hops: int = 0
+    openrouter_tts_fallback_model: str = ""
+    alert_webhook_url: str = ""
 
     @classmethod
     def from_env(cls) -> EnvironmentConfig:
@@ -86,7 +93,8 @@ class EnvironmentConfig:
             web_origin=_str("WEB_ORIGIN", "http://localhost:3000"),
             api_host=_str("API_HOST", "0.0.0.0"),
             api_port=_int("API_PORT", 4000),
-            auth_mode=_str("AUTH_MODE", "dev"),
+            # The dev token verifier no longer exists; legacy "dev" simply means JWT now.
+            auth_mode="jwt" if _str("AUTH_MODE", "jwt").lower() in {"jwt", "dev"} else _str("AUTH_MODE", "jwt"),
             dev_auth_user_id=_str("DEV_AUTH_USER_ID", "00000000-0000-4000-8000-000000000001"),
             auth_token_secret=_str("AUTH_TOKEN_SECRET", "")
             or (
@@ -134,7 +142,22 @@ class EnvironmentConfig:
             paid_daily_budget_usd=_float("PAID_DAILY_BUDGET_USD", 5.0),
             paid_test_cost_ceiling_usd=_float("PAID_TEST_COST_CEILING_USD", 0.035),
             minio_public_endpoint=_str("MINIO_PUBLIC_ENDPOINT", ""),
+            consent_version=_str("CONSENT_VERSION", "2026-10-12").strip()[:32],
+            tests_per_day_limit=_int("TESTS_PER_DAY_LIMIT", 10),
+            cors_extra_origins=_str("CORS_EXTRA_ORIGINS", ""),
+            metrics_token=_str("METRICS_TOKEN", ""),
+            trusted_proxy_hops=_int(
+                "TRUSTED_PROXY_HOPS",
+                1 if _str("APP_ENV", "development").lower() == "production" else 0,
+            ),
+            openrouter_tts_fallback_model=_str("OPENROUTER_TTS_FALLBACK_MODEL", ""),
+            alert_webhook_url=_str("ALERT_WEBHOOK_URL", ""),
         )
+
+    @property
+    def allowed_origins(self) -> list[str]:
+        extras = [item.strip() for item in self.cors_extra_origins.split(",") if item.strip()]
+        return [self.web_origin, *[item for item in extras if item != self.web_origin]]
 
     @property
     def is_production(self) -> bool:
@@ -152,9 +175,13 @@ class EnvironmentConfig:
             errors.append("MINIO_ACCESS_KEY is required")
         if not self.minio_secret_key:
             errors.append("MINIO_SECRET_KEY is required")
+        if self.auth_mode != "jwt":
+            errors.append("AUTH_MODE must be 'jwt'")
+        if not self.consent_version:
+            errors.append("CONSENT_VERSION is required")
         if self.is_production:
-            if self.auth_mode == "dev":
-                errors.append("AUTH_MODE=dev is forbidden in production")
+            if not self.metrics_token:
+                errors.append("METRICS_TOKEN is required in production")
             if self.inference_mode == "fake":
                 errors.append("INFERENCE_MODE=fake is forbidden in production")
             if not self.openrouter_api_key:

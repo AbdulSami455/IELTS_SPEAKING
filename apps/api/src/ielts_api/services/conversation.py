@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import uuid
-
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from typing import cast
 
 from ielts_config import EnvironmentConfig
 from ielts_db.models import Answer, SessionQuestion, TestSession, Transcript
 from ielts_domain import AnswerState, TestEvent, TestState, apply_transition
 from ielts_inference.examiner import (
+    DATA_HANDLING_RULES,
     FOLLOW_UP_INSTRUCTIONS,
     PART1_INSTRUCTIONS,
     PART1_TARGET_QUESTIONS,
@@ -19,8 +19,10 @@ from ielts_inference.examiner import (
     PART3_INSTRUCTIONS,
     PART3_TARGET_QUESTIONS,
     GeneratedTurn,
-    first_part1_turn_after_intro,
+    echoes_candidate,
     first_part3_turn_after_part2,
+    is_repeated_question,
+    looks_like_injection,
     parse_cue_card,
     parse_follow_up,
     parse_spoken_question,
@@ -28,8 +30,9 @@ from ielts_inference.examiner import (
     part1_prompt_input,
     part2_prompt_input,
     part3_prompt_input,
+    sanitize_candidate_text,
 )
-from ielts_inference.openrouter import InferenceError, OpenRouterClient
+from ielts_inference.openrouter import LIVE_READ_TIMEOUT, InferenceError, OpenRouterClient
 from ielts_inference.quota import reserve_model_call
 from ielts_inference.topics import (
     SessionTopicPlan,
@@ -39,7 +42,8 @@ from ielts_inference.topics import (
     part1_topic_for_index,
     part2_theme,
 )
-
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 VALID_ANSWER_STATES = {AnswerState.VALID.value, AnswerState.READY.value}
 
@@ -50,7 +54,7 @@ class ConversationOrchestrator:
         self._config = config
 
     async def start(self, test: TestSession) -> None:
-        test.topic_plan = await self._assign_topic_plan(test)
+        test.topic_plan = dict(await self._assign_topic_plan(test))
         self._transition(test, TestEvent.READY_TO_START)
         self._append_turn(test, part1_intro_turn(), part=1, asset_version="intro")
 
@@ -100,12 +104,7 @@ class ConversationOrchestrator:
     async def _advance_part1(self, test: TestSession) -> None:
         last_question = self._last_part1_question(test)
         if last_question and last_question.examiner_asset_version == "intro":
-            plan = self._topic_plan(test)
-            topic = part1_topic_for_index(plan, 0)
-            turn = first_part1_turn_after_intro(
-                topic["label"],
-                part1_question_angle(topic["id"], part1_questions_on_topic(plan, 0)),
-            )
+            turn = await self._generate_part1_turn(test)
             self._append_turn(test, turn, part=1)
             return
         count = self._part1_main_question_count(test)
@@ -146,18 +145,19 @@ class ConversationOrchestrator:
         self._transition(test, TestEvent.COMPLETE_PART3)
 
     def _last_part1_question(self, test: TestSession) -> SessionQuestion | None:
-        part1 = [
-            question
-            for question in test.session_questions
-            if question.part == 1
-        ]
+        part1 = [question for question in test.session_questions if question.part == 1]
         return part1[-1] if part1 else None
 
     def _last_answer_for_part(self, test: TestSession, part: int) -> str | None:
-        history = sorted(test.conversation_events, key=lambda item: (item.sequence_index, item.id))
-        for event in reversed(history):
-            if event.phase and f"PART{part}" in event.phase and event.transcript_text:
-                return event.transcript_text
+        # Server-owned transcripts only; conversation events can carry client text.
+        answers = sorted(
+            (item for item in test.answers if item.session_question is not None and item.session_question.part == part),
+            key=lambda item: item.session_question.sort_order,
+        )
+        for answer in reversed(answers):
+            text = answer.transcript.text if answer.transcript is not None else None
+            if text and text.strip():
+                return text
         return None
 
     async def _generate_part1_follow_up(self, test: TestSession, transcript: str) -> GeneratedTurn | None:
@@ -167,12 +167,12 @@ class ConversationOrchestrator:
             {
                 "part": 1,
                 "question": test.session_questions[-1].prompt_text if test.session_questions else "",
-                "transcript": transcript,
+                "transcript": sanitize_candidate_text(transcript),
             }
         )
-        payload = await self._chat_json(test, FOLLOW_UP_INSTRUCTIONS, prompt)
+        payload = await self._chat_json(test, FOLLOW_UP_INSTRUCTIONS + DATA_HANDLING_RULES, prompt)
         follow_up = parse_follow_up(payload)
-        if follow_up is None:
+        if follow_up is None or looks_like_injection(follow_up) or echoes_candidate(follow_up, [transcript]):
             return None
         return GeneratedTurn(prompt_text=follow_up, timing_seconds=35, asset_version="follow-up")
 
@@ -189,11 +189,15 @@ class ConversationOrchestrator:
             part2_theme = theme_info["label"]
         part3_count = self._answered_count(test, 3)
         theme = str(plan.get("part3_theme") or "society")
+        fallback_questions = (
+            f"Looking at {theme}, what differences do you see between younger and older generations?",
+            f"What should governments or local communities do to improve {theme}?",
+        )
         fallback = (
             first_part3_turn_after_part2(theme, part2_theme)
             if part3_count == 0
             else GeneratedTurn(
-                f"Looking at {theme}, what differences do you see between younger and older generations?",
+                fallback_questions[min(part3_count - 1, len(fallback_questions) - 1)],
                 40,
             )
         )
@@ -210,6 +214,8 @@ class ConversationOrchestrator:
             ),
             timing_seconds=40,
             fallback=fallback,
+            excluded_prompts=asked,
+            candidate_texts=[item.get("transcript", "") for item in history],
         )
 
     def _detect_nervousness(self, test: TestSession, history: list[dict]) -> bool:
@@ -278,9 +284,7 @@ class ConversationOrchestrator:
             stmt = stmt.where(SessionQuestion.part == part)
         result = await self._session.execute(stmt)
         return [
-            {"part": row.part, "prompt": row.prompt_text, "transcript": row.text}
-            for row in result.all()
-            if row.text
+            {"part": row.part, "prompt": row.prompt_text, "transcript": row.text} for row in result.all() if row.text
         ]
 
     async def _assign_topic_plan(self, test: TestSession) -> SessionTopicPlan:
@@ -295,7 +299,11 @@ class ConversationOrchestrator:
             .limit(16)
         )
         rows = await self._session.execute(stmt)
-        recent = [plan for plan in rows.scalars().all() if isinstance(plan, dict) and plan.get("part1") and plan.get("part2")]
+        recent = [
+            cast(SessionTopicPlan, plan)
+            for plan in rows.scalars().all()
+            if isinstance(plan, dict) and plan.get("part1") and plan.get("part2")
+        ]
         return choose_session_topics(recent)
 
     def _topic_plan(self, test: TestSession) -> SessionTopicPlan:
@@ -327,6 +335,8 @@ class ConversationOrchestrator:
                 is_first_topic_question=main_index == 0,
             ),
             timing_seconds=45,
+            excluded_prompts=asked,
+            candidate_texts=[item.get("transcript", "") for item in history],
         )
 
     async def _generate_part2_prompt(self, test: TestSession) -> GeneratedTurn:
@@ -354,17 +364,17 @@ class ConversationOrchestrator:
             return None
         payload = await self._chat_json(
             test,
-            FOLLOW_UP_INSTRUCTIONS,
+            FOLLOW_UP_INSTRUCTIONS + DATA_HANDLING_RULES,
             json.dumps(
                 {
                     "part": 2,
                     "question": question.prompt_text,
-                    "transcript": transcript,
+                    "transcript": sanitize_candidate_text(transcript),
                 }
             ),
         )
         follow_up = parse_follow_up(payload)
-        if follow_up is None:
+        if follow_up is None or looks_like_injection(follow_up) or echoes_candidate(follow_up, [transcript]):
             return None
         return GeneratedTurn(prompt_text=follow_up, timing_seconds=35, asset_version="follow-up")
 
@@ -376,29 +386,40 @@ class ConversationOrchestrator:
         *,
         timing_seconds: int,
         fallback: GeneratedTurn | None = None,
+        excluded_prompts: list[str] | None = None,
+        candidate_texts: list[str] | None = None,
     ) -> GeneratedTurn:
+        excluded = excluded_prompts or []
+        spoken = candidate_texts or []
         retry_prompt = (
             f"{prompt}\n\n"
-            'Your previous reply was unusable. Return JSON only: {"question": "one spoken examiner question"}'
+            "Your previous reply was unusable or repeated an earlier question. "
+            'Generate a clearly different question and return JSON only: {"question": "one spoken examiner question"}'
         )
         for attempt, user_prompt in enumerate((prompt, retry_prompt)):
-            payload = await self._chat_json(test, system, user_prompt)
+            payload = await self._chat_json(test, system + DATA_HANDLING_RULES, user_prompt)
             parsed = parse_spoken_question(payload, timing_seconds=timing_seconds)
-            if parsed is not None:
+            if (
+                parsed is not None
+                and not is_repeated_question(parsed.prompt_text, excluded)
+                and not echoes_candidate(parsed.prompt_text, spoken)
+            ):
                 return parsed
             if attempt == 0:
                 continue
-        if fallback is not None:
+        if fallback is not None and not is_repeated_question(fallback.prompt_text, excluded):
             return fallback
         raise InferenceError("Examiner prompt generation returned invalid JSON", retryable=True)
 
     async def _chat_json(self, test: TestSession, system: str, prompt: str) -> dict:
         await reserve_model_call(self._session, test.user_id, test.id, "examiner", self._config)
-        client = OpenRouterClient(self._config)
-        return client.chat_json(
+        client = OpenRouterClient(self._config, read_timeout=LIVE_READ_TIMEOUT)
+        # The HTTP call is synchronous; keep it off the event loop so other learners aren't stalled.
+        return await asyncio.to_thread(
+            client.chat_json,
             system,
             prompt,
-            models=[
+            [
                 self._config.realtime_llm_model,
                 self._config.openrouter_scoring_fallback_model,
                 self._config.openrouter_scoring_model,

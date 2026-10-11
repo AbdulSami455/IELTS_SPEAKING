@@ -224,6 +224,60 @@ PART2_THEMES: tuple[Part2Theme, ...] = (
         "task": "Describe a meal you enjoyed with other people.",
         "part3": "food culture, eating habits, and hospitality",
     },
+    {
+        "id": "decision",
+        "label": "a difficult decision",
+        "task": "Describe a difficult decision you made.",
+        "part3": "decision-making, independence, and advice",
+    },
+    {
+        "id": "team_project",
+        "label": "a team project",
+        "task": "Describe a project you completed with other people.",
+        "part3": "teamwork, leadership, and working independently",
+    },
+    {
+        "id": "solved_problem",
+        "label": "a problem you solved",
+        "task": "Describe a time you fixed a problem yourself.",
+        "part3": "practical skills, repairing possessions, and problem-solving",
+    },
+    {
+        "id": "community_tradition",
+        "label": "a community tradition",
+        "task": "Describe a tradition that is important in your community.",
+        "part3": "traditions, cultural identity, and social change",
+    },
+    {
+        "id": "outdoor_activity",
+        "label": "an outdoor activity",
+        "task": "Describe an outdoor activity you tried.",
+        "part3": "outdoor recreation, health, and urban planning",
+    },
+    {
+        "id": "local_improvement",
+        "label": "an improvement to your local area",
+        "task": "Describe a change that improved your local area.",
+        "part3": "neighbourhood planning, local government, and public consultation",
+    },
+    {
+        "id": "memorable_conversation",
+        "label": "a memorable conversation",
+        "task": "Describe a conversation you remember clearly.",
+        "part3": "communication, memory, and digital messaging",
+    },
+    {
+        "id": "organised_event",
+        "label": "a well-organised event",
+        "task": "Describe an event you attended that was well organised.",
+        "part3": "event planning, accessibility, and public participation",
+    },
+    {
+        "id": "routine_change",
+        "label": "a change to your routine",
+        "task": "Describe a change you made to your daily routine.",
+        "part3": "habits, routines, productivity, and personal freedom",
+    },
 )
 
 _PART1_BY_ID = {item["id"]: item for item in PART1_TOPICS}

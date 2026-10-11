@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any, Generic, Optional, TypeVar
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 T = TypeVar("T")
 
@@ -53,10 +54,13 @@ class UserResponse(ApiModel):
     display_name: Optional[str] = None
     consent_version: Optional[str] = None
     consent_required: bool = True
+    current_consent_version: Optional[str] = None
 
 
 class ConsentRequest(ApiModel):
-    version: str
+    # The server records the version it currently requires; a client-sent
+    # version is accepted for compatibility but never trusted.
+    version: Optional[str] = Field(default=None, max_length=32)
     accepted: bool
 
 
@@ -104,16 +108,26 @@ class RealtimeSessionResponse(ApiModel):
     test: TestSessionResponse
 
 
+MAX_EVENT_PAYLOAD_BYTES = 8192
+
+
 class RealtimeClientEventRequest(ApiModel):
-    event_type: str
-    speaker_role: str = "system"
-    provider_event_id: Optional[str] = None
-    transcript_text: Optional[str] = None
-    prompt_text: Optional[str] = None
-    started_at: Optional[str] = None
-    ended_at: Optional[str] = None
-    latency_ms: Optional[int] = None
+    event_type: str = Field(max_length=64)
+    speaker_role: str = Field(default="system", max_length=32)
+    provider_event_id: Optional[str] = Field(default=None, max_length=128)
+    transcript_text: Optional[str] = Field(default=None, max_length=8000)
+    prompt_text: Optional[str] = Field(default=None, max_length=2000)
+    started_at: Optional[str] = Field(default=None, max_length=40)
+    ended_at: Optional[str] = Field(default=None, max_length=40)
+    latency_ms: Optional[int] = Field(default=None, ge=0, le=3_600_000)
     payload: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("payload")
+    @classmethod
+    def _bounded_payload(cls, value: dict[str, Any]) -> dict[str, Any]:
+        if len(json.dumps(value, separators=(",", ":"))) > MAX_EVENT_PAYLOAD_BYTES:
+            raise ValueError(f"payload must be at most {MAX_EVENT_PAYLOAD_BYTES} bytes")
+        return value
 
 
 class RealtimeAudioTurnResponse(ApiModel):
@@ -123,22 +137,22 @@ class RealtimeAudioTurnResponse(ApiModel):
 
 
 class DeviceCheckRequest(ApiModel):
-    sample_duration_ms: int
-    silence_ratio: float
-    clipping_ratio: float
+    sample_duration_ms: int = Field(ge=0, le=600_000)
+    silence_ratio: float = Field(ge=0, le=1)
+    clipping_ratio: float = Field(ge=0, le=1)
     microphone_available: bool
     speaker_available: bool
 
 
 class TransitionRequest(ApiModel):
-    event: str
-    expected_revision: int
+    event: str = Field(max_length=64)
+    expected_revision: int = Field(ge=0)
 
 
 class UploadCompleteRequest(ApiModel):
-    content_sha256: str
-    mime_type: str
-    size_bytes: int
+    content_sha256: str = Field(max_length=64)
+    mime_type: str = Field(max_length=100)
+    size_bytes: int = Field(ge=0)
 
 
 class UploadUrlResponse(ApiModel):
@@ -197,9 +211,16 @@ class ReportResponse(ApiModel):
 
 
 class GoalRequest(ApiModel):
-    target_band: float
-    target_date: str
-    focus_skills: list[str]
+    target_band: float = Field(ge=0, le=9)
+    target_date: str = Field(max_length=40)
+    focus_skills: list[str] = Field(max_length=4)
+
+    @field_validator("focus_skills")
+    @classmethod
+    def _short_skill_keys(cls, value: list[str]) -> list[str]:
+        if any(len(item) > 64 for item in value):
+            raise ValueError("focus skill keys are too long")
+        return value
 
 
 class GoalResponse(ApiModel):

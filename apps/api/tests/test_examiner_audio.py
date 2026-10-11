@@ -29,7 +29,7 @@ async def test_examiner_audio_repairs_incompatible_cache(monkeypatch, head, rege
     service.users.get_by_id = AsyncMock(return_value=SimpleNamespace(voice_preference=None))
     client = MagicMock()
     client.synthesize.return_value = (b"ID3audio", "audio/mpeg")
-    monkeypatch.setattr("ielts_inference.openrouter.OpenRouterClient", lambda _: client)
+    monkeypatch.setattr("ielts_inference.openrouter.OpenRouterClient", lambda *_args, **_kwargs: client)
     reserve = AsyncMock()
     monkeypatch.setattr("ielts_inference.quota.reserve_model_call", reserve)
 

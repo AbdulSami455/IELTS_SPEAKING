@@ -11,6 +11,7 @@ from sqlalchemy.orm import selectinload
 
 from ielts_db.models import (
     Answer,
+    ConsentRecord,
     ConversationEvent,
     CriterionScore,
     PracticeAction,
@@ -90,6 +91,32 @@ class UserRepository:
         user.consent_accepted_at = datetime.now(timezone.utc)
         await self._session.flush()
         return user
+
+
+class ConsentRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    async def record(
+        self,
+        user: User,
+        version: str,
+        *,
+        ip: Optional[str] = None,
+        user_agent: Optional[str] = None,
+    ) -> ConsentRecord:
+        """Append a consent row and move the user's pointer to this version."""
+        row = ConsentRecord(
+            user_id=user.id,
+            version=version[:32],
+            ip_address=(ip or "")[:64] or None,
+            user_agent=(user_agent or "")[:255] or None,
+        )
+        self._session.add(row)
+        user.consent_version = version[:32]
+        user.consent_accepted_at = datetime.now(timezone.utc)
+        await self._session.flush()
+        return row
 
 
 class QuestionSetRepository:

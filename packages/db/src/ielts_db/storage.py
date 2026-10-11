@@ -67,6 +67,20 @@ class ObjectStore:
             if not client.bucket_exists(bucket):
                 client.make_bucket(bucket)
 
+    def bucket_exists(self, bucket: str) -> bool:
+        return bool(self._require_client().bucket_exists(bucket))
+
+    def list_keys(self, bucket: str, prefix: str) -> list[str]:
+        client = self._require_client()
+        return [item.object_name for item in client.list_objects(bucket, prefix=prefix, recursive=True)]
+
+    def delete_prefix(self, bucket: str, prefix: str) -> int:
+        """Remove every object under a prefix; returns how many were deleted."""
+        keys = self.list_keys(bucket, prefix)
+        for key in keys:
+            self.delete(bucket, key)
+        return len(keys)
+
     def presigned_put(self, bucket: str, object_key: str) -> str:
         self._require_client()
         return self._public_client.presigned_put_object(bucket, object_key, expires=timedelta(seconds=self._ttl))

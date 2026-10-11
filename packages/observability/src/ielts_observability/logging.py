@@ -80,6 +80,9 @@ class JsonFormatter(logging.Formatter):
             "request_id": getattr(record, "request_id", None),
             "test_id": getattr(record, "test_id", None),
         }
+        if record.exc_info:
+            # Stack traces are what make a 500 debuggable; keep them, redacted like everything else.
+            payload["exception"] = self.formatException(record.exc_info)
         return json.dumps(redact(payload), default=str)
 
 

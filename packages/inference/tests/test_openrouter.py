@@ -2,7 +2,6 @@ import json
 
 import httpx
 import pytest
-
 from ielts_config.config import EnvironmentConfig
 from ielts_inference.openrouter import InferenceError, OpenRouterClient
 
@@ -89,6 +88,18 @@ def test_synthesize_returns_audio_bytes():
     audio, content_type = client.synthesize("Where are you from?")
     assert audio.startswith(b"ID3")
     assert content_type == "audio/mpeg"
+
+
+def test_chat_json_caps_examiner_response_length():
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        assert body["max_tokens"] == 180
+        return httpx.Response(200, json={"choices": [{"message": {"content": '{"question":"Where do you live?"}'}}]})
+
+    client = OpenRouterClient(_config())
+    client._client = httpx.Client(transport=httpx.MockTransport(handler), base_url="https://openrouter.ai/api/v1")
+
+    assert client.chat_json("system", "prompt") == {"question": "Where do you live?"}
 
 
 @pytest.mark.parametrize("content_type, content", [

@@ -63,9 +63,11 @@ export async function request<T>(path: string, init: RequestInit = {}, retried =
 }
 
 export function wsUrl(path: string): string {
-  const base = API_BASE.replace(/^http/, "ws");
-  const url = new URL(`${base}${path}`);
-  return url.toString();
+  // API_BASE may be absolute (dev) or a same-origin path such as "/v1" (production).
+  const base = new URL(API_BASE, window.location.origin);
+  base.protocol = base.protocol === "https:" ? "wss:" : "ws:";
+  base.pathname = `${base.pathname.replace(/\/$/, "")}${path}`;
+  return base.toString();
 }
 
 export async function fetchText(path: string): Promise<string> {

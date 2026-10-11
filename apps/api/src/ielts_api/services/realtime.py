@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
+import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from ielts_api.errors import AppError, not_found, validation
 from ielts_api.services.tests import TestService, _current_turn, serialize_test
@@ -16,6 +18,24 @@ from ielts_domain import AnswerEvent, AnswerState, StateConflictError, TestState
 from ielts_audio.media import inspect_audio
 from ielts_inference.openrouter import InferenceError
 from sqlalchemy.ext.asyncio import AsyncSession
+
+_logger = logging.getLogger(__name__)
+
+# Clients may only report playback and speaking telemetry. Transcript and prompt
+# text are written by the server, so nothing a client sends can reach a prompt.
+CLIENT_EVENT_TYPES = frozenset(
+    {
+        "examiner_playback_started",
+        "examiner_playback_ended",
+        "candidate_speaking_started",
+        "candidate_speaking_stopped",
+        "part2_prep_started",
+        "part2_prep_completed",
+        "client_reconnected",
+        "client_note",
+    }
+)
+CLIENT_SPEAKER_ROLES = frozenset({"system", "examiner", "candidate"})
 
 
 class RealtimeSessionService:
@@ -84,14 +104,18 @@ class RealtimeSessionService:
         if test is None:
             raise not_found("Test session not found")
         live = await self._realtime.active_for_test(test_id)
+        event_type = payload["event_type"]
+        speaker_role = payload.get("speaker_role") or "system"
+        if event_type not in CLIENT_EVENT_TYPES or speaker_role not in CLIENT_SPEAKER_ROLES:
+            raise validation("Unsupported client event")
         self._append_event(
             test,
             live,
-            payload["speaker_role"],
-            payload["event_type"],
+            speaker_role,
+            event_type,
             provider_event_id=payload.get("provider_event_id"),
-            transcript_text=payload.get("transcript_text"),
-            prompt_text=payload.get("prompt_text"),
+            transcript_text=None,
+            prompt_text=None,
             payload=payload.get("payload") or {},
             started_at=self._parse_datetime(payload.get("started_at")),
             ended_at=self._parse_datetime(payload.get("ended_at")),
@@ -123,11 +147,21 @@ class RealtimeSessionService:
             extension = self._extension_for_mime(mime_type)
             if len(audio) < 2500:
                 raise validation("Recording failed validation (too-small)")
+            if len(audio) > self._config.upload_max_bytes_per_answer:
+                raise validation("Recording failed validation (too-large)")
+            stored_total = sum(
+                item.media_object.size_bytes or 0
+                for item in test.answers
+                if item.media_object is not None and item.id != answer.id
+            )
+            if stored_total + len(audio) > self._config.upload_max_bytes_per_test:
+                raise validation("This test has reached its total recording limit")
             inspected = inspect_audio(audio, extension)
             if not inspected["ok"] and inspected["reason"] != "unprobed":
                 raise validation(f"Recording failed validation ({inspected['reason']})")
             self._prepare_answer_for_upload(answer)
             object_key = f"tests/{test_id}/answers/{answer.id}{extension}"
+            retention_expires_at = datetime.now(timezone.utc) + timedelta(days=self._config.raw_audio_retention_days)
             if answer.media_object is None:
                 media = MediaObject(
                     bucket=self._config.minio_candidate_bucket,
@@ -136,6 +170,7 @@ class RealtimeSessionService:
                     content_sha256=hashlib.sha256(audio).hexdigest(),
                     mime_type=mime_type,
                     size_bytes=len(audio),
+                    retention_expires_at=retention_expires_at,
                 )
                 self._session.add(media)
                 await self._session.flush()
@@ -146,7 +181,10 @@ class RealtimeSessionService:
                 answer.media_object.mime_type = mime_type
                 answer.media_object.size_bytes = len(audio)
                 answer.media_object.content_sha256 = hashlib.sha256(audio).hexdigest()
-            self._store.put_bytes(self._config.minio_candidate_bucket, object_key, audio, mime_type)
+                answer.media_object.retention_expires_at = retention_expires_at
+            await asyncio.to_thread(
+                self._store.put_bytes, self._config.minio_candidate_bucket, object_key, audio, mime_type
+            )
             completed = apply_answer_transition(AnswerState(answer.status), AnswerEvent.UPLOAD_COMPLETE)
             validating_state = apply_answer_transition(completed.new_state, AnswerEvent.VALIDATE)
             valid = apply_answer_transition(validating_state.new_state, AnswerEvent.MARK_VALID)
@@ -165,9 +203,6 @@ class RealtimeSessionService:
                 ended_at=answer.upload_completed_at,
             )
             await self._session.commit()
-            from ielts_api.jobs import enqueue_transcribe
-
-            enqueue_transcribe(user_id, test_id, answer.id)
             test = await self._tests.get_owned(test_id, user_id)
             assert test is not None
             live = await self._realtime.active_for_test(test_id)
@@ -175,13 +210,25 @@ class RealtimeSessionService:
             assert turn is not None and turn.answer is not None
             answer = turn.answer
         await self._ensure_answer_transcript(test, answer, audio)
+        if answer.transcript is None or not (answer.transcript.text or "").strip():
+            # Inline transcription failed; let the worker retry so the report is still complete.
+            from ielts_api.jobs import enqueue_transcribe
+
+            enqueue_transcribe(user_id, test_id, answer.id)
         try:
             await self._test_service.conversation.on_answer_completed(test, answer)
         except (InferenceError, StateConflictError) as extra:
             await self._session.commit()
             if isinstance(extra, InferenceError):
-                raise AppError("CONVERSATION_STEP_FAILED", str(extra), 502, retryable=extra.retryable) from extra
-            raise AppError("CONVERSATION_STEP_FAILED", str(extra), 409, retryable=True) from extra
+                # Provider details stay in the logs; learners get a plain, actionable message.
+                _logger.warning("conversation step failed test=%s error=%s", test_id, extra)
+                raise AppError(
+                    "CONVERSATION_STEP_FAILED",
+                    "The examiner couldn’t process that answer. Please try again.",
+                    502,
+                    retryable=extra.retryable,
+                ) from extra
+            raise AppError("CONVERSATION_STEP_FAILED", "The session moved on. Reload and continue.", 409, retryable=True) from extra
         await self._session.flush()
         next_test = await self._tests.get_owned(test_id, user_id)
         assert next_test is not None

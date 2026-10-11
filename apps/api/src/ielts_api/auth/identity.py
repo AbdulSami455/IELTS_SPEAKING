@@ -20,24 +20,6 @@ class AuthenticatedUser:
     is_admin: bool = False
 
 
-class DevIdentityVerifier:
-    def __init__(self, config: EnvironmentConfig) -> None:
-        self._subject = config.dev_auth_user_id
-
-    async def verify(self, token: str, *, expected_token_type: str | None = None) -> AuthenticatedUser | None:
-        allowed = {self._subject, "dev-token", "dev-token-for-testing"}
-        if token not in allowed:
-            return None
-        if expected_token_type not in {None, "access"}:
-            return None
-        return AuthenticatedUser(
-            user_id=0,
-            auth_subject=self._subject,
-            email="dev@example.com",
-            display_name="Practice Candidate",
-        )
-
-
 class JwtIdentityVerifier:
     def __init__(self, config: EnvironmentConfig) -> None:
         self._secret = config.auth_token_secret
@@ -99,25 +81,7 @@ class JwtIdentityVerifier:
         )
 
 
-class AppIdentityVerifier:
-    def __init__(self, config: EnvironmentConfig) -> None:
-        self._jwt = JwtIdentityVerifier(config)
-        self._dev = (
-            DevIdentityVerifier(config)
-            if config.auth_mode == "dev" and not config.is_production
-            else None
-        )
-
-    async def verify(self, token: str, *, expected_token_type: str | None = None) -> AuthenticatedUser | None:
-        identity = await self._jwt.verify(token, expected_token_type=expected_token_type)
-        if identity is not None:
-            return identity
-        if self._dev is not None:
-            return await self._dev.verify(token, expected_token_type=expected_token_type)
-        return None
-
-
-def get_identity_verifier(config: EnvironmentConfig):
-    if config.auth_mode == "clerk":
-        raise RuntimeError("Clerk authentication has been removed")
-    return AppIdentityVerifier(config)
+def get_identity_verifier(config: EnvironmentConfig) -> JwtIdentityVerifier:
+    if config.auth_mode != "jwt":
+        raise RuntimeError(f"Unsupported AUTH_MODE={config.auth_mode!r}; only 'jwt' is available")
+    return JwtIdentityVerifier(config)

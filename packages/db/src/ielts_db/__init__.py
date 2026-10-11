@@ -9,6 +9,7 @@ from ielts_db.models import (
     Answer,
     AuditEvent,
     Base,
+    ConsentRecord,
     CriterionScore,
     DeletionRequest,
     ExaminerAudioAsset,
@@ -32,6 +33,7 @@ from ielts_db.models import (
 )
 from ielts_db.repositories import (
     AnswerRepository,
+    ConsentRepository,
     JobRepository,
     ProgressRepository,
     QuestionSetRepository,
@@ -48,6 +50,8 @@ __all__ = [
     "Base",
     "User",
     "UserRepository",
+    "ConsentRecord",
+    "ConsentRepository",
     "QuestionSetRepository",
     "TestSessionRepository",
     "AnswerRepository",

@@ -39,28 +39,28 @@ services:
       - minio_data:/data
 
   minio-setup:
-    image: minio/mc:RELEASE.2025-04-16T18-13-26Z
+    image: amazon/aws-cli:latest
     depends_on:
       minio:
         condition: service_started
+    environment:
+      AWS_ACCESS_KEY_ID: minio
+      AWS_SECRET_ACCESS_KEY: minio-development-only
+      AWS_DEFAULT_REGION: us-east-1
     entrypoint: /bin/sh
     command:
       - -c
       - |
         set -eu
-
         i=0
-        until mc alias set local http://minio:9000 minio minio-development-only; do
+        until aws --endpoint-url http://minio:9000 s3 ls; do
           i=$$((i+1))
           if [ "$$i" -gt 30 ]; then exit 1; fi
           sleep 2
         done
-        mc mb -p local/ielts-candidate-private
-        mc mb -p local/ielts-derived-private
-        mc mb -p local/ielts-examiner-private
-        mc anonymous set none local/ielts-candidate-private || true
-        mc anonymous set none local/ielts-derived-private || true
-        mc anonymous set none local/ielts-examiner-private || true
+        aws --endpoint-url http://minio:9000 s3 mb s3://ielts-candidate-private || true
+        aws --endpoint-url http://minio:9000 s3 mb s3://ielts-derived-private || true
+        aws --endpoint-url http://minio:9000 s3 mb s3://ielts-examiner-private || true
         echo "MinIO buckets ready"
 
   api:
@@ -78,6 +78,7 @@ services:
       WEB_ORIGIN: http://localhost:3000
       API_HOST: 0.0.0.0
       API_PORT: 4000
+      AUTO_MIGRATE: "true"
       WATCHFILES_FORCE_POLLING: "true"
       PYTHONPATH: /app/apps/api/src:/app/apps/worker/src:/app/packages/domain/src:/app/packages/db/src:/app/packages/config/src:/app/packages/inference/src:/app/packages/audio/src:/app/packages/observability/src
     volumes: &backend-src
@@ -143,6 +144,30 @@ services:
         "celery -A ielts_worker.tasks:celery_app worker --loglevel=info --pool=solo",
         "/app/apps",
         "/app/packages",
+      ]
+
+  # Scheduler for retention and provider probes. Exactly one instance must run.
+  beat:
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.backend
+    user: "nobody:nogroup"
+    env_file:
+      - .env
+    environment: *backend-env
+    volumes: *backend-src
+    depends_on:
+      redis:
+        condition: service_healthy
+    command:
+      [
+        "celery",
+        "-A",
+        "ielts_worker.tasks:celery_app",
+        "beat",
+        "--loglevel=info",
+        "--schedule",
+        "/tmp/celerybeat-schedule",
       ]
 
   web:

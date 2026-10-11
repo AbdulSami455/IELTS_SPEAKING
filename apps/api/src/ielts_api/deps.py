@@ -10,10 +10,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ielts_api.auth.identity import AuthenticatedUser, get_identity_verifier
 from ielts_api.errors import AppError
+from ielts_api.rate_limit import USER_LIMIT, enforce
 from ielts_config import EnvironmentConfig, get_config
 from ielts_db.database import DatabaseConfig
 from ielts_db.repositories import UserRepository
 from ielts_db.storage import ObjectStore
+from ielts_observability import record_consent_blocked
 
 _db: DatabaseConfig | None = None
 _store: ObjectStore | None = None
@@ -55,6 +57,8 @@ async def require_user(
     identity = await get_identity_verifier(config).verify(token, expected_token_type="access")
     if identity is None:
         raise AppError("AUTH_REQUIRED", "Invalid or expired token", 401)
+    # Limit before touching the database so a flood costs us a Redis round trip, not a write.
+    await enforce(identity.auth_subject, USER_LIMIT)
     async with database().session_factory() as session:
         repo = UserRepository(session)
         user = await repo.create_or_update(
@@ -64,9 +68,6 @@ async def require_user(
         )
         await session.commit()
         await session.refresh(user)
-    from ielts_api.rate_limit import check_rate
-
-    check_rate(user.id, request)
     return AuthenticatedUser(
         user_id=user.id,
         auth_subject=user.auth_subject,
@@ -74,3 +75,18 @@ async def require_user(
         display_name=user.display_name,
         consent_version=user.consent_version,
     )
+
+
+async def require_consent(
+    user: AuthenticatedUser = Depends(require_user),
+    config: EnvironmentConfig = Depends(settings),
+) -> AuthenticatedUser:
+    """Recording, uploading, and scoring need consent to the current policy version."""
+    if user.consent_version != config.consent_version:
+        record_consent_blocked()
+        raise AppError(
+            "CONSENT_REQUIRED",
+            "Accept the current terms and audio-recording consent to continue.",
+            403,
+        )
+    return user
