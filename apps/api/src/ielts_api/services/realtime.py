@@ -6,18 +6,19 @@ import asyncio
 import hashlib
 import logging
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
-from ielts_api.errors import AppError, not_found, validation
-from ielts_api.services.tests import TestService, _current_turn, serialize_test
+from ielts_audio.media import inspect_audio
 from ielts_config import EnvironmentConfig
 from ielts_db.models import Answer, ConversationEvent, MediaObject, RealtimeSession, SessionQuestion
 from ielts_db.repositories import RealtimeSessionRepository, TestSessionRepository
 from ielts_db.storage import ObjectStore
 from ielts_domain import AnswerEvent, AnswerState, StateConflictError, TestState, apply_answer_transition
-from ielts_audio.media import inspect_audio
 from ielts_inference.openrouter import InferenceError
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from ielts_api.errors import AppError, not_found, validation
+from ielts_api.services.tests import TestService, _current_turn, serialize_test
 
 _logger = logging.getLogger(__name__)
 
@@ -161,7 +162,7 @@ class RealtimeSessionService:
                 raise validation(f"Recording failed validation ({inspected['reason']})")
             self._prepare_answer_for_upload(answer)
             object_key = f"tests/{test_id}/answers/{answer.id}{extension}"
-            retention_expires_at = datetime.now(timezone.utc) + timedelta(days=self._config.raw_audio_retention_days)
+            retention_expires_at = datetime.now(UTC) + timedelta(days=self._config.raw_audio_retention_days)
             if answer.media_object is None:
                 media = MediaObject(
                     bucket=self._config.minio_candidate_bucket,
@@ -189,9 +190,9 @@ class RealtimeSessionService:
             validating_state = apply_answer_transition(completed.new_state, AnswerEvent.VALIDATE)
             valid = apply_answer_transition(validating_state.new_state, AnswerEvent.MARK_VALID)
             answer.status = valid.new_state.value
-            answer.recorded_at = datetime.now(timezone.utc)
-            answer.upload_completed_at = datetime.now(timezone.utc)
-            answer.validated_at = datetime.now(timezone.utc)
+            answer.recorded_at = datetime.now(UTC)
+            answer.upload_completed_at = datetime.now(UTC)
+            answer.validated_at = datetime.now(UTC)
             self._append_event(
                 test,
                 live,
@@ -246,7 +247,7 @@ class RealtimeSessionService:
                 next_audio = None
         if live is not None and next_test.status == TestState.UPLOADING.value:
             live.status = "FINISHED"
-            live.finished_at = datetime.now(timezone.utc)
+            live.finished_at = datetime.now(UTC)
         await self._session.commit()
         saved = await self._tests.get_owned(test_id, user_id)
         assert saved is not None
@@ -292,7 +293,7 @@ class RealtimeSessionService:
             "examiner",
             "examiner_prompt",
             prompt_text=turn.prompt_text,
-            started_at=datetime.now(timezone.utc),
+            started_at=datetime.now(UTC),
         )
 
     def _append_event(

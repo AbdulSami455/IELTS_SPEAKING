@@ -1,6 +1,6 @@
 """Tests for LLM prompt injection guards and hallucination detection."""
 
-from ielts_inference.assembler import assemble, _evidence_is_grounded, _normalize_text
+from ielts_inference.assembler import _evidence_is_grounded, _normalize_text, assemble
 from ielts_inference.evaluation import _build_scoring_prompt, _guard_transcript
 from ielts_inference.openrouter import ScoreSchema
 

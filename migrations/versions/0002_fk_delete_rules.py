@@ -15,7 +15,6 @@ idempotent either way.
 from __future__ import annotations
 
 from alembic import op
-
 from ielts_db.models import Base
 
 revision = "0002_fk_delete_rules"
@@ -29,8 +28,8 @@ def _constraints():
         for fk in table.foreign_key_constraints:
             if not fk.ondelete or len(fk.columns) != 1:
                 continue
-            column = list(fk.columns)[0]
-            target = list(fk.elements)[0].column
+            column = next(iter(fk.columns))
+            target = next(iter(fk.elements)).column
             yield table.name, column.name, target.table.name, target.name, fk.ondelete
 
 

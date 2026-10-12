@@ -6,7 +6,7 @@ Implements the database contract from Section 6.2 of the product plan.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import (
     JSON,
@@ -18,6 +18,8 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+)
+from sqlalchemy import (
     text as sql_text,
 )
 from sqlalchemy.ext.asyncio import AsyncAttrs
@@ -33,15 +35,15 @@ class User(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     auth_subject: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
-    email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    display_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    password_hash: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    avatar_url: Mapped[Optional[str]] = mapped_column(String(511), nullable=True)
-    consent_version: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
-    consent_accepted_at: Mapped[Optional[datetime]] = mapped_column(
+    email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    display_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    avatar_url: Mapped[str | None] = mapped_column(String(511), nullable=True)
+    consent_version: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    consent_accepted_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-    voice_preference: Mapped[Optional[str]] = mapped_column(String(50), nullable=True, default="alloy")
+    voice_preference: Mapped[str | None] = mapped_column(String(50), nullable=True, default="alloy")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=sql_text("now()"), nullable=False
     )
@@ -87,14 +89,14 @@ class Question(Base):
     part: Mapped[int] = mapped_column(Integer, nullable=False)
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False)
     prompt_text: Mapped[str] = mapped_column(Text, nullable=False)
-    cue_card: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
-    follow_ups: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
-    topic: Mapped[Optional[str]] = mapped_column(String(120), nullable=True)
-    examiner_asset_id: Mapped[Optional[int]] = mapped_column(
+    cue_card: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    follow_ups: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    topic: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    examiner_asset_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("examiner_audio_assets.id"), nullable=True
     )
-    examiner_asset_version: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
-    timing_seconds: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    examiner_asset_version: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    timing_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     question_set = relationship("QuestionSet", back_populates="questions")
 
@@ -109,7 +111,7 @@ class TestSession(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    question_set_id: Mapped[Optional[int]] = mapped_column(
+    question_set_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("question_sets.id"), nullable=True
     )
     status: Mapped[str] = mapped_column(String(30), nullable=False, default="CREATED")
@@ -122,7 +124,7 @@ class TestSession(Base):
         onupdate=sql_text("now()"), nullable=False
     )
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    topic_plan: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    topic_plan: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
     user = relationship("User", back_populates="test_sessions")
     question_set = relationship("QuestionSet", backref="test_sessions")
@@ -153,15 +155,15 @@ class SessionQuestion(Base):
     test_session_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("test_sessions.id"), nullable=False
     )
-    question_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("questions.id"), nullable=True)
+    question_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("questions.id"), nullable=True)
     prompt_text: Mapped[str] = mapped_column(Text, nullable=False)
     part: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    timing_seconds: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    cue_card: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
-    follow_ups: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
-    examiner_asset_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    examiner_asset_version: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    timing_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    cue_card: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    follow_ups: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    examiner_asset_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    examiner_asset_version: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
     test_session = relationship("TestSession", back_populates="session_questions")
     question = relationship("Question")
@@ -182,13 +184,13 @@ class ExaminerAudioAsset(Base):
     model: Mapped[str] = mapped_column(String(100), nullable=False)
     settings_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     asset_schema_version: Mapped[str] = mapped_column(String(20), nullable=False, default="v1")
-    media_object_id: Mapped[Optional[int]] = mapped_column(
+    media_object_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("media_objects.id"), nullable=True
     )
-    duration_milliseconds: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    file_size_bytes: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    sample_rate_hz: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    mime_type: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    duration_milliseconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    file_size_bytes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    sample_rate_hz: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    mime_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
     content_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
     is_retired: Mapped[bool] = mapped_column(default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
@@ -213,11 +215,11 @@ class MediaObject(Base):
     content_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
     mime_type: Mapped[str] = mapped_column(String(100), nullable=False)
     size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
-    encryption_config: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
-    retention_expires_at: Mapped[Optional[datetime]] = mapped_column(
+    encryption_config: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    retention_expires_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-    version: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    version: Mapped[str | None] = mapped_column(String(50), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=sql_text("now()"), nullable=False
     )
@@ -248,11 +250,11 @@ class RealtimeSession(Base):
     stt_model: Mapped[str] = mapped_column(String(120), nullable=False)
     tts_model: Mapped[str] = mapped_column(String(120), nullable=False)
     tts_voice: Mapped[str] = mapped_column(String(50), nullable=False)
-    session_notes: Mapped[Optional[dict[str, Any]]] = mapped_column(JSON, nullable=True)
+    session_notes: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     started_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=sql_text("now()"), nullable=False
     )
-    finished_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=sql_text("now()"), nullable=False
     )
@@ -277,26 +279,26 @@ class ConversationEvent(Base):
     __tablename__ = "conversation_events"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    realtime_session_id: Mapped[Optional[str]] = mapped_column(
+    realtime_session_id: Mapped[str | None] = mapped_column(
         String(36), ForeignKey("realtime_sessions.id"), nullable=True
     )
     test_session_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("test_sessions.id"), nullable=False
     )
-    media_object_id: Mapped[Optional[int]] = mapped_column(
+    media_object_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("media_objects.id"), nullable=True
     )
     phase: Mapped[str] = mapped_column(String(20), nullable=False)
     speaker_role: Mapped[str] = mapped_column(String(20), nullable=False)
     event_type: Mapped[str] = mapped_column(String(40), nullable=False)
     sequence_index: Mapped[int] = mapped_column(Integer, nullable=False)
-    transcript_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    prompt_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    provider_event_id: Mapped[Optional[str]] = mapped_column(String(120), nullable=True)
-    payload: Mapped[Optional[dict[str, Any]]] = mapped_column(JSON, nullable=True)
-    started_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    ended_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    latency_ms: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    transcript_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    prompt_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    provider_event_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    payload: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    latency_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=sql_text("now()"), nullable=False
     )
@@ -324,21 +326,21 @@ class Answer(Base):
     session_question_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("session_questions.id"), nullable=False
     )
-    media_object_id: Mapped[Optional[int]] = mapped_column(
+    media_object_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("media_objects.id"), nullable=True
     )
     status: Mapped[str] = mapped_column(String(30), nullable=False, default="PENDING")
-    duration_seconds: Mapped[Optional[float]] = mapped_column(nullable=True)
-    recorded_at: Mapped[Optional[datetime]] = mapped_column(
+    duration_seconds: Mapped[float | None] = mapped_column(nullable=True)
+    recorded_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-    upload_completed_at: Mapped[Optional[datetime]] = mapped_column(
+    upload_completed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-    validated_at: Mapped[Optional[datetime]] = mapped_column(
+    validated_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-    validation_error_code: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    validation_error_code: Mapped[str | None] = mapped_column(String(50), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=sql_text("now()"), nullable=False
     )
@@ -376,15 +378,15 @@ class ProcessingJob(Base):
     revision: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     attempt: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     payload: Mapped[dict] = mapped_column(JSON, nullable=False)
-    provider_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    started_at: Mapped[Optional[datetime]] = mapped_column(
+    provider_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    started_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-    completed_at: Mapped[Optional[datetime]] = mapped_column(
+    completed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-    error_code: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
-    error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    error_code: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=sql_text("now()"), nullable=False
     )
@@ -413,7 +415,7 @@ class Transcript(Base):
     evaluator_version: Mapped[str] = mapped_column(String(50), nullable=False)
     language: Mapped[str] = mapped_column(String(10), default="en", nullable=False)
     text: Mapped[str] = mapped_column(Text, nullable=False)
-    words: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+    words: Mapped[list | None] = mapped_column(JSON, nullable=True)
     model_policy_version: Mapped[str] = mapped_column(String(50), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=sql_text("now()"), nullable=False
@@ -440,8 +442,8 @@ class SpeechObservation(Base):
     observations: Mapped[dict] = mapped_column(JSON, nullable=False)
     source_object_key: Mapped[str] = mapped_column(String(511), nullable=False)
     source_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
-    coverage_percent: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    alignment_confidence: Mapped[Optional[float]] = mapped_column(nullable=True)
+    coverage_percent: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    alignment_confidence: Mapped[float | None] = mapped_column(nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=sql_text("now()"), nullable=False
     )
@@ -461,7 +463,7 @@ class CriterionScore(Base):
     criterion: Mapped[str] = mapped_column(String(50), nullable=False)
     band: Mapped[float] = mapped_column(nullable=False)
     confidence: Mapped[str] = mapped_column(String(20), nullable=False)
-    evidence: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+    evidence: Mapped[list | None] = mapped_column(JSON, nullable=True)
     subdimensions: Mapped[dict] = mapped_column(JSON, nullable=False)
     evaluator_version: Mapped[str] = mapped_column(String(50), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
@@ -491,13 +493,13 @@ class Report(Base):
     rubric_version: Mapped[str] = mapped_column(String(50), nullable=False)
     model_policy_version: Mapped[str] = mapped_column(String(50), nullable=False)
     report_schema_version: Mapped[str] = mapped_column(String(20), nullable=False)
-    overall_band: Mapped[Optional[float]] = mapped_column(nullable=True)
+    overall_band: Mapped[float | None] = mapped_column(nullable=True)
     confidence_label: Mapped[str] = mapped_column(String(20), nullable=False)
     parts: Mapped[dict] = mapped_column(JSON, nullable=False)
-    strengths: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
-    improvements: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
-    example_rewrites: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
-    practice_plan: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    strengths: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    improvements: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    example_rewrites: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    practice_plan: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     disclaimer: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=sql_text("now()"), nullable=False
@@ -518,7 +520,7 @@ class SkillObservation(Base):
     comparability_group: Mapped[str] = mapped_column(String(50), nullable=False)
     band: Mapped[float] = mapped_column(nullable=False)
     confidence_label: Mapped[str] = mapped_column(String(20), nullable=False)
-    evidence: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+    evidence: Mapped[list | None] = mapped_column(JSON, nullable=True)
     evaluator_version: Mapped[str] = mapped_column(String(50), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=sql_text("now()"), nullable=False
@@ -542,7 +544,7 @@ class ProgressSnapshot(Base):
     skill_trends: Mapped[dict] = mapped_column(JSON, nullable=True)
     sample_size: Mapped[int] = mapped_column(Integer, nullable=False)
     confidence_label: Mapped[str] = mapped_column(String(20), nullable=False)
-    previous_snapshot_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
+    previous_snapshot_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=sql_text("now()"), nullable=False
     )
@@ -587,12 +589,12 @@ class PracticeAction(Base):
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
     category: Mapped[str] = mapped_column(String(50), nullable=False)
-    due_date: Mapped[Optional[datetime]] = mapped_column(
+    due_date: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
     completed: Mapped[bool] = mapped_column(default=False, nullable=False)
     skipped: Mapped[bool] = mapped_column(default=False, nullable=False)
-    source_report_id: Mapped[Optional[str]] = mapped_column(
+    source_report_id: Mapped[str | None] = mapped_column(
         String(36), ForeignKey("reports.id"), nullable=True
     )
     created_at: Mapped[datetime] = mapped_column(
@@ -609,7 +611,7 @@ class ModelCallAttempt(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     idempotency_key: Mapped[str] = mapped_column(String(255), nullable=False)
-    test_session_id: Mapped[Optional[str]] = mapped_column(
+    test_session_id: Mapped[str | None] = mapped_column(
         String(36), ForeignKey("test_sessions.id", ondelete="SET NULL"), nullable=True
     )
     stage: Mapped[str] = mapped_column(String(50), nullable=False)
@@ -620,16 +622,16 @@ class ModelCallAttempt(Base):
     request_started_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
     )
-    request_ended_at: Mapped[Optional[datetime]] = mapped_column(
+    request_ended_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-    input_tokens: Mapped[Optional[int]] = mapped_column(nullable=True)
-    output_tokens: Mapped[Optional[int]] = mapped_column(nullable=True)
-    audio_seconds: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    audio_bytes: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    input_tokens: Mapped[int | None] = mapped_column(nullable=True)
+    output_tokens: Mapped[int | None] = mapped_column(nullable=True)
+    audio_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    audio_bytes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     reserved_microdollars: Mapped[int] = mapped_column(Integer, nullable=False)
-    provider_generation_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    finalized_microdollars: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    provider_generation_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    finalized_microdollars: Mapped[int | None] = mapped_column(Integer, nullable=True)
     free_request_impact: Mapped[bool] = mapped_column(default=False, nullable=False)
     outcome: Mapped[str] = mapped_column(String(30), nullable=False)
 
@@ -680,17 +682,17 @@ class DeletionRequest(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    test_session_id: Mapped[Optional[str]] = mapped_column(
+    test_session_id: Mapped[str | None] = mapped_column(
         String(36), ForeignKey("test_sessions.id", ondelete="SET NULL"), nullable=True
     )
     status: Mapped[str] = mapped_column(String(30), nullable=False, default="REQUESTED")
     requested_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=sql_text("now()"), nullable=False
     )
-    completed_at: Mapped[Optional[datetime]] = mapped_column(
+    completed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-    failure_reason: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    failure_reason: Mapped[str | None] = mapped_column(String(255), nullable=True)
     support_id: Mapped[str] = mapped_column(String(64), nullable=False)
 
     __table_args__ = (
@@ -709,8 +711,8 @@ class ConsentRecord(Base):
     accepted_terms: Mapped[bool] = mapped_column(nullable=False, default=True)
     accepted_privacy: Mapped[bool] = mapped_column(nullable=False, default=True)
     accepted_recording: Mapped[bool] = mapped_column(nullable=False, default=True)
-    ip_address: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
-    user_agent: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    ip_address: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    user_agent: Mapped[str | None] = mapped_column(String(255), nullable=True)
     accepted_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=sql_text("now()"), nullable=False
     )
@@ -722,15 +724,15 @@ class AuditEvent(Base):
     __tablename__ = "audit_events"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    user_id: Mapped[Optional[int]] = mapped_column(
+    user_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
     event_type: Mapped[str] = mapped_column(String(100), nullable=False)
     entity_type: Mapped[str] = mapped_column(String(50), nullable=False)
-    entity_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
+    entity_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     safe_metadata: Mapped[dict] = mapped_column(JSON, nullable=False)
-    ip_address: Mapped[Optional[str]] = mapped_column(String(45), nullable=True)
-    user_agent: Mapped[Optional[str]] = mapped_column(String(511), nullable=True)
+    ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)
+    user_agent: Mapped[str | None] = mapped_column(String(511), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=sql_text("now()"), nullable=False
     )

@@ -3,12 +3,8 @@
 from __future__ import annotations
 
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
-
-import pytest
 
 from ielts_inference.assembler import assemble
-
 
 SCORING_RESPONSE = {
     "criteria": [

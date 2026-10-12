@@ -6,5 +6,5 @@ import hashlib
 
 
 def examiner_object_key(prompt_text: str, version: str = "v1", model: str = "", voice: str = "") -> str:
-    digest = hashlib.sha256(f"{prompt_text}\n{model}\n{voice}".encode("utf-8")).hexdigest()[:16]
+    digest = hashlib.sha256(f"{prompt_text}\n{model}\n{voice}".encode()).hexdigest()[:16]
     return f"examiner/{version}/{digest}.mp3"

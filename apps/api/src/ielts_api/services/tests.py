@@ -7,15 +7,11 @@ import hashlib
 import html
 import logging
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import delete, func, inspect, select, update
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from ielts_api.errors import AppError, conflict, not_found, validation
-from ielts_api.services.conversation import ConversationOrchestrator
 from ielts_audio.media import inspect_audio
 from ielts_config import EnvironmentConfig
+from ielts_db.keys import examiner_object_key
 from ielts_db.models import (
     Answer,
     AuditEvent,
@@ -34,7 +30,6 @@ from ielts_db.repositories import (
     TestSessionRepository,
     UserRepository,
 )
-from ielts_db.keys import examiner_object_key
 from ielts_db.storage import ObjectStore
 from ielts_domain import (
     AnswerEvent,
@@ -45,18 +40,23 @@ from ielts_domain import (
     apply_answer_transition,
     apply_transition,
 )
-from ielts_inference.evaluation import PUBLIC_STAGES
 from ielts_inference.assembler import EVALUATOR_VERSION
+from ielts_inference.evaluation import PUBLIC_STAGES
 from ielts_inference.exam_journey import build_exam_history
+from ielts_inference.openrouter import LIVE_READ_TIMEOUT, InferenceError, OpenRouterClient
+from ielts_inference.report_compare import compare_reports
 from ielts_inference.report_insights import (
     build_fluency_insights,
     build_pronunciation_insights,
     build_vocabulary_insights,
 )
-from ielts_inference.report_compare import compare_reports
 from ielts_inference.score_summary import summarize_scores
-from ielts_inference.openrouter import LIVE_READ_TIMEOUT, InferenceError, OpenRouterClient
 from ielts_inference.transcript import clean_transcript
+from sqlalchemy import delete, func, inspect, select, update
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from ielts_api.errors import AppError, conflict, not_found, validation
+from ielts_api.services.conversation import ConversationOrchestrator
 
 _logger = logging.getLogger(__name__)
 
@@ -149,7 +149,7 @@ class TestService:
         self.conversation = ConversationOrchestrator(session, config)
 
     async def create_test(self, user_id: int, slug: str | None = None) -> dict:
-        day_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+        day_start = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
         created_today = await self.session.scalar(
             select(func.count())
             .select_from(TestSession)
@@ -170,7 +170,7 @@ class TestService:
             question_set_id=None,
             status=TestState.CREATED.value,
             revision=0,
-            expires_at=datetime.now(timezone.utc) + timedelta(days=2),
+            expires_at=datetime.now(UTC) + timedelta(days=2),
             topic_plan=None,
         )
         self.session.add(test)
@@ -421,13 +421,13 @@ class TestService:
         validating = apply_answer_transition(completed.new_state, AnswerEvent.VALIDATE)
         valid = apply_answer_transition(validating.new_state, AnswerEvent.MARK_VALID)
         answer.status = valid.new_state.value
-        answer.upload_completed_at = datetime.now(timezone.utc)
-        answer.validated_at = datetime.now(timezone.utc)
+        answer.upload_completed_at = datetime.now(UTC)
+        answer.validated_at = datetime.now(UTC)
         if answer.media_object is not None:
             answer.media_object.size_bytes = head.size_bytes
             answer.media_object.mime_type = payload["mime_type"]
             answer.media_object.content_sha256 = payload["content_sha256"] or hashlib.sha256(object_key.encode()).hexdigest()
-            answer.media_object.retention_expires_at = datetime.now(timezone.utc) + timedelta(days=self.config.raw_audio_retention_days)
+            answer.media_object.retention_expires_at = datetime.now(UTC) + timedelta(days=self.config.raw_audio_retention_days)
         try:
             await self._transcribe_and_advance(test, answer, audio)
         except InferenceError as exc:
@@ -524,9 +524,10 @@ class TestService:
         if current != TestState.SUBMITTED:
             raise conflict(f"Cannot submit from {current}")
         if not practice_mode:
-            from ielts_api.errors import AppError
             from ielts_inference.openrouter import InferenceError
             from ielts_inference.quota import assert_capacity
+
+            from ielts_api.errors import AppError
 
             try:
                 await assert_capacity(self.session, user_id, self.config)
@@ -562,7 +563,7 @@ class TestService:
             progress = 100
         error = None
         if test.processing_jobs:
-            latest = sorted(test.processing_jobs, key=lambda item: item.created_at, reverse=True)[0]
+            latest = max(test.processing_jobs, key=lambda item: item.created_at)
             if latest.error_message:
                 # Provider error text stays in logs/DB; learners see a steady, actionable message.
                 error = "Scoring could not be completed for this test. You can reassess it from the report page."
@@ -591,9 +592,10 @@ class TestService:
         )
         head = self.store.head(self.config.minio_examiner_bucket, object_key)
         if not head.exists or head.content_type != "audio/mpeg" or head.size_bytes == 0:
-            from ielts_api.errors import AppError
             from ielts_inference.openrouter import InferenceError, OpenRouterClient
             from ielts_inference.quota import reserve_model_call
+
+            from ielts_api.errors import AppError
 
             try:
                 await reserve_model_call(self.session, user_id, test_id, "tts", self.config)
@@ -946,7 +948,7 @@ class TestService:
             user_id=user_id,
             goal_id=str(uuid.uuid4()),
             target_band=payload["target_band"],
-            target_date=datetime.fromisoformat(payload["target_date"].replace("Z", "+00:00")),
+            target_date=datetime.fromisoformat(payload["target_date"]),
             focus_skills=payload["focus_skills"],
         )
         await self.session.commit()

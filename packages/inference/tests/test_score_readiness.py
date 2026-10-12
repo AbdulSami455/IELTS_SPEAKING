@@ -2,7 +2,7 @@ import io
 import math
 import struct
 import wave
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from ielts_audio.media import measure_wav, pause_features
 from ielts_db.models import Report
@@ -58,7 +58,7 @@ def test_segment_text_counts_words_not_segments():
 
 
 def report(band, index=0, version=EVALUATOR_VERSION, inconclusive=False):
-    return Report(overall_band=band, is_inconclusive=inconclusive, evaluator_version=version, created_at=datetime(2026, 9, 10, tzinfo=timezone.utc) + timedelta(minutes=index))
+    return Report(overall_band=band, is_inconclusive=inconclusive, evaluator_version=version, created_at=datetime(2026, 9, 10, tzinfo=UTC) + timedelta(minutes=index))
 
 
 def test_one_test_provides_first_estimate():

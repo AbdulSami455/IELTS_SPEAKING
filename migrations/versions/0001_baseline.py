@@ -12,7 +12,6 @@ missing (for example ``consent_records``). Later revisions handle alterations.
 from __future__ import annotations
 
 from alembic import op
-
 from ielts_db.models import Base
 
 revision = "0001_baseline"

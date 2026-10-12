@@ -14,7 +14,7 @@ def enqueue_transcribe(user_id: int, test_id: str, answer_id: str) -> None:
 
         transcribe_answer_task.delay(user_id, test_id, answer_id)
         return
-    except Exception as extra:
+    except Exception as extra:  # noqa: BLE001
         logger.warning("celery_unavailable", extra={"test_id": test_id, "error": type(extra).__name__})
     try:
         loop = asyncio.get_running_loop()
@@ -24,10 +24,11 @@ def enqueue_transcribe(user_id: int, test_id: str, answer_id: str) -> None:
 
 
 async def _transcribe_inline(user_id: int, test_id: str, answer_id: str) -> None:
-    from ielts_api.services.tests import TestService
     from ielts_config import EnvironmentConfig
     from ielts_db.database import DatabaseConfig
     from ielts_db.storage import ObjectStore
+
+    from ielts_api.services.tests import TestService
 
     db = DatabaseConfig()
     config = EnvironmentConfig.from_env()
@@ -43,7 +44,7 @@ def enqueue_evaluate(test_id: str) -> None:
 
         evaluate_test_task.delay(test_id)
         return
-    except Exception as extra:
+    except Exception as extra:  # noqa: BLE001
         logger.warning("celery_unavailable", extra={"test_id": test_id, "error": type(extra).__name__})
     asyncio.run(_run_inline(test_id))
 

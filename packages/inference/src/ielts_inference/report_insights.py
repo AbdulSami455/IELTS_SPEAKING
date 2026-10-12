@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from ielts_inference.features import FILLERS, extract_features
+from ielts_inference.features import extract_features
 
 _STOPWORDS = {
     "a",
@@ -195,9 +195,7 @@ def build_fluency_insights(
     if wpm_values:
         avg_wpm = round(sum(wpm_values) / len(wpm_values))
         status = "good"
-        if avg_wpm > 175:
-            status = "watch"
-        elif avg_wpm < 90:
+        if avg_wpm > 175 or avg_wpm < 90:
             status = "watch"
         metrics.append(
             {

@@ -8,6 +8,9 @@ from datetime import timedelta
 
 from fastapi import APIRouter, Depends, Request, Response
 from fastapi.encoders import jsonable_encoder
+from ielts_config import EnvironmentConfig
+from ielts_db.models import User
+from ielts_db.repositories import ConsentRepository, UserRepository
 from pydantic import Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,9 +19,6 @@ from ielts_api.auth.identity import JwtIdentityVerifier, get_identity_verifier
 from ielts_api.auth.passwords import hash_password, verify_password
 from ielts_api.deps import get_session, settings
 from ielts_api.errors import conflict, validation
-from ielts_config import EnvironmentConfig
-from ielts_db.models import User
-from ielts_db.repositories import ConsentRepository, UserRepository
 
 router = APIRouter()
 
@@ -53,7 +53,9 @@ def user_payload(user: User, config: EnvironmentConfig) -> dict:
 
 
 def _clean_display_name(value: str | None) -> str:
-    cleaned = _CONTROL_CHARS.sub("", value or "").strip()
+    cleaned = _CONTROL_CHARS.sub("", value or "")
+    cleaned = re.sub(r"[<>]", "", cleaned)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
     if cleaned:
         return cleaned[:80]
     # Never default to the email local-part: it is shown on the public leaderboard.

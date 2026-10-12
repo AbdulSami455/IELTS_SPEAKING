@@ -1,9 +1,10 @@
 """Descriptive progress summary; never an official score or confidence interval."""
-from dataclasses import dataclass
 from collections.abc import Sequence
+from dataclasses import dataclass
 
 from ielts_db.models import Report
 from ielts_domain.types import BandScore
+
 from ielts_inference.assembler import EVALUATOR_VERSION
 
 

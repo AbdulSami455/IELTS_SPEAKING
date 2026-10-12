@@ -7,7 +7,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any
 
 
 class AnswerState(str, Enum):
@@ -108,7 +107,7 @@ def apply_answer_transition(
             reason=reason,
         )
 
-    if isinstance(event, AnswerEvent) and current_state == AnswerState.RECORDED:
+    if isinstance(event, AnswerEvent) and current_state == AnswerState.RECORDED:  # noqa: SIM102
         if event == AnswerEvent.UPLOAD_START:
             return AnswerTransition(
                 old_state=current_state,

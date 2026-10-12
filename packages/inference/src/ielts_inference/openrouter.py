@@ -14,7 +14,7 @@ import random
 import threading
 import time
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
 import httpx
 from ielts_config import EnvironmentConfig
@@ -31,6 +31,8 @@ logger = logging.getLogger(__name__)
 DEFAULT_READ_TIMEOUT = 120.0
 # Interactive turns (live exam) give up sooner so the learner isn't left waiting.
 LIVE_READ_TIMEOUT = 45.0
+SCORING_MAX_TOKENS = 4096
+PRONUNCIATION_MAX_TOKENS = 1024
 
 
 class InferenceError(Exception):
@@ -62,7 +64,7 @@ class ScoreResult:
 
 class EvidenceItem(BaseModel):
     quote: str
-    note: Optional[str] = None
+    note: str | None = None
 
 
 class CriterionScore(BaseModel):
@@ -335,6 +337,7 @@ class OpenRouterClient:
         body = {
             "model": model,
             "temperature": 0.1,
+            "max_tokens": PRONUNCIATION_MAX_TOKENS,
             "response_format": {"type": "json_object"},
             "messages": [
                 {
@@ -391,6 +394,9 @@ class OpenRouterClient:
                 body = {
                     "model": model,
                     "temperature": 0.1,
+                    # Without a cap OpenRouter reserves the model's whole output window and
+                    # refuses with 402 when the balance cannot cover it; a report never needs more.
+                    "max_tokens": SCORING_MAX_TOKENS,
                     "response_format": {"type": "json_object"},
                     "messages": messages,
                 }

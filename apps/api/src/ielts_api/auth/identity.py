@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import jwt
-
 from ielts_config import EnvironmentConfig
 
 
@@ -36,7 +35,7 @@ class JwtIdentityVerifier:
         token_type: str = "access",
         ttl: timedelta | None = None,
     ) -> str:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         payload = {
             "sub": auth_subject,
             "uid": user_id,

@@ -1,13 +1,12 @@
 """Exercise ranking SQL against real relational data without external services."""
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
-from sqlalchemy import create_engine, select, text
-
 from ielts_api.services.leaderboard import LeaderboardPeriod, period_start, ranked_scores
 from ielts_inference.assembler import EVALUATOR_VERSION
+from sqlalchemy import create_engine, select, text
 
-NOW = datetime(2026, 9, 10, 12, tzinfo=timezone.utc)
+NOW = datetime(2026, 9, 10, 12, tzinfo=UTC)
 
 
 @pytest.fixture
@@ -54,7 +53,7 @@ def test_period_boundaries(db, period, expected):
 
 
 def test_week_starts_monday_utc():
-    assert period_start(LeaderboardPeriod.WEEK, NOW) == datetime(2026, 9, 7, tzinfo=timezone.utc)
+    assert period_start(LeaderboardPeriod.WEEK, NOW) == datetime(2026, 9, 7, tzinfo=UTC)
     assert period_start(LeaderboardPeriod.OVERALL, NOW) is None
 
 
@@ -73,6 +72,7 @@ def test_own_rank_outside_top_50_is_preserved(db):
 
 def test_endpoint_validates_period_and_serializes_camel_case():
     from unittest.mock import AsyncMock, patch
+
     from fastapi import FastAPI
     from fastapi.testclient import TestClient
     from ielts_api.api.v1.leaderboard import router

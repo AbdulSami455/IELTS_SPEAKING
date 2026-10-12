@@ -3,11 +3,11 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from sqlalchemy.exc import IntegrityError
-
 from ielts_config import EnvironmentConfig
-from ielts_db.models import ProcessingJob, TestSession as SessionModel
+from ielts_db.models import ProcessingJob
+from ielts_db.models import TestSession as SessionModel
 from ielts_inference.evaluation import _skill_observation_key, evaluate_test
+from sqlalchemy.exc import IntegrityError
 
 
 def test_shared_subdimension_names_keep_both_criteria():
@@ -52,7 +52,7 @@ async def test_database_error_rolls_back_before_persisting_failed_status():
     session.rollback.side_effect = rollback
     session.refresh.side_effect = refresh
     config = MagicMock(spec=EnvironmentConfig, inference_mode="real")
-    with patch("ielts_inference.evaluation._job", AsyncMock(return_value=job)):
+    with patch("ielts_inference.evaluation._job", AsyncMock(return_value=job)):  # noqa: SIM117
         with pytest.raises(IntegrityError) as raised:
             await evaluate_test(session, test.id, config)
 

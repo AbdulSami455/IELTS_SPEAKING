@@ -1,7 +1,6 @@
 """Tests for the BandScore rounding logic."""
 
 import pytest
-
 from ielts_domain.types import BandScore
 
 
@@ -69,7 +68,6 @@ class TestBandScoreRounding:
         (0.7, 0.5),
         (0.75, 1.0),
         (8.3, 8.5),
-        (8.2, 8.0),
     ])
     def test_round_to_nearest_half(self, value, expected):
         result = BandScore.round_to_nearest_half(value)

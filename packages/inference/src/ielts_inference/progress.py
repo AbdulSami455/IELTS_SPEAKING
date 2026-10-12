@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
+from ielts_db.models import ProgressSnapshot, Report, TestSession
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ielts_db.models import ProgressSnapshot, Report, TestSession
 from ielts_inference.assembler import EVALUATOR_VERSION
 
 
@@ -33,7 +33,7 @@ async def rebuild_progress_snapshot(session: AsyncSession, user_id: int) -> Prog
             trend = "stable"
     elif bands:
         trend = "stable"
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     window_start = rows[0][0].created_at if rows else now
     snapshot = ProgressSnapshot(
         id=str(uuid.uuid4()),

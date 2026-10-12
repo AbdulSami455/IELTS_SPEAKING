@@ -13,20 +13,19 @@ Runs hourly from Celery beat. Three passes:
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
-
-from sqlalchemy import select, update
-from sqlalchemy.ext.asyncio import AsyncSession
+from datetime import UTC, datetime, timedelta
 
 from ielts_config import EnvironmentConfig
 from ielts_db.models import Answer, MediaObject, TestSession, Transcript
 from ielts_db.storage import ObjectStore
+from sqlalchemy import select, update
+from sqlalchemy.ext.asyncio import AsyncSession
 
 _logger = logging.getLogger(__name__)
 
 
 async def reconcile_retention(session: AsyncSession, config: EnvironmentConfig) -> int:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     store = ObjectStore(config)
     result = await session.execute(
         select(MediaObject).where(

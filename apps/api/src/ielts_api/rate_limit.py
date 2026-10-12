@@ -13,10 +13,10 @@ import uuid
 from dataclasses import dataclass
 
 from fastapi import Request
+from ielts_observability import record_rate_limited, record_rate_limiter_error
 from starlette.datastructures import Headers
 
 from ielts_api.errors import AppError
-from ielts_observability import record_rate_limited, record_rate_limiter_error
 
 _logger = logging.getLogger(__name__)
 _client = None
@@ -49,7 +49,6 @@ def _redis():
     global _client
     if _client is None:
         import redis.asyncio as redis
-
         from ielts_config import get_config
 
         _client = redis.from_url(
@@ -74,7 +73,7 @@ async def allow(key: str, limit: Limit) -> bool:
             pipe.zcard(redis_key)
             pipe.expire(redis_key, limit.window_seconds)
             _, _, count, _ = await pipe.execute()
-    except Exception:  # noqa: BLE001 - any Redis failure fails open
+    except Exception:
         record_rate_limiter_error()
         _logger.warning("rate limiter unavailable; allowing request", exc_info=True)
         return True

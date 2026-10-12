@@ -6,16 +6,16 @@ from collections.abc import AsyncIterator
 
 from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from ielts_api.auth.identity import AuthenticatedUser, get_identity_verifier
-from ielts_api.errors import AppError
-from ielts_api.rate_limit import USER_LIMIT, enforce
 from ielts_config import EnvironmentConfig, get_config
 from ielts_db.database import DatabaseConfig
 from ielts_db.repositories import UserRepository
 from ielts_db.storage import ObjectStore
 from ielts_observability import record_consent_blocked
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from ielts_api.auth.identity import AuthenticatedUser, get_identity_verifier
+from ielts_api.errors import AppError
+from ielts_api.rate_limit import USER_LIMIT, enforce
 
 _db: DatabaseConfig | None = None
 _store: ObjectStore | None = None
@@ -60,14 +60,10 @@ async def require_user(
     # Limit before touching the database so a flood costs us a Redis round trip, not a write.
     await enforce(identity.auth_subject, USER_LIMIT)
     async with database().session_factory() as session:
-        repo = UserRepository(session)
-        user = await repo.create_or_update(
-            auth_subject=identity.auth_subject,
-            email=identity.email,
-            display_name=identity.display_name,
-        )
-        await session.commit()
-        await session.refresh(user)
+        # Accounts are created at registration only; a token for a deleted account is dead.
+        user = await UserRepository(session).get_by_auth_subject(identity.auth_subject)
+        if user is None:
+            raise AppError("AUTH_REQUIRED", "Invalid or expired token", 401)
     return AuthenticatedUser(
         user_id=user.id,
         auth_subject=user.auth_subject,

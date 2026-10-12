@@ -1,7 +1,6 @@
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
 from ielts_api.errors import AppError
 from ielts_api.services.tests import TestService as SpeakingService
 

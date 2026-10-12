@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Generic, Optional, TypeVar
+from typing import Any, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -31,7 +31,7 @@ class ApiModel(BaseModel):
     )
 
 
-class SuccessEnvelope(ApiModel, Generic[T]):
+class SuccessEnvelope[T](ApiModel):
     data: T
     request_id: str
 
@@ -50,17 +50,17 @@ class ErrorEnvelope(ApiModel):
 
 class UserResponse(ApiModel):
     id: str
-    email: Optional[str] = None
-    display_name: Optional[str] = None
-    consent_version: Optional[str] = None
+    email: str | None = None
+    display_name: str | None = None
+    consent_version: str | None = None
     consent_required: bool = True
-    current_consent_version: Optional[str] = None
+    current_consent_version: str | None = None
 
 
 class ConsentRequest(ApiModel):
     # The server records the version it currently requires; a client-sent
     # version is accepted for compatibility but never trusted.
-    version: Optional[str] = Field(default=None, max_length=32)
+    version: str | None = Field(default=None, max_length=32)
     accepted: bool
 
 
@@ -70,14 +70,14 @@ class TurnResponse(ApiModel):
     part: int
     sort_order: int
     prompt_text: str
-    timing_seconds: Optional[int] = None
-    cue_card: Optional[dict[str, Any]] = None
-    follow_ups: Optional[list[str]] = None
+    timing_seconds: int | None = None
+    cue_card: dict[str, Any] | None = None
+    follow_ups: list[str] | None = None
     answer_status: str
     has_examiner_audio: bool = False
     is_follow_up: bool = False
     playback_available: bool = False
-    transcript_text: Optional[str] = None
+    transcript_text: str | None = None
 
 
 class TestSessionResponse(ApiModel):
@@ -85,12 +85,12 @@ class TestSessionResponse(ApiModel):
     state: str
     revision: int
     turns: list[TurnResponse]
-    current_turn: Optional[TurnResponse] = None
+    current_turn: TurnResponse | None = None
     permitted_actions: list[str]
-    started_at: Optional[str] = None
-    expires_at: Optional[str] = None
-    report_id: Optional[str] = None
-    part2_prep_seconds: Optional[int] = None
+    started_at: str | None = None
+    expires_at: str | None = None
+    report_id: str | None = None
+    part2_prep_seconds: int | None = None
 
 
 class RealtimeSessionResponse(ApiModel):
@@ -102,9 +102,9 @@ class RealtimeSessionResponse(ApiModel):
     stt_model: str
     tts_model: str
     tts_voice: str
-    ws_url: Optional[str] = None
-    examiner_playback_url: Optional[str] = None
-    current_turn_id: Optional[str] = None
+    ws_url: str | None = None
+    examiner_playback_url: str | None = None
+    current_turn_id: str | None = None
     test: TestSessionResponse
 
 
@@ -114,12 +114,12 @@ MAX_EVENT_PAYLOAD_BYTES = 8192
 class RealtimeClientEventRequest(ApiModel):
     event_type: str = Field(max_length=64)
     speaker_role: str = Field(default="system", max_length=32)
-    provider_event_id: Optional[str] = Field(default=None, max_length=128)
-    transcript_text: Optional[str] = Field(default=None, max_length=8000)
-    prompt_text: Optional[str] = Field(default=None, max_length=2000)
-    started_at: Optional[str] = Field(default=None, max_length=40)
-    ended_at: Optional[str] = Field(default=None, max_length=40)
-    latency_ms: Optional[int] = Field(default=None, ge=0, le=3_600_000)
+    provider_event_id: str | None = Field(default=None, max_length=128)
+    transcript_text: str | None = Field(default=None, max_length=8000)
+    prompt_text: str | None = Field(default=None, max_length=2000)
+    started_at: str | None = Field(default=None, max_length=40)
+    ended_at: str | None = Field(default=None, max_length=40)
+    latency_ms: int | None = Field(default=None, ge=0, le=3_600_000)
     payload: dict[str, Any] = Field(default_factory=dict)
 
     @field_validator("payload")
@@ -132,8 +132,8 @@ class RealtimeClientEventRequest(ApiModel):
 
 class RealtimeAudioTurnResponse(ApiModel):
     test: TestSessionResponse
-    examiner_playback_url: Optional[str] = None
-    next_turn_id: Optional[str] = None
+    examiner_playback_url: str | None = None
+    next_turn_id: str | None = None
 
 
 class DeviceCheckRequest(ApiModel):
@@ -173,7 +173,7 @@ class StatusResponse(ApiModel):
     state: str
     stage: str
     progress: int
-    report_id: Optional[str] = None
+    report_id: str | None = None
 
 
 class SubdimensionScore(ApiModel):
@@ -191,7 +191,7 @@ class CriterionScoreResponse(ApiModel):
 class ReportResponse(ApiModel):
     report_id: str
     test_id: str
-    overall_band: Optional[float] = None
+    overall_band: float | None = None
     confidence_label: str
     criteria: list[CriterionScoreResponse]
     strengths: list[str]
@@ -204,7 +204,7 @@ class ReportResponse(ApiModel):
     model_policy_version: str
     created_at: str
     is_inconclusive: bool
-    transcripts: Optional[list[dict[str, Any]]] = None
+    transcripts: list[dict[str, Any]] | None = None
     pronunciation: list[dict[str, Any]] = Field(default_factory=list)
     mistakes: list[dict[str, Any]] = Field(default_factory=list)
     fluency: list[str] = Field(default_factory=list)
@@ -231,16 +231,16 @@ class GoalResponse(ApiModel):
 
 
 class PracticeActionPatch(ApiModel):
-    completed: Optional[bool] = None
-    skipped: Optional[bool] = None
+    completed: bool | None = None
+    skipped: bool | None = None
 
 
 class ProgressOverviewResponse(ApiModel):
     overall_trend: str
     sample_size: int
     confidence: str
-    latest_band: Optional[float] = None
-    active_goal: Optional[GoalResponse] = None
+    latest_band: float | None = None
+    active_goal: GoalResponse | None = None
     priorities: list[str]
     timeline: list[dict[str, Any]]
     actions: list[dict[str, Any]]

@@ -1,14 +1,14 @@
 """Comparable best-band rankings, one entry per participant."""
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 
+from ielts_db.models import Report, TestSession, User
+from ielts_inference.assembler import EVALUATOR_VERSION
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.selectable import Subquery
 
 from ielts_api.api.v1.schemas import ApiModel
-from ielts_db.models import Report, TestSession, User
-from ielts_inference.assembler import EVALUATOR_VERSION
 
 
 class LeaderboardPeriod(StrEnum):
@@ -35,7 +35,7 @@ class LeaderboardResponse(ApiModel):
 
 
 def period_start(period: LeaderboardPeriod, now: datetime) -> datetime | None:
-    midnight = now.astimezone(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    midnight = now.astimezone(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
     if period == LeaderboardPeriod.TODAY:
         return midnight
     if period == LeaderboardPeriod.WEEK:
@@ -77,7 +77,7 @@ def ranked_scores(period: LeaderboardPeriod, now: datetime) -> Subquery:
 async def get_leaderboard(
     session: AsyncSession, user_id: int, period: LeaderboardPeriod,
 ) -> LeaderboardResponse:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     ranked = ranked_scores(period, now)
     rows = (await session.execute(
         select(ranked)

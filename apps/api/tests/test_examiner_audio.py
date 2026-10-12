@@ -2,7 +2,6 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
 from ielts_api.services.tests import TestService as SpeakingService
 from ielts_db.storage import ObjectHead
 

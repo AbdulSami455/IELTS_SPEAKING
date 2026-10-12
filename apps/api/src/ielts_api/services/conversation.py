@@ -344,7 +344,7 @@ class ConversationOrchestrator:
         theme = part2_theme(self._topic_plan(test)["part2"])
         payload = await self._chat_json(
             test,
-            PART2_INSTRUCTIONS,
+            PART2_INSTRUCTIONS + DATA_HANDLING_RULES,
             part2_prompt_input(
                 history,
                 theme_label=theme["label"],

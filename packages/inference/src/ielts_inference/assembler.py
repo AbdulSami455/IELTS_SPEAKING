@@ -51,9 +51,7 @@ def _evidence_is_grounded(quote: str, transcript: str) -> bool:
     ratio = SequenceMatcher(None, quote_norm, transcript_norm).ratio()
     if ratio >= HALLUCINATION_THRESHOLD:
         return True
-    if quote_norm in transcript_norm:
-        return True
-    return False
+    return quote_norm in transcript_norm
 
 
 def _normalize_text(text: str) -> str:
@@ -106,10 +104,7 @@ def assemble(model_json: dict, features: dict, acoustic_coverage: float) -> dict
         band_value = None
         if item["band"] is not None:
             band_value = BandScore.round_to_nearest_half(item["band"]).value
-        if not transcript_text.strip():
-            confidence = "inconclusive"
-            band_value = None
-        elif key in {"fluency_and_coherence", "pronunciation"} and (low_audio or voiced_ms < MIN_VOICED_MS):
+        if not transcript_text.strip() or key in {"fluency_and_coherence", "pronunciation"} and (low_audio or voiced_ms < MIN_VOICED_MS):
             confidence = "inconclusive"
             band_value = None
         validated_evidence = _validate_evidence(key, item["evidence"], transcript_text, rejected_evidence)
@@ -194,9 +189,7 @@ def _validate_rewrites(rewrites: list, transcript: str) -> list:
         if not isinstance(item, dict):
             continue
         original = str(item.get("original") or "")
-        if original and _evidence_is_grounded(original, transcript):
-            validated.append(item)
-        elif not original:
+        if original and _evidence_is_grounded(original, transcript) or not original:
             validated.append(item)
     return validated
 

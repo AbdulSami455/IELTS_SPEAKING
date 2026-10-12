@@ -165,6 +165,31 @@ def create_app() -> FastAPI:
             return JSONResponse({"detail": "Unauthorized"}, status_code=401)
         return metrics_response()
 
+    @app.get("/health/providers", include_in_schema=False)
+    async def providers(request: Request) -> JSONResponse:
+        """Last STT/TTS probe outcome written by the worker's ``probe_providers`` beat task."""
+        token = config.metrics_token
+        if not token:
+            return JSONResponse({"detail": "Not Found"}, status_code=404)
+        if request.headers.get("authorization") != f"Bearer {token}":
+            return JSONResponse({"detail": "Unauthorized"}, status_code=401)
+        import json as _json
+
+        import redis.asyncio as redis
+        from ielts_inference.probes import REDIS_KEY
+
+        client = redis.from_url(config.redis_url, socket_timeout=2, socket_connect_timeout=2)
+        try:
+            raw = await client.get(REDIS_KEY)
+        except Exception as exc:  # noqa: BLE001
+            return JSONResponse({"status": "unknown", "detail": f"redis {type(exc).__name__}"}, status_code=503)
+        finally:
+            await client.aclose()
+        if not raw:
+            return JSONResponse({"status": "unknown", "detail": "no probe results yet"}, status_code=200)
+        data = _json.loads(raw)
+        return JSONResponse({"status": "ok" if data.get("ok") else "degraded", **data}, status_code=200 if data.get("ok") else 503)
+
     from ielts_api.deps import database as shared_database
 
     database = shared_database()

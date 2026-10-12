@@ -7,13 +7,11 @@ import json
 import os
 from pathlib import Path
 
-from sqlalchemy import select
-
 from ielts_config.config import EnvironmentConfig
 from ielts_db.database import DatabaseConfig, get_database_url
 from ielts_db.models import Base, Question, QuestionSet
 from ielts_db.storage import ObjectStore
-
+from sqlalchemy import select
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -79,7 +77,7 @@ async def main() -> None:
         store = ObjectStore(EnvironmentConfig.from_env())
         store.ensure_buckets()
         print("MinIO buckets ready; examiner TTS is generated on first playback")
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         print(f"MinIO seed skipped: {exc}")
     await db.dispose()
 

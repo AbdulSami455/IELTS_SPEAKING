@@ -80,7 +80,7 @@ def measure_wav(data: bytes) -> AcousticQuality:
                 clipping_ratio=round(clipping_ratio, 4),
                 speech_ratio=round(max(0.0, 1.0 - silence_ratio), 4),
             )
-    except Exception:
+    except Exception:  # noqa: BLE001
         return AcousticQuality(0, 0.0, 1.0, 0.0, 0.0)
 
 

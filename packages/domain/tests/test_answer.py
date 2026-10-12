@@ -1,7 +1,6 @@
 """Tests for the answer state machine."""
 
 import pytest
-
 from ielts_domain.answer import (
     AnswerEvent,
     AnswerState,

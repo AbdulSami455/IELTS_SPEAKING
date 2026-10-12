@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Optional, Sequence
+from collections.abc import Sequence
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -30,11 +30,11 @@ class UserRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    async def get_by_id(self, user_id: int) -> Optional[User]:
+    async def get_by_id(self, user_id: int) -> User | None:
         result = await self._session.execute(select(User).where(User.id == user_id))
         return result.scalar_one_or_none()
 
-    async def get_by_email(self, email: str) -> Optional[User]:
+    async def get_by_email(self, email: str) -> User | None:
         result = await self._session.execute(select(User).where(User.email == email.lower()))
         return result.scalar_one_or_none()
 
@@ -49,7 +49,7 @@ class UserRepository:
         await self._session.flush()
         return user
 
-    async def get_by_auth_subject(self, auth_subject: str) -> Optional[User]:
+    async def get_by_auth_subject(self, auth_subject: str) -> User | None:
         result = await self._session.execute(
             select(User).where(User.auth_subject == auth_subject)
         )
@@ -58,9 +58,9 @@ class UserRepository:
     async def create_or_update(
         self,
         auth_subject: str,
-        email: Optional[str] = None,
-        display_name: Optional[str] = None,
-        avatar_url: Optional[str] = None,
+        email: str | None = None,
+        display_name: str | None = None,
+        avatar_url: str | None = None,
     ) -> User:
         existing = await self.get_by_auth_subject(auth_subject)
         if existing:
@@ -88,7 +88,7 @@ class UserRepository:
         if user is None:
             raise ValueError("user not found")
         user.consent_version = version
-        user.consent_accepted_at = datetime.now(timezone.utc)
+        user.consent_accepted_at = datetime.now(UTC)
         await self._session.flush()
         return user
 
@@ -102,8 +102,8 @@ class ConsentRepository:
         user: User,
         version: str,
         *,
-        ip: Optional[str] = None,
-        user_agent: Optional[str] = None,
+        ip: str | None = None,
+        user_agent: str | None = None,
     ) -> ConsentRecord:
         """Append a consent row and move the user's pointer to this version."""
         row = ConsentRecord(
@@ -114,7 +114,7 @@ class ConsentRepository:
         )
         self._session.add(row)
         user.consent_version = version[:32]
-        user.consent_accepted_at = datetime.now(timezone.utc)
+        user.consent_accepted_at = datetime.now(UTC)
         await self._session.flush()
         return row
 
@@ -123,7 +123,7 @@ class QuestionSetRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    async def get_published(self, slug: str | None = None) -> Optional[QuestionSet]:
+    async def get_published(self, slug: str | None = None) -> QuestionSet | None:
         stmt = (
             select(QuestionSet)
             .options(selectinload(QuestionSet.questions))
@@ -148,7 +148,7 @@ class TestSessionRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    async def get_owned(self, test_id: str, user_id: int) -> Optional[TestSession]:
+    async def get_owned(self, test_id: str, user_id: int) -> TestSession | None:
         result = await self._session.execute(
             select(TestSession)
             .options(
@@ -169,7 +169,7 @@ class TestSessionRepository:
         )
         return result.scalar_one_or_none()
 
-    async def get_by_id(self, test_id: str) -> Optional[TestSession]:
+    async def get_by_id(self, test_id: str) -> TestSession | None:
         result = await self._session.execute(
             select(TestSession)
             .options(
@@ -199,7 +199,7 @@ class TestSessionRepository:
         )
         return result.scalars().all()
 
-    async def active_for_user(self, user_id: int) -> Optional[TestSession]:
+    async def active_for_user(self, user_id: int) -> TestSession | None:
         result = await self._session.execute(
             select(TestSession)
             .where(TestSession.user_id == user_id)
@@ -217,7 +217,7 @@ class AnswerRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    async def get_owned(self, answer_id: str, test_id: str) -> Optional[Answer]:
+    async def get_owned(self, answer_id: str, test_id: str) -> Answer | None:
         result = await self._session.execute(
             select(Answer)
             .options(
@@ -243,7 +243,7 @@ class RealtimeSessionRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    async def active_for_test(self, test_id: str) -> Optional[RealtimeSession]:
+    async def active_for_test(self, test_id: str) -> RealtimeSession | None:
         result = await self._session.execute(
             select(RealtimeSession)
             .where(RealtimeSession.test_session_id == test_id)
@@ -265,11 +265,11 @@ class ReportRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    async def get_by_id(self, report_id: str) -> Optional[Report]:
+    async def get_by_id(self, report_id: str) -> Report | None:
         result = await self._session.execute(select(Report).where(Report.id == report_id))
         return result.scalar_one_or_none()
 
-    async def get_for_test(self, test_id: str) -> Optional[Report]:
+    async def get_for_test(self, test_id: str) -> Report | None:
         result = await self._session.execute(
             select(Report).where(Report.test_session_id == test_id)
         )
@@ -306,7 +306,7 @@ class ProgressRepository:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    async def current_goal(self, user_id: int) -> Optional[PracticeGoal]:
+    async def current_goal(self, user_id: int) -> PracticeGoal | None:
         result = await self._session.execute(
             select(PracticeGoal)
             .where(PracticeGoal.user_id == user_id)
@@ -349,7 +349,7 @@ class ProgressRepository:
         )
         return result.scalars().all()
 
-    async def get_action(self, action_id: str, user_id: int) -> Optional[PracticeAction]:
+    async def get_action(self, action_id: str, user_id: int) -> PracticeAction | None:
         result = await self._session.execute(
             select(PracticeAction)
             .where(PracticeAction.id == action_id)
@@ -419,7 +419,7 @@ class JobRepository:
                 return existing
             existing.status = "RUNNING"
             existing.attempt += 1
-            existing.started_at = datetime.now(timezone.utc)
+            existing.started_at = datetime.now(UTC)
             await self._session.flush()
             return existing
         job = ProcessingJob(
@@ -430,7 +430,7 @@ class JobRepository:
             status="RUNNING",
             attempt=1,
             payload=payload,
-            started_at=datetime.now(timezone.utc),
+            started_at=datetime.now(UTC),
         )
         self._session.add(job)
         await self._session.flush()

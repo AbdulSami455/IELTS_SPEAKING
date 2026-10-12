@@ -3,14 +3,14 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
+from ielts_config import EnvironmentConfig
+from ielts_db.models import ModelCallAttempt, UsageLedger
 from sqlalchemy import select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ielts_config import EnvironmentConfig
-from ielts_db.models import ModelCallAttempt, UsageLedger
 from ielts_inference.openrouter import InferenceError
 
 
@@ -21,7 +21,7 @@ async def reserve_model_call(
     stage: str,
     config: EnvironmentConfig,
 ) -> None:
-    day = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    day = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
     # Both API and worker reserve calls. Create the daily row safely, then
     # increment in SQL so concurrent sessions cannot reuse a stale counter.
     await session.execute(
@@ -57,7 +57,7 @@ async def reserve_model_call(
             provider="openrouter",
             model="policy",
             policy_version=config.openrouter_scoring_model[:50],
-            request_started_at=datetime.now(timezone.utc),
+            request_started_at=datetime.now(UTC),
             reserved_microdollars=0,
             free_request_impact=True,
             outcome="RESERVED",
@@ -67,7 +67,7 @@ async def reserve_model_call(
 
 
 async def assert_capacity(session: AsyncSession, user_id: int, config: EnvironmentConfig) -> None:
-    day = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    day = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
     result = await session.execute(
         select(UsageLedger).where(UsageLedger.user_id == user_id, UsageLedger.date == day)
     )

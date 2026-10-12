@@ -11,6 +11,7 @@ from fastapi import (
     File,
     Query,
     Request,
+    Response,
     UploadFile,
     WebSocket,
     WebSocketDisconnect,
@@ -18,9 +19,13 @@ from fastapi import (
 )
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import HTMLResponse, StreamingResponse
+from ielts_config import EnvironmentConfig
+from ielts_db.repositories import ConsentRepository, UserRepository
+from ielts_db.storage import ObjectStore
 from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ielts_api.api.v1.auth import _clear_auth_cookies
 from ielts_api.api.v1.schemas import (
     ConsentRequest,
     DeviceCheckRequest,
@@ -38,9 +43,6 @@ from ielts_api.errors import AppError, validation
 from ielts_api.rate_limit import EVENTS_LIMIT, SOCKET_LIMIT, allow, enforce
 from ielts_api.services.realtime import RealtimeSessionService
 from ielts_api.services.tests import TestService
-from ielts_config import EnvironmentConfig
-from ielts_db.repositories import ConsentRepository, UserRepository
-from ielts_db.storage import ObjectStore
 
 router = APIRouter()
 
@@ -123,10 +125,12 @@ async def consent(
 
 @router.delete("/me")
 async def delete_me(
+    response: Response,
     user: AuthenticatedUser = Depends(require_user),
     svc: TestService = Depends(service),
 ) -> dict:
     await svc.delete_account(user.user_id)
+    _clear_auth_cookies(response)
     return envelope({"deleted": True})
 
 
@@ -277,7 +281,7 @@ async def realtime_live_socket(
             try:
                 payload = json.loads(raw)
                 if not isinstance(payload, dict):
-                    raise ValueError("expected an object")
+                    raise ValueError("expected an object")  # noqa: TRY004
             except ValueError:
                 bad_frames += 1
                 await _socket_error(websocket, "INVALID_MESSAGE", "Messages must be JSON objects")

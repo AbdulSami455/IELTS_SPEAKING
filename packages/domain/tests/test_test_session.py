@@ -1,27 +1,25 @@
 """Tests for the test session state machine."""
 
-import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
-
 from ielts_domain.test_session import (
+    StateConflictError,
     TestEvent,
     TestPolicy,
     TestState,
-    StateConflictError,
     apply_transition,
 )
 
 
 @pytest.fixture
 def now() -> datetime:
-    return datetime(2026, 8, 18, 12, 0, 0, tzinfo=timezone.utc)
+    return datetime(2026, 8, 18, 12, 0, 0, tzinfo=UTC)
 
 
 @pytest.fixture
 def created_at() -> datetime:
-    return datetime(2026, 8, 18, 11, 0, 0, tzinfo=timezone.utc)
+    return datetime(2026, 8, 18, 11, 0, 0, tzinfo=UTC)
 
 
 @pytest.fixture

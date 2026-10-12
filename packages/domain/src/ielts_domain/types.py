@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from decimal import ROUND_HALF_UP, Decimal
-from dataclasses import dataclass
 import uuid
-from datetime import datetime, timedelta, timezone
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from decimal import ROUND_HALF_UP, Decimal
 
 
 @dataclass(frozen=True)
@@ -13,11 +13,11 @@ class UUID:
     value: uuid.UUID
 
     @classmethod
-    def generate(cls) -> "UUID":
+    def generate(cls) -> UUID:
         return cls(uuid.uuid7())
 
     @classmethod
-    def from_string(cls, s: str) -> "UUID":
+    def from_string(cls, s: str) -> UUID:
         return cls(uuid.UUID(s))
 
     def __str__(self) -> str:
@@ -35,9 +35,9 @@ class BandScore:
             raise ValueError(f"Band score must be in 0.5 increments, got {self.value}")
 
     @staticmethod
-    def round_to_nearest_half(value: float) -> "BandScore":
+    def round_to_nearest_half(value: float) -> BandScore:
         d = Decimal(str(value))
-        rounded = (d * Decimal("2")).quantize(Decimal("1"), rounding=ROUND_HALF_UP) * Decimal("0.5")
+        rounded = (d * Decimal(2)).quantize(Decimal(1), rounding=ROUND_HALF_UP) * Decimal("0.5")
         return BandScore(float(rounded))
 
     def __str__(self) -> str:
@@ -49,23 +49,23 @@ class Timestamp:
     value: datetime
 
     @classmethod
-    def now(cls) -> "Timestamp":
-        return cls(datetime.now(timezone.utc))
+    def now(cls) -> Timestamp:
+        return cls(datetime.now(UTC))
 
     @classmethod
-    def from_string(cls, s: str) -> "Timestamp":
+    def from_string(cls, s: str) -> Timestamp:
         return cls(datetime.fromisoformat(s))
 
     def isoformat(self) -> str:
         return self.value.isoformat()
 
-    def __ge__(self, other: "Timestamp") -> bool:
+    def __ge__(self, other: Timestamp) -> bool:
         return self.value >= other.value
 
-    def __le__(self, other: "Timestamp") -> bool:
+    def __le__(self, other: Timestamp) -> bool:
         return self.value <= other.value
 
-    def __lt__(self, other: "Timestamp") -> bool:
+    def __lt__(self, other: Timestamp) -> bool:
         return self.value < other.value
 
 
@@ -74,7 +74,7 @@ class Duration:
     milliseconds: int
 
     @classmethod
-    def from_seconds(cls, seconds: float) -> "Duration":
+    def from_seconds(cls, seconds: float) -> Duration:
         return cls(int(seconds * 1000))
 
     @property
@@ -87,7 +87,7 @@ class Microdollars:
     value: int
 
     @classmethod
-    def from_dollars(cls, dollars: float) -> "Microdollars":
+    def from_dollars(cls, dollars: float) -> Microdollars:
         return cls(int(dollars * 1_000_000))
 
     def as_dollars(self) -> float:

@@ -7,9 +7,8 @@ All transitions are pure functions taking explicit state, event, policy, and tim
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from enum import Enum
-from typing import Callable
 
 
 class TestState(str, Enum):
@@ -145,7 +144,7 @@ def apply_transition(
     policy: TestPolicy | None = None,
     created_at: datetime | None = None,
 ) -> StateTransition:
-    now = now or datetime.now(timezone.utc)
+    now = now or datetime.now(UTC)
     policy = policy or TestPolicy()
     if expected_revision != current_revision:
         raise StateConflictError(
@@ -154,11 +153,10 @@ def apply_transition(
 
     if current_state in _TERMINAL_STATES and event != TestEvent.DELETE and not (
         current_state == TestState.FAILED and event == TestEvent.RETRY_PROCESSING
-    ):
-        if not (current_state == TestState.COMPLETED):
-            raise StateConflictError(
-                f"Cannot apply {event} to terminal state {current_state}"
-            )
+    ) and not (current_state == TestState.COMPLETED):
+        raise StateConflictError(
+            f"Cannot apply {event} to terminal state {current_state}"
+        )
 
     key = (current_state, event)
     if key not in _TRANSITION_TABLE:

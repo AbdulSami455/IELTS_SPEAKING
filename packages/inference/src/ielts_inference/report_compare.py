@@ -83,16 +83,13 @@ def compare_reports(
             continue
         delta = round(current - previous, 1)
         if delta > 0:
-            direction = "up"
             if delta >= 0.5:
                 improved_areas.append(f"{label} up {delta:g} band{'s' if abs(delta) != 1 else ''} ({previous:g} → {current:g}).")
             else:
                 minor_gains.append(f"{label} edged up slightly ({previous:g} → {current:g}).")
         elif delta < 0:
-            direction = "down"
             still_working_on.append(f"{label} dipped {abs(delta):g} band{'s' if abs(delta) != 1 else ''} ({previous:g} → {current:g}).")
         else:
-            direction = "stable"
             minor_gains.append(f"{label} held steady at {current:g}.")
 
     overall_delta = None

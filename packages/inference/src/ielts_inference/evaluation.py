@@ -5,14 +5,10 @@ from __future__ import annotations
 import hashlib
 import json
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
-from sqlalchemy import delete, select
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
-
-from ielts_audio.media import concat_wavs, measure_wav, normalize_to_wav, acoustic_observations
+from ielts_audio.media import acoustic_observations, concat_wavs, measure_wav, normalize_to_wav
 from ielts_config import EnvironmentConfig
 from ielts_db.models import (
     Answer,
@@ -27,6 +23,11 @@ from ielts_db.models import (
 )
 from ielts_db.storage import ObjectStore
 from ielts_domain import AnswerEvent, AnswerState, TestEvent, TestState, apply_answer_transition, apply_transition
+from ielts_observability import record_test_completed
+from sqlalchemy import delete, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
 from ielts_inference.assembler import EVALUATOR_VERSION, assemble
 from ielts_inference.features import extract_features
 from ielts_inference.openrouter import InferenceError, OpenRouterClient, ScoreSchema, TranscriptResult
@@ -34,8 +35,6 @@ from ielts_inference.progress import rebuild_progress_snapshot
 from ielts_inference.pronunciation import check_pronunciation
 from ielts_inference.quota import reserve_model_call
 from ielts_inference.transcript import clean_transcript
-from ielts_observability import record_test_completed
-
 
 PUBLIC_STAGES = (
     "validating_audio",
@@ -49,11 +48,14 @@ PUBLIC_STAGES = (
 
 SCORING_INSTRUCTIONS = """Score this IELTS-style speaking PRACTICE test as a supportive coach, not a live examiner.
 
-Calibration (practice bands — neat, fair, evidence-based):
+Calibration (practice bands — neat, fair, evidence-based; use the WHOLE scale, do not compress toward 6):
+- 4.0: fragments and very short answers, long silences, basic words repeated; the listener has to work hard.
+- 5.0: basic ideas get across, but hesitation, repetition and errors are frequent and answers stay short.
 - 5.5: the candidate keeps going and the message is usually understandable despite noticeable slips.
 - 6.0: competent everyday communication with some errors that rarely block meaning.
 - 6.5: generally clear, with good range and only occasional issues.
-- 7.0+: only when range, control, and delivery are consistently strong across the attempt.
+- 7.0: range, control, and delivery are consistently strong across the attempt, with a few slips.
+- 8.0+: fluent, flexible, idiomatic language sustained across all parts, precise vocabulary, rare non-systematic slips.
 - Do not mark down more than 0.5 for isolated slips, fillers, or one weak answer if the rest is solid.
 - Never punish accent, L1 influence, or STT/recognition artefacts.
 - Report at most 4–6 mistakes — only the highest-impact issues with clear transcript evidence.
@@ -249,7 +251,7 @@ async def evaluate_test(session: AsyncSession, test_id: str, config: Environment
                 answer.status = processing.new_state.value
                 ready = apply_answer_transition(AnswerState(answer.status), AnswerEvent.MARK_READY)
                 answer.status = ready.new_state.value
-            except Exception:
+            except Exception:  # noqa: BLE001
                 answer.status = AnswerState.READY.value
             pronunciation = check_pronunciation(transcript.words, features, coverage)
             try:
@@ -382,7 +384,7 @@ async def evaluate_test(session: AsyncSession, test_id: str, config: Environment
         test.status = completed.new_state.value
         test.revision = completed.new_revision
         job.status = "COMPLETED"
-        job.completed_at = datetime.now(timezone.utc)
+        job.completed_at = datetime.now(UTC)
         _set_stage(job, "completed", 100)
         await session.flush()
         await rebuild_progress_snapshot(session, test.user_id)
@@ -409,10 +411,10 @@ async def evaluate_test(session: AsyncSession, test_id: str, config: Environment
             )
             test.status = failed.new_state.value
             test.revision = failed.new_revision
-        except Exception:
+        except Exception:  # noqa: BLE001
             test.status = TestState.FAILED.value
         job.status = "FAILED"
-        job.completed_at = datetime.now(timezone.utc)
+        job.completed_at = datetime.now(UTC)
         job.error_code = "EVALUATION_FAILED"
         job.error_message = str(extra)[:500]
         _set_stage(job, "failed", 100)
@@ -466,7 +468,7 @@ async def _job(session: AsyncSession, test_id: str, job_type: str) -> Processing
     existing = result.scalar_one_or_none()
     if existing:
         existing.status = "RUNNING"
-        existing.started_at = datetime.now(timezone.utc)
+        existing.started_at = datetime.now(UTC)
         existing.completed_at = None
         existing.error_code = None
         existing.error_message = None
@@ -478,7 +480,7 @@ async def _job(session: AsyncSession, test_id: str, job_type: str) -> Processing
         input_version="v1",
         status="RUNNING",
         payload={"stage": "validating_audio", "progress": 5},
-        started_at=datetime.now(timezone.utc),
+        started_at=datetime.now(UTC),
     )
     session.add(job)
     await session.flush()
