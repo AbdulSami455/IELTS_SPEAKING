@@ -65,6 +65,7 @@ export function Button({
       aria-busy={loading || undefined}
       type={to ? undefined : type}
       render={render ?? asLink}
+      nativeButton={!(render ?? asLink)}
       {...rest}
     >
       {loading && <Loader2 className="animate-spin" aria-hidden="true" />}

@@ -5,7 +5,7 @@ import { ApiError, api } from "../../lib/api";
 import { useDocumentTitle } from "../../lib/useDocumentTitle";
 import { AppShell } from "../../components/layout/AppShell";
 import { Alert, Button, Card, Spinner } from "../../components/studio";
-import { Progress, ProgressIndicator, ProgressTrack } from "@/components/ui/progress";
+import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 
 const STAGES = [
@@ -84,11 +84,11 @@ export function ProcessingPage() {
         </div>
         {!failed && (
           <div className="grid gap-2">
-            <Progress value={progress} aria-label="Scoring progress">
-              <ProgressTrack className="h-2 bg-border">
-                <ProgressIndicator className="bg-indigo-vivid" />
-              </ProgressTrack>
-            </Progress>
+            <Progress
+              value={progress}
+              aria-label="Scoring progress"
+              className="[&_[data-slot=progress-indicator]]:bg-indigo-vivid [&_[data-slot=progress-track]]:h-2 [&_[data-slot=progress-track]]:bg-border"
+            />
             <p className="text-[13px] text-muted-foreground" aria-live="polite">
               {activeIndex === -1 ? "Waiting to start…" : `${progress}% complete`}
             </p>

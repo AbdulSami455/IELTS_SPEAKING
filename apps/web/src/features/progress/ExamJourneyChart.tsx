@@ -41,7 +41,7 @@ export function ExamJourneyChart({ examHistory, target, compact = false }: { exa
   const exams = examHistory.exams ?? [];
   const [visible, setVisible] = useState<Record<string, boolean>>(() => Object.fromEntries(SERIES.map((s) => [s.key, true])));
   const [hovered, setHovered] = useState<number | null>(null);
-  const [frameRef, width] = useElementWidth<HTMLDivElement>(670);
+  const [frameRef, width] = useElementWidth<HTMLDivElement>(320);
   const RIGHT = width - 18;
 
   const [low, high] = useMemo(
@@ -128,7 +128,7 @@ export function ExamJourneyChart({ examHistory, target, compact = false }: { exa
         )}
       </div>
 
-      <div className="relative w-full overflow-hidden" ref={frameRef} onMouseLeave={() => setHovered(null)}>
+      <div className="relative w-full min-w-0 overflow-hidden contain-inline-size" ref={frameRef} onMouseLeave={() => setHovered(null)}>
         <svg
           className="block w-full"
           viewBox={`0 0 ${width} ${HEIGHT}`}
@@ -233,7 +233,7 @@ export function ExamJourneyChart({ examHistory, target, compact = false }: { exa
       )}
 
       {!compact && (
-        <Collapsible defaultOpen className="grid gap-3">
+        <Collapsible defaultOpen className="grid min-w-0 gap-3">
           <CollapsibleTrigger className="group inline-flex items-center gap-1.5 justify-self-start text-sm font-medium text-foreground">
             All tests &amp; band scores <ChevronDown className="size-4 transition-transform group-data-open:rotate-180" aria-hidden="true" />
           </CollapsibleTrigger>

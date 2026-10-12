@@ -186,7 +186,7 @@ export function ProgressPage() {
               </div>
             )}
             {data.examHistory && <ExamJourneyChart examHistory={data.examHistory} target={data.activeGoal?.targetBand} />}
-            <div className="grid items-start gap-5 lg:grid-cols-2">
+            <div className="grid items-start gap-5 lg:grid-cols-2 [&>*]:min-w-0">
               <ProgressChart timeline={data.timeline} target={data.activeGoal?.targetBand} />
               <SkillBars stats={data.criterionStats} />
             </div>

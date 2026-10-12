@@ -92,10 +92,22 @@ def run_migrations() -> None:
     from alembic import command
     from alembic.config import Config
 
-    root = Path(__file__).resolve().parents[4]
+    root = _repo_root()
     config = Config(str(root / "alembic.ini"))
     config.set_main_option("script_location", str(root / "migrations"))
     command.upgrade(config, "head")
+
+
+def _repo_root() -> Path:
+    """Locate alembic.ini by walking up from this file, falling back to the working directory.
+
+    The source tree is apps/api/src/ielts_api/api/; the Docker image keeps the same layout
+    under /app, and `alembic upgrade head` as a release step runs from that directory too.
+    """
+    for candidate in Path(__file__).resolve().parents:
+        if (candidate / "alembic.ini").is_file() and (candidate / "migrations").is_dir():
+            return candidate
+    return Path.cwd()
 
 
 def _validate_config_at_boot():

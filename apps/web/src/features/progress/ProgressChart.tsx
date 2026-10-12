@@ -35,7 +35,7 @@ export function ChartEmpty({ title, children }: { title: string; children: React
 export function ProgressChart({ timeline, target }: { timeline: Point[]; target?: number }) {
   const [range, setRange] = useState<Range>("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [frameRef, width] = useElementWidth<HTMLDivElement>(670);
+  const [frameRef, width] = useElementWidth<HTMLDivElement>(320);
   const RIGHT = width - 18;
   const sorted = [...timeline]
     .filter((p) => Number.isFinite(p.overallBand) && Number.isFinite(Date.parse(p.date)))
@@ -75,7 +75,7 @@ export function ProgressChart({ timeline, target }: { timeline: Point[]; target?
               )}
             </span>
           </div>
-          <div className="relative w-full overflow-hidden" ref={frameRef}>
+          <div className="relative w-full min-w-0 overflow-hidden contain-inline-size" ref={frameRef}>
             <svg
               className="block w-full"
               viewBox={`0 0 ${width} ${HEIGHT}`}

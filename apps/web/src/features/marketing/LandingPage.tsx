@@ -61,7 +61,7 @@ export function LandingPage() {
           <p className="mr-auto font-serif text-lg leading-snug">
             One conversation.
             <br />
-            <strong className="font-semibold">The whole experience.</strong>
+            <strong className="font-semibold text-inherit">The whole experience.</strong>
           </p>
           <span className="inline-flex items-center gap-2">
             <b className="font-mono text-coral">01</b> Interview

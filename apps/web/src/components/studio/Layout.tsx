@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 
 /** Flat white panel; the building block of every studio screen. */
 export function Card({ className, ...props }: ComponentProps<"section">) {
-  return <section className={cn("rounded-lg border border-border bg-card p-6 max-sm:p-5", className)} {...props} />;
+  return <section className={cn("min-w-0 rounded-lg border border-border bg-card p-6 max-sm:p-5 [&>*]:min-w-0", className)} {...props} />;
 }
 
 export function PageHeading({

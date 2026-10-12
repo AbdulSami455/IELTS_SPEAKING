@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -99,10 +100,12 @@ export function AppShell({ children, variant = "default", focusAction }: AppShel
                   <span className="hidden lg:inline">{name.split(" ")[0]}</span>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="min-w-56">
-                  <DropdownMenuLabel className="grid gap-0.5">
-                    <span className="font-medium text-foreground">{name || "Your account"}</span>
-                    {user?.email && name !== user.email && <span className="text-xs font-normal text-muted-foreground">{user.email}</span>}
-                  </DropdownMenuLabel>
+                  <DropdownMenuGroup>
+                    <DropdownMenuLabel className="grid gap-0.5">
+                      <span className="font-medium text-foreground">{name || "Your account"}</span>
+                      {user?.email && name !== user.email && <span className="text-xs font-normal text-muted-foreground">{user.email}</span>}
+                    </DropdownMenuLabel>
+                  </DropdownMenuGroup>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem render={<Link to="/progress#goal" />}>Set a goal</DropdownMenuItem>
                   <DropdownMenuItem render={<Link to="/learn" />}>Speaking guide</DropdownMenuItem>
