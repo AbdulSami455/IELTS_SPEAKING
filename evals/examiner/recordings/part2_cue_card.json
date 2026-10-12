@@ -1,0 +1,15 @@
+{
+  "ok": true,
+  "raw": {
+    "topic": "A Scenic Train Journey",
+    "task": "Describe a particularly memorable train journey you have taken.",
+    "prompts": [
+      "When and where did this journey take place?",
+      "Who did you travel with, and what was the purpose of the trip?",
+      "Describe the scenery you saw during the journey and a specific moment that stood out to you.",
+      "Explain why this train journey remains a strong memory for you."
+    ]
+  },
+  "latency_seconds": 3.48,
+  "recorded_at": "2026-10-12T08:50:55Z"
+}

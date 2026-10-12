@@ -1,0 +1,187 @@
+{
+  "ok": true,
+  "raw": {
+    "criteria": [
+      {
+        "criterion": "fluency_and_coherence",
+        "band": 6.5,
+        "confidence": "high",
+        "subdimensions": {
+          "pace": 6.5,
+          "pausing": 6.0,
+          "linking": 6.5,
+          "development": 6.5
+        },
+        "evidence": [
+          {
+            "quote": "I think I prefer outdoors, because I usually go, like, to the park near my house after work.",
+            "note": "Generally smooth pace, but 'like' is a filler. Ideas are connected, but could be more sophisticated."
+          },
+          {
+            "quote": "The reason I remember it is that we got lost on the first day, and the reason is that, um, nobody had a map.",
+            "note": "Repetition of 'the reason' creates a slight lack of fluency. 'Um' is a filler."
+          }
+        ]
+      },
+      {
+        "criterion": "lexical_resource",
+        "band": 6.0,
+        "confidence": "medium",
+        "subdimensions": {
+          "range": 6.0,
+          "accuracy": 6.0,
+          "collocation": 5.5
+        },
+        "evidence": [
+          {
+            "quote": "very good experience, very good",
+            "note": "Repetition of 'very good' indicates limited range. Consider 'enjoyable' or 'positive'."
+          },
+          {
+            "quote": "amazing views",
+            "note": "Good collocation."
+          }
+        ]
+      },
+      {
+        "criterion": "grammatical_range_and_accuracy",
+        "band": 6.0,
+        "confidence": "high",
+        "subdimensions": {
+          "range": 6.0,
+          "accuracy": 6.0
+        },
+        "evidence": [
+          {
+            "quote": "People in my country they are very friendly",
+            "note": "Unnecessary pronoun 'they'. Should be 'People in my country are very friendly'."
+          }
+        ]
+      },
+      {
+        "criterion": "pronunciation",
+        "band": 6.5,
+        "confidence": "inconclusive",
+        "subdimensions": {
+          "intelligibility": 6.5,
+          "stress": 6.5,
+          "features": 6.5
+        },
+        "evidence": []
+      }
+    ],
+    "strengths": [
+      "Generally clear and understandable speech.",
+      "Good attempt at extended responses in Part 2.",
+      "Ideas are relevant to the questions.",
+      "Willingness to elaborate and provide details."
+    ],
+    "improvements": [
+      "Reduce filler usage ('like', 'um').",
+      "Expand vocabulary range to avoid repetition.",
+      "Improve grammatical accuracy, particularly with pronoun usage."
+    ],
+    "minorImprovements": [
+      "Good use of past tense when describing the journey.",
+      "Effective use of linking words like 'also' and 'so'.",
+      "Clear articulation and pronunciation (based on available data).",
+      "Successfully addressed all parts of the Part 2 cue card."
+    ],
+    "mistakes": [
+      {
+        "type": "filler",
+        "quote": "I think I prefer outdoors, because I usually go, like, to the park",
+        "correction": "I think I prefer outdoors, because I usually go to the park",
+        "note": "Avoid using 'like' as a filler. It distracts from the message.",
+        "practice": "Record yourself speaking for 30 seconds about a hobby, focusing on eliminating 'like' and other fillers."
+      },
+      {
+        "type": "filler",
+        "quote": "The reason I remember it is that we got lost on the first day, and the reason is that, um, nobody had a map.",
+        "correction": "The reason I remember it is that we got lost on the first day because nobody had a map.",
+        "note": "Avoid using 'um' as a filler. It disrupts the flow of speech.",
+        "practice": "Practice pausing briefly instead of using 'um' when you need time to think."
+      },
+      {
+        "type": "grammar",
+        "quote": "People in my country they are very friendly",
+        "correction": "People in my country are very friendly.",
+        "note": "Avoid unnecessary pronouns after 'people/everyone/someone'.",
+        "practice": "Rewrite these sentences, removing unnecessary pronouns: 'Students in my class they study hard.' 'Everyone in my family they likes pizza.'"
+      }
+    ],
+    "fluencyNotes": [
+      "Speech rate is consistently around 125-128 WPM, which is good.",
+      "Pauses are generally well-placed, but some are slightly long (up to 1.9 seconds).",
+      "Coherence is generally good, with ideas logically connected.",
+      "Linking words ('because', 'also', 'so') are used, but could be more varied.",
+      "Development of ideas is adequate, but could be more detailed and specific."
+    ],
+    "exampleRewrites": [
+      {
+        "original": "It was a very good experience, very good, to be in nature",
+        "saferRewrite": "It was a very enjoyable experience to be in nature."
+      },
+      {
+        "original": "The reason I remember it is that we got lost on the first day, and the reason is that, um, nobody had a map.",
+        "saferRewrite": "I remember it because we got lost on the first day as nobody had a map."
+      }
+    ],
+    "practicePlan": {
+      "days": [
+        {
+          "day": 1,
+          "focus": "Filler Reduction",
+          "task": "Read a short paragraph aloud, focusing on eliminating 'like', 'um', and other fillers.",
+          "minutes": 15,
+          "successCriteria": "Reduce filler usage by 50% compared to the initial recording."
+        },
+        {
+          "day": 2,
+          "focus": "Pronoun Accuracy",
+          "task": "Complete a grammar exercise focusing on correct pronoun usage.",
+          "minutes": 20,
+          "successCriteria": "Achieve 80% accuracy on the grammar exercise."
+        },
+        {
+          "day": 3,
+          "focus": "Vocabulary Expansion",
+          "task": "Learn 5 new synonyms for common adjectives (e.g., 'good', 'bad', 'big').",
+          "minutes": 20,
+          "successCriteria": "Use the new vocabulary in 3-5 original sentences."
+        },
+        {
+          "day": 4,
+          "focus": "Linking Words",
+          "task": "Rewrite a short paragraph, adding more varied linking words and phrases.",
+          "minutes": 20,
+          "successCriteria": "Increase the number of linking words used by 25%."
+        },
+        {
+          "day": 5,
+          "focus": "Pace and Pausing",
+          "task": "Record yourself speaking for 2 minutes on a familiar topic, focusing on maintaining a consistent pace and using natural pauses.",
+          "minutes": 20,
+          "successCriteria": "Reduce longest pause to under 1.5 seconds."
+        },
+        {
+          "day": 6,
+          "focus": "Integrated Practice",
+          "task": "Answer IELTS-style questions on a new topic, incorporating all the skills practiced this week.",
+          "minutes": 30,
+          "successCriteria": "Speak for at least 1 minute on each question, with minimal fillers and accurate grammar."
+        },
+        {
+          "day": 7,
+          "focus": "Timed Retest",
+          "task": "Complete a full IELTS Speaking practice test (Parts 1, 2, and 3).",
+          "minutes": 60,
+          "successCriteria": "Achieve a consistent score of 6.5 or higher across all parts."
+        }
+      ]
+    }
+  },
+  "model": "google/gemma-3-27b-it",
+  "latency_seconds": 53.92,
+  "recorded_at": "2026-10-12T08:55:30Z"
+}

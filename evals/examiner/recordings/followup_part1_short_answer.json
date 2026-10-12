@@ -1,0 +1,9 @@
+{
+  "ok": true,
+  "raw": {
+    "ask_follow_up": true,
+    "question": "Could you tell me who your favourite artist is at the moment?"
+  },
+  "latency_seconds": 1.43,
+  "recorded_at": "2026-10-12T08:51:08Z"
+}

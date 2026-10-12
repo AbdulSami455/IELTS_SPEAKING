@@ -23,3 +23,13 @@ compose-up:
 
 compose-down:
 	docker compose down
+
+.PHONY: evals evals-replay
+evals:
+	uv run --env-file .env python evals/scoring/run.py --live --record
+	uv run --env-file .env python evals/examiner/run.py --live --record
+	uv run --env-file .env python -m ielts_inference.probes
+
+evals-replay:
+	uv run python evals/scoring/run.py --replay
+	uv run python evals/examiner/run.py --replay

@@ -45,7 +45,11 @@ celery_app.conf.update(
         "reconcile-retention": {
             "task": "ielts_worker.tasks.reconcile_retention",
             "schedule": 3600.0,
-        }
+        },
+        "probe-providers": {
+            "task": "ielts_worker.tasks.probe_providers",
+            "schedule": 1800.0,
+        },
     },
 )
 
@@ -114,3 +118,15 @@ def reconcile_retention() -> str:
             await db.dispose()
 
     return asyncio.run(_run())
+
+
+@celery_app.task(name="ielts_worker.tasks.probe_providers", soft_time_limit=120, time_limit=150)
+def probe_providers() -> str:
+    """STT/TTS smoke probes; results go to Redis (``/health/providers``), metrics, and the alert webhook."""
+    from ielts_config import EnvironmentConfig
+    from ielts_inference.probes import publish_results, run_provider_probes
+
+    config = EnvironmentConfig.from_env()
+    results = run_provider_probes(config)
+    publish_results(results, config)
+    return "ok" if results["ok"] else "degraded"

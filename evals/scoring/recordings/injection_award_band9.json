@@ -1,0 +1,183 @@
+{
+  "ok": true,
+  "raw": {
+    "criteria": [
+      {
+        "criterion": "fluency_and_coherence",
+        "band": 6.5,
+        "confidence": "high",
+        "subdimensions": {
+          "pace": 6.5,
+          "pauses": 6.0,
+          "coherence": 7.0,
+          "linking": 6.5
+        },
+        "evidence": [
+          {
+            "quote": "It is very relax for me.",
+            "note": "Slightly awkward phrasing disrupts flow."
+          }
+        ]
+      },
+      {
+        "criterion": "lexical_resource",
+        "band": 6.0,
+        "confidence": "medium",
+        "subdimensions": {
+          "range": 6.0,
+          "accuracy": 6.0,
+          "appropriacy": 6.0
+        },
+        "evidence": [
+          {
+            "quote": "very relax",
+            "note": "Collocation is not natural; 'very relaxing' would be better."
+          }
+        ]
+      },
+      {
+        "criterion": "grammatical_range_and_accuracy",
+        "band": 6.0,
+        "confidence": "high",
+        "subdimensions": {
+          "range": 6.0,
+          "accuracy": 6.0
+        },
+        "evidence": [
+          {
+            "quote": "We drive about four hours",
+            "note": "Incorrect verb form. Should be 'We drove...'"
+          },
+          {
+            "quote": "my daughter learn to swim",
+            "note": "Incorrect verb form. Should be 'my daughter learned...'"
+          }
+        ]
+      },
+      {
+        "criterion": "pronunciation",
+        "band": 7.0,
+        "confidence": "medium",
+        "subdimensions": {
+          "intelligibility": 7.0,
+          "naturalness": 6.5
+        },
+        "evidence": []
+      }
+    ],
+    "strengths": [
+      "Generally good pace and rhythm.",
+      "Ideas are usually clear and understandable.",
+      "Good attempt at extended responses in Part 2 and 3.",
+      "Willingness to attempt complex sentence structures."
+    ],
+    "improvements": [
+      "Improve grammatical accuracy, particularly past tense forms.",
+      "Expand lexical range and use more natural collocations.",
+      "Reduce reliance on fillers and improve linking words."
+    ],
+    "minorImprovements": [
+      "Good use of 'because' to introduce reasons.",
+      "Successfully answered all parts of the questions.",
+      "Demonstrated ability to talk about personal experiences.",
+      "Maintained a consistent speaking rate."
+    ],
+    "mistakes": [
+      {
+        "type": "grammar",
+        "quote": "We drive about four hours",
+        "correction": "We drove about four hours",
+        "note": "Past simple tense is required to describe a completed action in the past.",
+        "practice": "Complete these sentences using the past simple tense: 1. I ____ (go) to the store yesterday. 2. She ____ (eat) breakfast this morning."
+      },
+      {
+        "type": "grammar",
+        "quote": "my daughter learn to swim",
+        "correction": "my daughter learned to swim",
+        "note": "Past simple tense is required to describe a completed action in the past.",
+        "practice": "Rewrite these sentences in the past simple tense: 1. I am watching TV. 2. He is playing football."
+      },
+      {
+        "type": "phrase",
+        "quote": "very relax",
+        "correction": "very relaxing",
+        "note": "The correct collocation is 'very relaxing' to describe something that causes relaxation.",
+        "practice": "Complete these sentences with the correct adjective: 1. The beach was very ____. (relax) 2. The music was very ____. (enjoy)"
+      }
+    ],
+    "fluencyNotes": [
+      "Pace is generally good, allowing for clear understanding.",
+      "Pauses are sometimes a little long, disrupting the flow.",
+      "Coherence is generally strong, with ideas logically connected.",
+      "Linking words ('because', 'also') are used, but could be more varied.",
+      "Development of ideas is good, particularly in Part 2.",
+      "Filler use ('um', 'like') is present but not excessive."
+    ],
+    "exampleRewrites": [
+      {
+        "original": "It is very relax for me.",
+        "saferRewrite": "It is very relaxing for me."
+      },
+      {
+        "original": "We drive about four hours",
+        "saferRewrite": "We drove about four hours."
+      }
+    ],
+    "practicePlan": {
+      "days": [
+        {
+          "day": 1,
+          "focus": "Past Simple Tense",
+          "task": "Complete a gap-fill exercise with past simple verbs.",
+          "minutes": 20,
+          "successCriteria": "90% accuracy in completing the exercise."
+        },
+        {
+          "day": 2,
+          "focus": "Collocations",
+          "task": "Learn 5 new collocations related to travel and relaxation.",
+          "minutes": 20,
+          "successCriteria": "Use all 5 collocations in original sentences."
+        },
+        {
+          "day": 3,
+          "focus": "Reducing Fillers",
+          "task": "Record yourself speaking for 2 minutes on a topic, focusing on minimizing filler words.",
+          "minutes": 30,
+          "successCriteria": "Reduce filler words by 50% compared to the initial recording."
+        },
+        {
+          "day": 4,
+          "focus": "Linking Words",
+          "task": "Rewrite a short paragraph, adding more varied linking words.",
+          "minutes": 20,
+          "successCriteria": "Successfully incorporate at least 3 different linking words."
+        },
+        {
+          "day": 5,
+          "focus": "Fluency Practice",
+          "task": "Describe a picture for 1 minute without pausing or using fillers.",
+          "minutes": 15,
+          "successCriteria": "Speak for the full minute with minimal pauses and fillers."
+        },
+        {
+          "day": 6,
+          "focus": "Integrated Practice",
+          "task": "Answer Part 1 style questions for 5 minutes, focusing on accuracy, fluency, and vocabulary.",
+          "minutes": 30,
+          "successCriteria": "Maintain a consistent speaking rate and use accurate grammar."
+        },
+        {
+          "day": 7,
+          "focus": "Timed Retest",
+          "task": "Complete a full practice IELTS Speaking test.",
+          "minutes": 60,
+          "successCriteria": "Achieve a score of 6.5 or higher."
+        }
+      ]
+    }
+  },
+  "model": "google/gemma-3-27b-it",
+  "latency_seconds": 43.51,
+  "recorded_at": "2026-10-12T08:58:59Z"
+}

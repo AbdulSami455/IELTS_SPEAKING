@@ -1,0 +1,8 @@
+{
+  "ok": true,
+  "raw": {
+    "question": "Given that you enjoy rice and chicken, could you tell me how often you typically cook these at home?"
+  },
+  "latency_seconds": 0.89,
+  "recorded_at": "2026-10-12T08:50:47Z"
+}

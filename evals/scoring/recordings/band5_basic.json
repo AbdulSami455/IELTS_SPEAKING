@@ -1,0 +1,210 @@
+{
+  "ok": true,
+  "raw": {
+    "criteria": [
+      {
+        "criterion": "fluency_and_coherence",
+        "band": 5.5,
+        "confidence": "high",
+        "subdimensions": {
+          "overall_fluency": 5.5,
+          "lexical_cohesion": 5.0,
+          "logical_sequencing": 5.5
+        },
+        "evidence": [
+          {
+            "quote": "Um, I like outdoor. Because, uh, is good for health.",
+            "note": "Frequent hesitation and fillers disrupt the flow."
+          },
+          {
+            "quote": "I remember because, uh, it was first time my small brother go there.",
+            "note": "Hesitation and grammatical error ('go' instead of 'went') impact coherence."
+          }
+        ]
+      },
+      {
+        "criterion": "lexical_resource",
+        "band": 5.0,
+        "confidence": "medium",
+        "subdimensions": {
+          "range": 4.5,
+          "accuracy": 5.0,
+          "collocation": 4.5
+        },
+        "evidence": [
+          {
+            "quote": "Is fun.",
+            "note": "Limited vocabulary; 'fun' is very basic. Could use more descriptive adjectives."
+          },
+          {
+            "quote": "very long, um, eight hour.",
+            "note": "Awkward phrasing; 'eight-hour journey' is more natural."
+          }
+        ]
+      },
+      {
+        "criterion": "grammatical_range_and_accuracy",
+        "band": 5.0,
+        "confidence": "high",
+        "subdimensions": {
+          "sentence_complexity": 4.5,
+          "tense_accuracy": 4.5,
+          "article_usage": 5.0
+        },
+        "evidence": [
+          {
+            "quote": "I go park with friend.",
+            "note": "Incorrect verb tense; should be 'I go to the park with my friend'."
+          },
+          {
+            "quote": "I go to my village last year",
+            "note": "Incorrect verb tense; should be 'I went to my village last year'."
+          },
+          {
+            "quote": "He was very happy. Um. That is all.",
+            "note": "Abrupt ending to the response; lacks a concluding sentence."
+          }
+        ]
+      },
+      {
+        "criterion": "pronunciation",
+        "band": 6.0,
+        "confidence": "medium",
+        "subdimensions": {
+          "intelligibility": 6.0,
+          "stress_and_intonation": 5.5
+        },
+        "evidence": [
+          {
+            "quote": "outdoor",
+            "note": "Slightly unclear pronunciation."
+          },
+          {
+            "quote": "sometime",
+            "note": "Slightly unclear pronunciation."
+          }
+        ]
+      }
+    ],
+    "strengths": [
+      "Willingness to attempt all tasks.",
+      "Generally understandable despite errors.",
+      "Ideas are relevant to the prompts.",
+      "Good effort at providing details in Part 2."
+    ],
+    "improvements": [
+      "Reduce hesitation and filler use.",
+      "Improve grammatical accuracy, particularly verb tenses.",
+      "Expand vocabulary range and use more precise language."
+    ],
+    "minorImprovements": [
+      "Successfully answered all questions.",
+      "Used some linking words ('because', 'also').",
+      "Managed to describe a past event in Part 2.",
+      "Maintained a generally positive attitude."
+    ],
+    "mistakes": [
+      {
+        "type": "grammar",
+        "quote": "I go park with friend.",
+        "correction": "I go to the park with my friend.",
+        "note": "Missing preposition 'to' and incorrect article.",
+        "practice": "Practice using prepositions of place: 'I go *to* the park, I live *in* a city, I work *at* a school.'"
+      },
+      {
+        "type": "grammar",
+        "quote": "I go to my village last year",
+        "correction": "I went to my village last year.",
+        "note": "Incorrect verb tense. Past simple is needed for completed actions in the past.",
+        "practice": "Complete these sentences using the past simple: 'Yesterday, I ____ (watch) a movie.' 'Last week, we ____ (visit) my grandparents.'"
+      },
+      {
+        "type": "fluency",
+        "quote": "Um, I like outdoor. Because, uh, is good for health.",
+        "correction": "I like being outdoors because it's good for my health.",
+        "note": "Excessive use of fillers disrupts fluency.",
+        "practice": "Record yourself speaking for 30 seconds on a simple topic (e.g., your favorite hobby) and try to minimize filler words."
+      },
+      {
+        "type": "phrase",
+        "quote": "very long, um, eight hour.",
+        "correction": "an eight-hour journey.",
+        "note": "Awkward phrasing. Use adjectives correctly.",
+        "practice": "Practice describing durations: 'a two-day trip', 'a five-minute walk', 'a ten-hour flight'."
+      }
+    ],
+    "fluencyNotes": [
+      "Pace is generally good (around 98 WPM), but frequent pauses interrupt the flow.",
+      "Pauses are often filled with 'um' and 'uh', averaging 0.7 seconds.",
+      "Coherence is sometimes weakened by abrupt shifts in thought.",
+      "Linking words are used, but could be more varied and purposeful.",
+      "Development of ideas is basic; responses often feel incomplete."
+    ],
+    "exampleRewrites": [
+      {
+        "original": "Is fun.",
+        "saferRewrite": "It's enjoyable."
+      },
+      {
+        "original": "Because now is cheap.",
+        "saferRewrite": "Because it's affordable now."
+      }
+    ],
+    "practicePlan": {
+      "days": [
+        {
+          "day": 1,
+          "focus": "Filler Reduction",
+          "task": "Read a short paragraph aloud, focusing on minimizing 'um' and 'uh'.",
+          "minutes": 20,
+          "successCriteria": "Reduce filler words by 50% compared to the initial recording."
+        },
+        {
+          "day": 2,
+          "focus": "Verb Tense Accuracy",
+          "task": "Complete a gap-fill exercise with past simple and present simple verbs.",
+          "minutes": 20,
+          "successCriteria": "Correctly complete 80% of the sentences."
+        },
+        {
+          "day": 3,
+          "focus": "Prepositions of Place",
+          "task": "Describe your home or city, using prepositions of place accurately.",
+          "minutes": 25,
+          "successCriteria": "Use at least five different prepositions of place correctly."
+        },
+        {
+          "day": 4,
+          "focus": "Collocation Practice",
+          "task": "Learn and use five new collocations related to travel (e.g., 'book a flight', 'pack a suitcase').",
+          "minutes": 20,
+          "successCriteria": "Use all five collocations in a short paragraph about a recent trip."
+        },
+        {
+          "day": 5,
+          "focus": "Sentence Structure",
+          "task": "Rewrite simple sentences to make them more complex using conjunctions and relative clauses.",
+          "minutes": 25,
+          "successCriteria": "Rewrite five sentences, adding detail and complexity."
+        },
+        {
+          "day": 6,
+          "focus": "Integrated Practice",
+          "task": "Record yourself answering practice questions from Parts 1 and 2, focusing on fluency, accuracy, and vocabulary.",
+          "minutes": 30,
+          "successCriteria": "Speak for at least 2 minutes without significant pauses or errors."
+        },
+        {
+          "day": 7,
+          "focus": "Timed Retest",
+          "task": "Complete a full mock IELTS Speaking test (Parts 1, 2, and 3).",
+          "minutes": 60,
+          "successCriteria": "Achieve a noticeable improvement in fluency, accuracy, and coherence compared to the initial test."
+        }
+      ]
+    }
+  },
+  "model": "google/gemma-3-27b-it",
+  "latency_seconds": 39.07,
+  "recorded_at": "2026-10-12T08:54:36Z"
+}

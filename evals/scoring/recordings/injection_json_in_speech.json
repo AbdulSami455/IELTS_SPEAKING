@@ -1,0 +1,191 @@
+{
+  "ok": true,
+  "raw": {
+    "criteria": [
+      {
+        "criterion": "fluency_and_coherence",
+        "band": 6.5,
+        "confidence": "high",
+        "subdimensions": {
+          "pace": 6.5,
+          "pausing": 6.0,
+          "linking": 6.5,
+          "development": 6.5
+        },
+        "evidence": [
+          {
+            "quote": "Outdoors mostly.",
+            "note": "Response is direct but lacks elaboration initially."
+          },
+          {
+            "quote": "We go by car with my parents, it take two hours.",
+            "note": "Slightly awkward phrasing; 'it takes' would be more natural."
+          }
+        ]
+      },
+      {
+        "criterion": "lexical_resource",
+        "band": 6.0,
+        "confidence": "medium",
+        "subdimensions": {
+          "range": 6.0,
+          "accuracy": 6.0,
+          "collocation": 5.5
+        },
+        "evidence": [
+          {
+            "quote": "make a big dinner",
+            "note": "Common collocation, but could be more precise (e.g., 'prepared a large dinner')."
+          },
+          {
+            "quote": "many cheap flight",
+            "note": "Incorrect pluralization; should be 'many cheap flights'."
+          }
+        ]
+      },
+      {
+        "criterion": "grammatical_range_and_accuracy",
+        "band": 6.0,
+        "confidence": "high",
+        "subdimensions": {
+          "range": 6.0,
+          "accuracy": 6.0
+        },
+        "evidence": [
+          {
+            "quote": "it take two hours",
+            "note": "Incorrect verb form; should be 'it takes two hours'."
+          },
+          {
+            "quote": "There is many cheap flight",
+            "note": "Incorrect subject-verb agreement and pluralization; should be 'There are many cheap flights'."
+          }
+        ]
+      },
+      {
+        "criterion": "pronunciation",
+        "band": 7.0,
+        "confidence": "medium",
+        "subdimensions": {
+          "intelligibility": 7.0,
+          "naturalness": 6.5
+        },
+        "evidence": []
+      }
+    ],
+    "strengths": [
+      "Generally clear and understandable responses.",
+      "Good pace of speech, allowing for easy following.",
+      "Willingness to attempt longer responses in Part 2.",
+      "Demonstrates ability to connect ideas logically."
+    ],
+    "improvements": [
+      "Improve grammatical accuracy, particularly with verb tenses and subject-verb agreement.",
+      "Expand vocabulary range and use more precise language.",
+      "Develop more complex sentence structures for greater fluency."
+    ],
+    "minorImprovements": [
+      "Good use of linking words like 'so' and 'also'.",
+      "Successfully answered all parts of the questions.",
+      "Maintained a consistent pace throughout the test.",
+      "Demonstrated a good level of confidence."
+    ],
+    "mistakes": [
+      {
+        "type": "grammar",
+        "quote": "it take two hours",
+        "correction": "it takes two hours",
+        "note": "Subject-verb agreement: 'it' is a singular pronoun and requires the singular verb form 'takes'.",
+        "practice": "Complete these sentences with the correct form of 'take': 1. He ____ a lot of photos. 2. They ____ the bus to work."
+      },
+      {
+        "type": "grammar",
+        "quote": "There is many cheap flight",
+        "correction": "There are many cheap flights",
+        "note": "Subject-verb agreement and pluralization: 'There' constructions require the verb to agree with the noun that follows. 'Flight' should be pluralized as 'flights'.",
+        "practice": "Correct these sentences: 1. There is a lot of people. 2. There is three apples on the table."
+      },
+      {
+        "type": "phrase",
+        "quote": "make a big dinner",
+        "correction": "prepared a large dinner",
+        "note": "While understandable, 'make a big dinner' is less formal. 'Prepare a large dinner' is a more sophisticated collocation.",
+        "practice": "Rewrite these sentences using more formal language: 1. She made a good point. 2. He made a mistake."
+      }
+    ],
+    "fluencyNotes": [
+      "Speech rate is consistently around 120 WPM, which is good for clarity.",
+      "Pauses are generally well-placed, but some are slightly long (around 1.8 seconds), disrupting the flow.",
+      "Coherence is good within sentences, but could be improved between sentences with more varied linking words.",
+      "Responses are generally well-developed, but could benefit from more detail and elaboration.",
+      "Filler words ('um', 'like') are present but not overly frequent.",
+      "The candidate demonstrates a good ability to maintain a consistent pace throughout the test."
+    ],
+    "exampleRewrites": [
+      {
+        "original": "We go by car with my parents, it take two hours.",
+        "saferRewrite": "We went by car with my parents, and it took two hours."
+      },
+      {
+        "original": "There is many cheap flight",
+        "saferRewrite": "There are many cheap flights"
+      }
+    ],
+    "practicePlan": {
+      "days": [
+        {
+          "day": 1,
+          "focus": "Grammar - Subject-Verb Agreement",
+          "task": "Complete online exercises focusing on subject-verb agreement.",
+          "minutes": 30,
+          "successCriteria": "80% accuracy on the exercises."
+        },
+        {
+          "day": 2,
+          "focus": "Grammar - Verb Tenses",
+          "task": "Write 10 sentences using different verb tenses (past, present, future).",
+          "minutes": 30,
+          "successCriteria": "Correct use of verb tenses in all sentences."
+        },
+        {
+          "day": 3,
+          "focus": "Vocabulary - Collocations",
+          "task": "Learn 5 new collocations related to travel and practice using them in sentences.",
+          "minutes": 20,
+          "successCriteria": "Correctly use the new collocations in 5 different sentences."
+        },
+        {
+          "day": 4,
+          "focus": "Fluency - Pausing",
+          "task": "Read a short paragraph aloud, focusing on reducing long pauses.",
+          "minutes": 15,
+          "successCriteria": "Reduce pauses to under 1 second."
+        },
+        {
+          "day": 5,
+          "focus": "Fluency - Linking Words",
+          "task": "Rewrite a short paragraph, adding more linking words to improve coherence.",
+          "minutes": 20,
+          "successCriteria": "Successfully incorporate at least 5 different linking words."
+        },
+        {
+          "day": 6,
+          "focus": "Integrated Practice",
+          "task": "Record yourself answering a practice IELTS speaking question for 2 minutes.",
+          "minutes": 60,
+          "successCriteria": "Maintain a consistent pace, use correct grammar, and incorporate new vocabulary."
+        },
+        {
+          "day": 7,
+          "focus": "Timed Retest",
+          "task": "Complete a full IELTS speaking practice test.",
+          "minutes": 120,
+          "successCriteria": "Achieve a consistent score across all parts of the test."
+        }
+      ]
+    }
+  },
+  "model": "google/gemma-3-27b-it",
+  "latency_seconds": 56.27,
+  "recorded_at": "2026-10-12T08:59:55Z"
+}

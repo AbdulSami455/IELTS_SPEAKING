@@ -1,0 +1,9 @@
+{
+  "ok": true,
+  "raw": {
+    "ask_follow_up": true,
+    "question": "What was the most memorable part of the wedding for you personally?"
+  },
+  "latency_seconds": 1.26,
+  "recorded_at": "2026-10-12T08:51:09Z"
+}

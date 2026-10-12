@@ -3,10 +3,11 @@ from __future__ import annotations
 from fastapi import Response
 
 try:
-    from prometheus_client import CONTENT_TYPE_LATEST, Counter, generate_latest
+    from prometheus_client import CONTENT_TYPE_LATEST, Counter, Gauge, generate_latest
 except ModuleNotFoundError:
     CONTENT_TYPE_LATEST = "text/plain; version=0.0.4; charset=utf-8"
     Counter = None
+    Gauge = None
     generate_latest = None
 
 
@@ -24,6 +25,16 @@ _MODEL_FALLBACKS = _counter("model_fallback_total", "Calls served by a fallback 
 _RATE_LIMITED = _counter("rate_limited_total", "Requests refused by a rate limit")
 _RATE_LIMITER_ERRORS = _counter("rate_limiter_errors_total", "Rate limiter failures (failed open)")
 _CONSENT_BLOCKED = _counter("consent_blocked_total", "Requests refused for missing consent")
+
+
+def _gauge(name: str, description: str, labels: tuple[str, ...]):
+    if Gauge is None:
+        return None
+    return Gauge(name, description, labelnames=list(labels))
+
+
+_PROBE_OK = _gauge("provider_probe_ok", "1 when the last STT/TTS probe passed, else 0", ("provider",))
+_PROBE_LATENCY = _gauge("provider_probe_latency_seconds", "Latency of the last provider probe", ("provider",))
 
 
 def metrics_response() -> Response:
@@ -70,3 +81,10 @@ def record_rate_limiter_error() -> None:
 def record_consent_blocked() -> None:
     if _CONSENT_BLOCKED is not None:
         _CONSENT_BLOCKED.inc()
+
+
+def set_probe_result(provider: str, ok: bool, latency_seconds: float) -> None:
+    if _PROBE_OK is not None:
+        _PROBE_OK.labels(provider=provider).set(1 if ok else 0)
+    if _PROBE_LATENCY is not None:
+        _PROBE_LATENCY.labels(provider=provider).set(float(latency_seconds))

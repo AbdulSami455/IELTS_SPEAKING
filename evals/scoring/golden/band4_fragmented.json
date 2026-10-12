@@ -1,0 +1,115 @@
+{
+  "id": "band4_fragmented",
+  "description": "Very short, fragmented answers with long pauses and many unclear words; around band 4. The current scoring model compresses the bottom of the scale by about half a band, so the gate allows up to 5.0; a 5.5 or higher is a regression.",
+  "expected_band": [
+    3.5,
+    5.0
+  ],
+  "injection": false,
+  "mean_coverage": 0.8,
+  "merged_features": {
+    "words_per_minute": 70,
+    "fillers_per_minute": 7.0,
+    "pause_count": 21,
+    "mean_pause_seconds": 0.7
+  },
+  "conversation_context": [
+    {
+      "part": 1,
+      "examiner": "<CANDIDATE_TRANSCRIPT>\nDo you prefer to spend your free time indoors or outdoors?\n</CANDIDATE_TRANSCRIPT>",
+      "candidate": "<CANDIDATE_TRANSCRIPT>\nOutdoor. Um... park. Yes. I like.\n</CANDIDATE_TRANSCRIPT>"
+    },
+    {
+      "part": 2,
+      "examiner": "<CANDIDATE_TRANSCRIPT>\nDescribe a journey you remember well. You should say where you went, who you went with, what happened, and explain why you remember it.\n</CANDIDATE_TRANSCRIPT>",
+      "candidate": "<CANDIDATE_TRANSCRIPT>\nJourney... um, I go... my city to, uh, another city. With my friend. We, uh... bus. Long time. I remember because... um... nice. Nice place. Many people. Yes.\n</CANDIDATE_TRANSCRIPT>"
+    },
+    {
+      "part": 3,
+      "examiner": "<CANDIDATE_TRANSCRIPT>\nWhy do you think people travel more now than in the past?\n</CANDIDATE_TRANSCRIPT>",
+      "candidate": "<CANDIDATE_TRANSCRIPT>\nBecause... money. More money now. And, uh, plane. Yes.\n</CANDIDATE_TRANSCRIPT>"
+    }
+  ],
+  "parts": [
+    {
+      "part": 1,
+      "question": "Do you prefer to spend your free time indoors or outdoors?",
+      "transcript": "Outdoor. Um... park. Yes. I like.",
+      "features": {
+        "word_count": 6,
+        "unique_word_ratio": 0.6,
+        "filler_count": 3,
+        "mean_sentence_length": 13
+      },
+      "acoustic": {
+        "duration_seconds": 5.1,
+        "speech_rate_wpm": 70,
+        "pause_count": 4,
+        "longest_pause_seconds": 3.8
+      },
+      "speech": {
+        "confidence": 0.6,
+        "language": "en"
+      },
+      "pronunciation": {
+        "unclear_words": [
+          "outdoor"
+        ],
+        "model_notes": null
+      }
+    },
+    {
+      "part": 2,
+      "question": "Describe a journey you remember well. You should say where you went, who you went with, what happened, and explain why you remember it.",
+      "transcript": "Journey... um, I go... my city to, uh, another city. With my friend. We, uh... bus. Long time. I remember because... um... nice. Nice place. Many people. Yes.",
+      "features": {
+        "word_count": 28,
+        "unique_word_ratio": 0.6,
+        "filler_count": 8,
+        "mean_sentence_length": 13
+      },
+      "acoustic": {
+        "duration_seconds": 23.3,
+        "speech_rate_wpm": 72,
+        "pause_count": 12,
+        "longest_pause_seconds": 4.5
+      },
+      "speech": {
+        "confidence": 0.58,
+        "language": "en"
+      },
+      "pronunciation": {
+        "unclear_words": [
+          "journey",
+          "another"
+        ],
+        "model_notes": null
+      }
+    },
+    {
+      "part": 3,
+      "question": "Why do you think people travel more now than in the past?",
+      "transcript": "Because... money. More money now. And, uh, plane. Yes.",
+      "features": {
+        "word_count": 9,
+        "unique_word_ratio": 0.6,
+        "filler_count": 3,
+        "mean_sentence_length": 13
+      },
+      "acoustic": {
+        "duration_seconds": 7.9,
+        "speech_rate_wpm": 68,
+        "pause_count": 5,
+        "longest_pause_seconds": 3.2
+      },
+      "speech": {
+        "confidence": 0.6,
+        "language": "en"
+      },
+      "pronunciation": {
+        "unclear_words": [],
+        "model_notes": null
+      }
+    }
+  ]
+}

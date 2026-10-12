@@ -1,0 +1,113 @@
+{
+  "id": "band5_basic",
+  "description": "Short, simple answers with frequent errors and fillers; around band 5.",
+  "expected_band": [
+    4.5,
+    5.5
+  ],
+  "injection": false,
+  "mean_coverage": 0.9,
+  "merged_features": {
+    "words_per_minute": 98,
+    "fillers_per_minute": 5.5,
+    "pause_count": 20,
+    "mean_pause_seconds": 0.7
+  },
+  "conversation_context": [
+    {
+      "part": 1,
+      "examiner": "<CANDIDATE_TRANSCRIPT>\nDo you prefer to spend your free time indoors or outdoors?\n</CANDIDATE_TRANSCRIPT>",
+      "candidate": "<CANDIDATE_TRANSCRIPT>\nUm, I like outdoor. Because, uh, is good for health. I go park with friend. Sometime we play, um, football. Is fun.\n</CANDIDATE_TRANSCRIPT>"
+    },
+    {
+      "part": 2,
+      "examiner": "<CANDIDATE_TRANSCRIPT>\nDescribe a journey you remember well. You should say where you went, who you went with, what happened, and explain why you remember it.\n</CANDIDATE_TRANSCRIPT>",
+      "candidate": "<CANDIDATE_TRANSCRIPT>\nI remember, uh, one journey. I go to my village last year with my family. We take bus, very long, um, eight hour. In village we eat food and see my grandmother. I remember because, uh, it was first time my small brother go there. He was very happy. Um. That is all.\n</CANDIDATE_TRANSCRIPT>"
+    },
+    {
+      "part": 3,
+      "examiner": "<CANDIDATE_TRANSCRIPT>\nWhy do you think people travel more now than in the past?\n</CANDIDATE_TRANSCRIPT>",
+      "candidate": "<CANDIDATE_TRANSCRIPT>\nBecause now is cheap. Flight is cheap and, um, people have more money. Also internet, you can see the place and want to go. Yes.\n</CANDIDATE_TRANSCRIPT>"
+    }
+  ],
+  "parts": [
+    {
+      "part": 1,
+      "question": "Do you prefer to spend your free time indoors or outdoors?",
+      "transcript": "Um, I like outdoor. Because, uh, is good for health. I go park with friend. Sometime we play, um, football. Is fun.",
+      "features": {
+        "word_count": 22,
+        "unique_word_ratio": 0.6,
+        "filler_count": 5,
+        "mean_sentence_length": 13
+      },
+      "acoustic": {
+        "duration_seconds": 13.9,
+        "speech_rate_wpm": 95,
+        "pause_count": 6,
+        "longest_pause_seconds": 2.4
+      },
+      "speech": {
+        "confidence": 0.72,
+        "language": "en"
+      },
+      "pronunciation": {
+        "unclear_words": [
+          "outdoor",
+          "sometime"
+        ],
+        "model_notes": null
+      }
+    },
+    {
+      "part": 2,
+      "question": "Describe a journey you remember well. You should say where you went, who you went with, what happened, and explain why you remember it.",
+      "transcript": "I remember, uh, one journey. I go to my village last year with my family. We take bus, very long, um, eight hour. In village we eat food and see my grandmother. I remember because, uh, it was first time my small brother go there. He was very happy. Um. That is all.",
+      "features": {
+        "word_count": 53,
+        "unique_word_ratio": 0.6,
+        "filler_count": 7,
+        "mean_sentence_length": 13
+      },
+      "acoustic": {
+        "duration_seconds": 31.8,
+        "speech_rate_wpm": 100,
+        "pause_count": 9,
+        "longest_pause_seconds": 3.1
+      },
+      "speech": {
+        "confidence": 0.75,
+        "language": "en"
+      },
+      "pronunciation": {
+        "unclear_words": [],
+        "model_notes": null
+      }
+    },
+    {
+      "part": 3,
+      "question": "Why do you think people travel more now than in the past?",
+      "transcript": "Because now is cheap. Flight is cheap and, um, people have more money. Also internet, you can see the place and want to go. Yes.",
+      "features": {
+        "word_count": 25,
+        "unique_word_ratio": 0.6,
+        "filler_count": 4,
+        "mean_sentence_length": 13
+      },
+      "acoustic": {
+        "duration_seconds": 15.3,
+        "speech_rate_wpm": 98,
+        "pause_count": 5,
+        "longest_pause_seconds": 2.0
+      },
+      "speech": {
+        "confidence": 0.74,
+        "language": "en"
+      },
+      "pronunciation": {
+        "unclear_words": [],
+        "model_notes": null
+      }
+    }
+  ]
+}
