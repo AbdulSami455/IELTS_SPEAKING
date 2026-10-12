@@ -6,9 +6,21 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 
 const GUIDE = [
-  { badge: "01 · Interview", title: "Start with the everyday.", body: "Answer questions about familiar topics. Share a reason or a detail to develop your ideas." },
-  { badge: "02 · Long turn", title: "A moment to gather your thoughts.", body: "Use the preparation minute to organise your cue card response. Follow the on-screen timer." },
-  { badge: "03 · Discussion", title: "Take the idea further.", body: "Explain your view, compare perspectives, and support your answers with examples." },
+  {
+    badge: "01 · Interview",
+    title: "Start with the everyday.",
+    body: "Answer questions about familiar topics. Share a reason or a detail to develop your ideas.",
+  },
+  {
+    badge: "02 · Long turn",
+    title: "A moment to gather your thoughts.",
+    body: "Use the preparation minute to organise your cue card response. Follow the on-screen timer.",
+  },
+  {
+    badge: "03 · Discussion",
+    title: "Take the idea further.",
+    body: "Explain your view, compare perspectives, and support your answers with examples.",
+  },
 ];
 
 export function QuestionPanel({ test, turn }: { test: TestSession; turn?: Turn }) {
@@ -45,7 +57,12 @@ export function QuestionPanel({ test, turn }: { test: TestSession; turn?: Turn }
                   defaultOpen={current}
                   className={cn("overflow-hidden rounded-lg border border-border", current && "border-indigo-vivid/40")}
                 >
-                  <CollapsibleTrigger className={cn("group flex w-full items-center gap-3 px-3.5 py-3 text-left text-sm font-semibold text-foreground", current && "bg-indigo-soft")}>
+                  <CollapsibleTrigger
+                    className={cn(
+                      "group flex w-full items-center gap-3 px-3.5 py-3 text-left text-sm font-semibold text-foreground",
+                      current && "bg-indigo-soft",
+                    )}
+                  >
                     <span className="inline-grid size-7 shrink-0 place-items-center rounded-md bg-muted text-xs text-subtle tabular-nums">
                       {String(index + 1).padStart(2, "0")}
                     </span>
@@ -54,7 +71,10 @@ export function QuestionPanel({ test, turn }: { test: TestSession; turn?: Turn }
                       {item.isFollowUp ? " · Follow-up" : " · Question"}
                       <small className="text-xs font-normal text-muted-foreground">{current ? "Current question" : "Answer saved"}</small>
                     </span>
-                    <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform group-data-open:rotate-180" aria-hidden="true" />
+                    <ChevronDown
+                      className="size-4 shrink-0 text-muted-foreground transition-transform group-data-open:rotate-180"
+                      aria-hidden="true"
+                    />
                   </CollapsibleTrigger>
                   <CollapsibleContent>
                     <div className="grid gap-3 p-3.5">

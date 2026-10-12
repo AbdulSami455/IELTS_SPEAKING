@@ -4,7 +4,12 @@ import { cn } from "@/lib/utils";
 export function StudioIllustration({ compact = false }: { compact?: boolean }) {
   return (
     <div className={cn("illustration-frame", compact && "max-w-[340px]")} aria-hidden="true">
-      <div className={cn("flex justify-between gap-3 px-5 pt-4 font-mono text-[9px] tracking-[0.08em] uppercase", compact && "px-3.5 pt-3 text-[8px]")}>
+      <div
+        className={cn(
+          "flex justify-between gap-3 px-5 pt-4 font-mono text-[9px] tracking-[0.08em] uppercase",
+          compact && "px-3.5 pt-3 text-[8px]",
+        )}
+      >
         <span>The speaking studio</span>
         <span>01 / Practice</span>
       </div>
@@ -18,7 +23,10 @@ export function StudioIllustration({ compact = false }: { compact?: boolean }) {
           <path d="m124 279 98-6m-105 28 113-5m-116 28 119-5m-122 29 125-5" strokeWidth="1.4" />
           <path d="M170 213v26c10 14 24 17 38 5l-8-40" fill="#ffb0a1" />
           <path d="M159 148c-1-28 21-43 42-33 20 8 25 25 26 42l12 22-14 6c1 19-8 37-24 39-26 2-47-32-47-51" fill="#fff4f2" />
-          <path d="M166 165c15-8 18-28 13-41 14 5 34 3 43-9-8-22-41-34-61-19-17-2-35 16-32 33-16 16-11 37 5 46-4 20 14 30 30 28l8-29" fill="#090335" />
+          <path
+            d="M166 165c15-8 18-28 13-41 14 5 34 3 43-9-8-22-41-34-61-19-17-2-35 16-32 33-16 16-11 37 5 46-4 20 14 30 30 28l8-29"
+            fill="#090335"
+          />
           <path d="M164 168c-10-10-18-2-14 9 3 7 10 12 17 9" fill="#fff4f2" />
           <path d="m207 152 8-1m-4 8v3m1 35c5 2 9 0 11-3" />
           <path d="M139 148c-9-37 32-67 62-44" strokeWidth="7" />
@@ -37,13 +45,18 @@ export function StudioIllustration({ compact = false }: { compact?: boolean }) {
           <path d="M296 94v5m9-15v25m10-34v43m10-29v16m10-42v63m10-52v41m10-30v19m10-25v30m10-42v53m10-32v14m10-8v3" strokeWidth="3" />
           <path d="m71 96 5-17 5 17 17 5-17 5-5 17-5-17-17-5Z" fill="#ffb0a1" />
           <path d="m250 209 14-7m-13 19 16 2m-24-35 5-11" />
-          <path d="M400 367c-8-24-6-44 0-66m0 38c-18-1-24-13-23-28 17 4 24 13 23 28Zm0-15c1-18 12-25 25-28 1 17-8 26-25 28Z" fill="#ffb0a1" />
+          <path
+            d="M400 367c-8-24-6-44 0-66m0 38c-18-1-24-13-23-28 17 4 24 13 23 28Zm0-15c1-18 12-25 25-28 1 17-8 26-25 28Z"
+            fill="#ffb0a1"
+          />
           <path d="m388 350 5 17h19l4-17Z" fill="#fff" />
           <circle cx="422" cy="196" r="5" />
           <path d="m69 210 10 7-11 6m331 52 5-5m0 0 5-5m-5 5-5-5m5 5 5 5" />
         </g>
       </svg>
-      <div className={cn("px-4 pb-4 text-center font-serif text-[15px] italic", compact && "pb-3 text-xs")}>A quiet space. A little courage. Your voice.</div>
+      <div className={cn("px-4 pb-4 text-center font-serif text-[15px] italic", compact && "pb-3 text-xs")}>
+        A quiet space. A little courage. Your voice.
+      </div>
     </div>
   );
 }

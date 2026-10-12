@@ -246,7 +246,10 @@
   .voice-orb {
     @apply grid place-items-center rounded-full border-[1.5px] border-primary bg-indigo-soft text-primary;
     transform: scale(var(--voice-scale, 1));
-    transition: transform 0.12s ease-out, background-color 0.3s ease, opacity 0.3s ease;
+    transition:
+      transform 0.12s ease-out,
+      background-color 0.3s ease,
+      opacity 0.3s ease;
   }
 
   .voice-orb svg {

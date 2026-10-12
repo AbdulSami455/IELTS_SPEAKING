@@ -113,7 +113,9 @@ export function ProgressPage() {
     {
       label: "Practice estimate",
       value: bandText(data?.overallEstimate ?? undefined),
-      note: data?.estimateSampleSize ? `Average of ${data.estimateSampleSize} recent test${data.estimateSampleSize === 1 ? "" : "s"}` : "After one usable test",
+      note: data?.estimateSampleSize
+        ? `Average of ${data.estimateSampleSize} recent test${data.estimateSampleSize === 1 ? "" : "s"}`
+        : "After one usable test",
     },
     {
       label: "Trend",
@@ -161,7 +163,13 @@ export function ProgressPage() {
 
         <StatGrid aria-label="Progress summary" aria-busy={statsLoading}>
           {stats.map((stat) => (
-            <Stat key={stat.label} label={stat.label} small={stat.small} value={statsLoading ? <Skeleton width={72} height={34} /> : stat.value} note={stat.note} />
+            <Stat
+              key={stat.label}
+              label={stat.label}
+              small={stat.small}
+              value={statsLoading ? <Skeleton width={72} height={34} /> : stat.value}
+              note={stat.note}
+            />
           ))}
         </StatGrid>
 
@@ -181,7 +189,9 @@ export function ProgressPage() {
                 <span className="grid min-w-0 gap-0.5">
                   <span className="kicker">Your next focus</span>
                   <strong className="text-base">{criterionLabel(data.weakestSkill)}</strong>
-                  <span className="text-[13px] text-muted-foreground">Start with one practical change from your latest report, then tick it off below.</span>
+                  <span className="text-[13px] text-muted-foreground">
+                    Start with one practical change from your latest report, then tick it off below.
+                  </span>
                 </span>
               </div>
             )}
@@ -194,19 +204,22 @@ export function ProgressPage() {
               <CollapsibleTrigger className="group flex w-full items-center gap-2 py-1 text-left text-sm font-medium text-foreground">
                 <Info className="size-4 text-primary" aria-hidden="true" />
                 How the practice estimate is calculated
-                <ChevronDown className="ml-auto size-4 text-muted-foreground transition-transform group-data-open:rotate-180" aria-hidden="true" />
+                <ChevronDown
+                  className="ml-auto size-4 text-muted-foreground transition-transform group-data-open:rotate-180"
+                  aria-hidden="true"
+                />
               </CollapsibleTrigger>
               <CollapsibleContent>
                 <div className="grid gap-2 pt-3 pb-2 text-sm text-subtle">
                   <p>
-                    Your practice estimate averages up to five recent, conclusive tests scored with the same evaluator, rounded to the nearest half band. Individual
-                    test bands stay separate in each report.
+                    Your practice estimate averages up to five recent, conclusive tests scored with the same evaluator, rounded to the
+                    nearest half band. Individual test bands stay separate in each report.
                   </p>
                   {(data.estimateSampleSize ?? 0) > 0 ? (
                     <p className="text-[13px] text-muted-foreground">
-                      Based on {data.estimateSampleSize} test{data.estimateSampleSize === 1 ? "" : "s"}; observed bands {bandText(data.observedLow ?? undefined)}–
-                      {bandText(data.observedHigh ?? undefined)}. More comparable tests show whether your performance is consistent — this isn’t a guarantee of exam
-                      accuracy.
+                      Based on {data.estimateSampleSize} test{data.estimateSampleSize === 1 ? "" : "s"}; observed bands{" "}
+                      {bandText(data.observedLow ?? undefined)}–{bandText(data.observedHigh ?? undefined)}. More comparable tests show
+                      whether your performance is consistent — this isn’t a guarantee of exam accuracy.
                     </p>
                   ) : (
                     <p className="text-[13px] text-muted-foreground">
@@ -221,18 +234,29 @@ export function ProgressPage() {
 
         <div className="grid items-start gap-5 lg:grid-cols-2">
           <Card id="goal" className="grid gap-5 scroll-mt-[calc(var(--topbar-h)+16px)]" aria-labelledby="goal-title">
-            <SectionHeading kicker="Give yourself a destination" title={data?.activeGoal ? "Your goal" : "Set a goal"} titleId="goal-title" lead="Choose a target band, a date, and the skills you want to prioritise." />
+            <SectionHeading
+              kicker="Give yourself a destination"
+              title={data?.activeGoal ? "Your goal" : "Set a goal"}
+              titleId="goal-title"
+              lead="Choose a target band, a date, and the skills you want to prioritise."
+            />
             <form className="grid gap-5" onSubmit={saveGoal} onChange={() => setSaved(false)}>
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label="Target band">
-                  <SelectInput value={targetBand} onChange={(e) => setTargetBand(e.target.value)} aria-label="Target band">
+                  <SelectInput value={targetBand} onChange={(e) => setTargetBand(e.target.value)}>
                     {BAND_OPTIONS.map((band) => (
                       <option key={band}>{band}</option>
                     ))}
                   </SelectInput>
                 </Field>
                 <Field label="Target date">
-                  <TextInput type="date" required min={dateInput(new Date())} value={targetDate} onChange={(e) => setTargetDate(e.target.value)} aria-label="Target date" />
+                  <TextInput
+                    type="date"
+                    required
+                    min={dateInput(new Date())}
+                    value={targetDate}
+                    onChange={(e) => setTargetDate(e.target.value)}
+                  />
                 </Field>
               </div>
               <fieldset className="grid gap-2.5">
@@ -247,14 +271,20 @@ export function ProgressPage() {
                         key={skill.key}
                         className={cn(
                           "inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-3 py-1.5 text-[13px] font-medium transition-colors has-focus-visible:ring-3 has-focus-visible:ring-ring/30",
-                          checked ? "border-primary bg-primary text-primary-foreground" : "border-input bg-card text-subtle hover:border-ring",
+                          checked
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-input bg-card text-subtle hover:border-ring",
                         )}
                       >
                         <input
                           type="checkbox"
                           className="sr-only"
                           checked={checked}
-                          onChange={(e) => setFocusSkills((current) => (e.target.checked ? [...current, skill.key] : current.filter((s) => s !== skill.key)))}
+                          onChange={(e) =>
+                            setFocusSkills((current) =>
+                              e.target.checked ? [...current, skill.key] : current.filter((s) => s !== skill.key),
+                            )
+                          }
                         />
                         {checked && <Check className="size-3.5" aria-hidden="true" />}
                         {skill.label}
@@ -287,15 +317,24 @@ export function ProgressPage() {
               }
             />
             {actions.length > 0 && <Meter value={doneCount} max={actions.length} label="Practice activities completed" />}
-            <p className="text-[13px] text-muted-foreground">Activities from your reports. Ticking them off tracks practice, not your band.</p>
+            <p className="text-[13px] text-muted-foreground">
+              Activities from your reports. Ticking them off tracks practice, not your band.
+            </p>
             {actionError && <Alert tone="error">{actionError}</Alert>}
-            {!actions.length && <EmptyState title="Nothing to practise yet">Your personalised practice activities will appear after a completed test.</EmptyState>}
+            {!actions.length && (
+              <EmptyState title="Nothing to practise yet">
+                Your personalised practice activities will appear after a completed test.
+              </EmptyState>
+            )}
             {actions.length > 0 && (
               <ul className="grid gap-3">
                 {actions.map((action) => {
                   const finished = action.completed || action.skipped;
                   return (
-                    <li key={action.id} className={cn("flex items-start gap-3 rounded-lg border border-border bg-background p-4", finished && "opacity-70")}>
+                    <li
+                      key={action.id}
+                      className={cn("flex items-start gap-3 rounded-lg border border-border bg-background p-4", finished && "opacity-70")}
+                    >
                       <span
                         className={cn(
                           "mt-0.5 inline-grid size-6 shrink-0 place-items-center rounded-full border text-xs",
@@ -307,12 +346,19 @@ export function ProgressPage() {
                       </span>
                       <div className="grid min-w-0 flex-1 gap-2">
                         <span className="kicker">{criterionLabel(action.category)}</span>
-                        <p className={cn("text-sm text-foreground", finished && "line-through decoration-muted-foreground/60")}>{action.description}</p>
+                        <p className={cn("text-sm text-foreground", finished && "line-through decoration-muted-foreground/60")}>
+                          {action.description}
+                        </p>
                         <div className="flex flex-wrap items-center gap-2">
                           {finished ? (
                             <>
                               <span className="text-[13px] text-muted-foreground">{action.completed ? "Completed" : "Skipped"}</span>
-                              <Button variant="ghost" size="sm" disabled={pendingAction !== null || loading} onClick={() => updateAction(action.id, "reset")}>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                disabled={pendingAction !== null || loading}
+                                onClick={() => updateAction(action.id, "reset")}
+                              >
                                 Undo
                               </Button>
                             </>
@@ -327,7 +373,12 @@ export function ProgressPage() {
                               >
                                 <Check /> Mark done
                               </Button>
-                              <Button variant="ghost" size="sm" disabled={pendingAction !== null || loading} onClick={() => updateAction(action.id, "skipped")}>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                disabled={pendingAction !== null || loading}
+                                onClick={() => updateAction(action.id, "skipped")}
+                              >
                                 Skip for now
                               </Button>
                             </>

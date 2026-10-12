@@ -17,15 +17,9 @@ import type {
 
 export const api = {
   register: (email: string, password: string, displayName: string, acceptTerms: boolean) =>
-    request<{ user: User }>(
-      "/auth/register",
-      { method: "POST", body: JSON.stringify({ email, password, displayName, acceptTerms }) },
-    ),
+    request<{ user: User }>("/auth/register", { method: "POST", body: JSON.stringify({ email, password, displayName, acceptTerms }) }),
   login: (email: string, password: string) =>
-    request<{ user: User }>(
-      "/auth/login",
-      { method: "POST", body: JSON.stringify({ email, password }) },
-    ),
+    request<{ user: User }>("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }),
   me: () => request<User>("/me"),
   // The server records whichever consent version it currently requires.
   consent: () =>
@@ -39,15 +33,14 @@ export const api = {
   listTests: () => request<TestListItem[]>("/tests"),
   deviceCheck: (id: string, payload: DeviceCheckPayload) =>
     request<TestSession>(`/tests/${id}/device-check`, { method: "POST", body: JSON.stringify(payload) }),
-  createRealtimeSession: (id: string) =>
-    request<RealtimeSession>(`/tests/${id}/realtime/session`, { method: "POST" }),
+  createRealtimeSession: (id: string) => request<RealtimeSession>(`/tests/${id}/realtime/session`, { method: "POST" }),
   realtimeEvent: (id: string, payload: Record<string, unknown>) =>
     request<{ accepted: boolean }>(`/tests/${id}/realtime/events`, {
       method: "POST",
       body: JSON.stringify(payload),
     }),
   realtimeSocketUrl: (id: string) => wsUrl(`/tests/${id}/realtime/live`),
-   realtimeTurnAudio: async (testId: string, turnId: string, blob: Blob) => {
+  realtimeTurnAudio: async (testId: string, turnId: string, blob: Blob) => {
     if (!blob.type.startsWith("audio/")) {
       throw new ApiError("Expected an audio blob", "INVALID_MIME");
     }
@@ -65,20 +58,17 @@ export const api = {
     }
     return body.data as { test: TestSession; examinerPlaybackUrl?: string | null; nextTurnId?: string | null };
   },
-  retakeTurn: (testId: string, turnId: string) =>
-    request<TestSession>(`/tests/${testId}/turns/${turnId}/retake`, { method: "POST" }),
-  startConversation: (id: string) =>
-    request<TestSession>(`/tests/${id}/conversation/start`, { method: "POST" }),
+  retakeTurn: (testId: string, turnId: string) => request<TestSession>(`/tests/${testId}/turns/${turnId}/retake`, { method: "POST" }),
+  startConversation: (id: string) => request<TestSession>(`/tests/${id}/conversation/start`, { method: "POST" }),
   transition: (id: string, event: string, expectedRevision: number) =>
     request<TestSession>(`/tests/${id}/transitions`, {
       method: "POST",
       body: JSON.stringify({ event, expectedRevision }),
     }),
   uploadUrl: (testId: string, turnId: string) =>
-    request<{ uploadUrl: string; headers: Record<string, string>; maxBytes: number }>(
-      `/tests/${testId}/turns/${turnId}/response/upload`,
-      { method: "POST" },
-    ),
+    request<{ uploadUrl: string; headers: Record<string, string>; maxBytes: number }>(`/tests/${testId}/turns/${turnId}/response/upload`, {
+      method: "POST",
+    }),
   uploadComplete: (testId: string, turnId: string, payload: UploadCompletePayload) =>
     request<TestSession>(`/tests/${testId}/turns/${turnId}/response/complete`, {
       method: "POST",
@@ -89,18 +79,15 @@ export const api = {
   status: (id: string) => request<TestStatus>(`/tests/${id}/status`),
   examinerAudio: (testId: string, questionId: string) =>
     request<{ playbackUrl: string }>(`/tests/${testId}/questions/${questionId}/examiner-audio`),
-  answerPlayback: (testId: string, answerId: string) =>
-    request<{ playbackUrl: string }>(`/tests/${testId}/answers/${answerId}/playback`),
+  answerPlayback: (testId: string, answerId: string) => request<{ playbackUrl: string }>(`/tests/${testId}/answers/${answerId}/playback`),
   reassessReport: (id: string) => request<{ testId: string }>(`/reports/${id}/reassess`, { method: "POST" }),
   exportReport: (id: string) => fetchText(`/reports/${id}/export`),
   deleteAccount: () => request<{ deleted: boolean }>("/me", { method: "DELETE" }),
   report: (id: string) => request<Report>(`/reports/${id}`),
   leaderboard: (period: LeaderboardPeriod) => request<Leaderboard>(`/leaderboard?period=${period}`),
   progress: () => request<ProgressOverview>("/progress/overview"),
-  saveGoal: (payload: GoalInput) =>
-    request("/progress/goals/current", { method: "PUT", body: JSON.stringify(payload) }),
-  patchAction: (id: string, payload: ActionPatch) =>
-    request(`/practice-actions/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
+  saveGoal: (payload: GoalInput) => request("/progress/goals/current", { method: "PUT", body: JSON.stringify(payload) }),
+  patchAction: (id: string, payload: ActionPatch) => request(`/practice-actions/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
   deleteTest: (id: string) => request(`/tests/${id}`, { method: "DELETE" }),
   logoutAndLeave: async () => {
     await logout();

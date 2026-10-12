@@ -26,10 +26,7 @@ interface PendingConfirm extends ConfirmOptions {
 export function useConfirm() {
   const [pending, setPending] = useState<PendingConfirm | null>(null);
 
-  const confirm = useCallback(
-    (options: ConfirmOptions) => new Promise<boolean>((resolve) => setPending({ ...options, resolve })),
-    [],
-  );
+  const confirm = useCallback((options: ConfirmOptions) => new Promise<boolean>((resolve) => setPending({ ...options, resolve })), []);
 
   const close = (confirmed: boolean) => {
     pending?.resolve(confirmed);

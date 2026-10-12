@@ -54,7 +54,10 @@ export function AppShell({ children, variant = "default", focusAction }: AppShel
             orientation === "top" &&
               cn("h-10 px-3.5 text-sm text-subtle hover:bg-muted hover:text-foreground", active && "bg-accent text-accent-foreground"),
             orientation === "tabs" &&
-              cn("h-13 flex-col justify-center gap-0.5 px-2 text-[11px] text-muted-foreground", active && "text-primary [&_svg]:stroke-[2.2]"),
+              cn(
+                "h-13 flex-col justify-center gap-0.5 px-2 text-[11px] text-muted-foreground",
+                active && "text-primary [&_svg]:stroke-[2.2]",
+              ),
           )}
         >
           <Icon className="size-[18px]" aria-hidden="true" />
@@ -94,7 +97,10 @@ export function AppShell({ children, variant = "default", focusAction }: AppShel
                   className="inline-flex h-10 items-center gap-2 rounded-lg px-2 text-sm font-medium text-foreground hover:bg-muted"
                   aria-label="Account menu"
                 >
-                  <span className="inline-grid size-8 place-items-center rounded-full bg-indigo-soft text-[13px] font-semibold text-primary" aria-hidden="true">
+                  <span
+                    className="inline-grid size-8 place-items-center rounded-full bg-indigo-soft text-[13px] font-semibold text-primary"
+                    aria-hidden="true"
+                  >
                     {initial}
                   </span>
                   <span className="hidden lg:inline">{name.split(" ")[0]}</span>
@@ -103,7 +109,9 @@ export function AppShell({ children, variant = "default", focusAction }: AppShel
                   <DropdownMenuGroup>
                     <DropdownMenuLabel className="grid gap-0.5">
                       <span className="font-medium text-foreground">{name || "Your account"}</span>
-                      {user?.email && name !== user.email && <span className="text-xs font-normal text-muted-foreground">{user.email}</span>}
+                      {user?.email && name !== user.email && (
+                        <span className="text-xs font-normal text-muted-foreground">{user.email}</span>
+                      )}
                     </DropdownMenuLabel>
                   </DropdownMenuGroup>
                   <DropdownMenuSeparator />

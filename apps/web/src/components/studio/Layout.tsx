@@ -83,9 +83,7 @@ export function Stat({
         <span className="text-[13px] font-medium text-muted-foreground">{label}</span>
         {icon && <span className="text-muted-foreground/70 [&_svg]:size-[18px]">{icon}</span>}
       </div>
-      <b className={cn("leading-none tracking-tight text-foreground tabular-nums", small ? "text-xl" : "text-3xl")}>
-        {value}
-      </b>
+      <b className={cn("leading-none tracking-tight text-foreground tabular-nums", small ? "text-xl" : "text-3xl")}>{value}</b>
       {note && <span className="text-xs text-muted-foreground">{note}</span>}
     </div>
   );
@@ -138,7 +136,17 @@ export function IconTile({ children, size = "md", className }: { children: React
   );
 }
 
-export function TextLink({ to, children, className, size = "md" }: { to: string; children: ReactNode; className?: string; size?: "sm" | "md" }) {
+export function TextLink({
+  to,
+  children,
+  className,
+  size = "md",
+}: {
+  to: string;
+  children: ReactNode;
+  className?: string;
+  size?: "sm" | "md";
+}) {
   return (
     <Link
       to={to}

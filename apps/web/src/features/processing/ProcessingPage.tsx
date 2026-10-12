@@ -80,7 +80,9 @@ export function ProcessingPage() {
         <div className="grid gap-1.5">
           <p className="kicker">Results &amp; feedback</p>
           <h1 id="processing-title">{failed ? "We couldn’t score this test" : "Preparing your report"}</h1>
-          {!failed && <p className="text-muted-foreground">This usually takes a minute or two. We’ll open your report as soon as it’s ready.</p>}
+          {!failed && (
+            <p className="text-muted-foreground">This usually takes a minute or two. We’ll open your report as soon as it’s ready.</p>
+          )}
         </div>
         {!failed && (
           <div className="grid gap-2">
@@ -135,7 +137,8 @@ export function ProcessingPage() {
           </div>
         ) : (
           <p className="flex items-start gap-2 border-t border-border pt-4 text-[13px] text-muted-foreground">
-            <Info className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" /> You can leave this page — scoring continues, and the report will appear under Recent practice.
+            <Info className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" /> You can leave this page — scoring continues, and the
+            report will appear under Recent practice.
           </p>
         )}
       </Card>

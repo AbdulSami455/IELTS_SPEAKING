@@ -31,8 +31,16 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { cn } from "@/lib/utils";
 
 const READY_TIPS: { icon: LucideIcon; title: string; body: string }[] = [
-  { icon: Mic, title: "Just start talking.", body: "Your answer records as soon as you speak — even if the examiner is still finishing the question." },
-  { icon: Clock, title: "Pause when you’re done.", body: "A few seconds of silence, or the Done speaking button, sends your answer. A short thinking pause mid-answer is fine." },
+  {
+    icon: Mic,
+    title: "Just start talking.",
+    body: "Your answer records as soon as you speak — even if the examiner is still finishing the question.",
+  },
+  {
+    icon: Clock,
+    title: "Pause when you’re done.",
+    body: "A few seconds of silence, or the Done speaking button, sends your answer. A short thinking pause mid-answer is fine.",
+  },
   { icon: Headphones, title: "Find a quiet spot.", body: "Headphones stop the examiner’s voice from being picked up as your answer." },
 ];
 
@@ -77,7 +85,14 @@ export function TestRunnerPage() {
 
   if (!test) {
     return (
-      <AppShell variant="focus" focusAction={<Button variant="ghost" size="sm" to="/">Back to overview</Button>}>
+      <AppShell
+        variant="focus"
+        focusAction={
+          <Button variant="ghost" size="sm" to="/">
+            Back to overview
+          </Button>
+        }
+      >
         <div className="grid min-h-[50vh] place-items-center">
           {error ? (
             <div className="grid w-full max-w-lg gap-4">
@@ -98,13 +113,22 @@ export function TestRunnerPage() {
 
   if (test.state === "READY") {
     return (
-      <AppShell variant="focus" focusAction={<Button variant="ghost" size="sm" to="/">Not now</Button>}>
+      <AppShell
+        variant="focus"
+        focusAction={
+          <Button variant="ghost" size="sm" to="/">
+            Not now
+          </Button>
+        }
+      >
         {dialog}
         <Card className="mx-auto grid w-full max-w-[760px] gap-6 md:p-8" aria-labelledby="ready-title">
           <div className="grid gap-1.5">
             <p className="kicker">Live speaking room</p>
             <h1 id="ready-title">You’re ready to begin.</h1>
-            <p className="text-muted-foreground">The examiner asks each question out loud and you answer out loud, just like the real test.</p>
+            <p className="text-muted-foreground">
+              The examiner asks each question out loud and you answer out loud, just like the real test.
+            </p>
           </div>
           <PartSteps state={test.state} />
           <ul className="grid gap-3.5 rounded-lg bg-background px-5 py-4 text-sm">
@@ -137,15 +161,27 @@ export function TestRunnerPage() {
 
   if (test.state === "UPLOADING") {
     return (
-      <AppShell variant="focus" focusAction={<Button variant="ghost" size="sm" to="/">Back to overview</Button>}>
+      <AppShell
+        variant="focus"
+        focusAction={
+          <Button variant="ghost" size="sm" to="/">
+            Back to overview
+          </Button>
+        }
+      >
         <Card className="mx-auto grid w-full max-w-[760px] justify-items-start gap-6 md:p-8" aria-labelledby="done-title">
-          <span className="grid size-14 place-items-center rounded-full bg-primary text-primary-foreground ring-8 ring-indigo-soft" aria-hidden="true">
+          <span
+            className="grid size-14 place-items-center rounded-full bg-primary text-primary-foreground ring-8 ring-indigo-soft"
+            aria-hidden="true"
+          >
             <Check className="size-7" />
           </span>
           <div className="grid gap-1.5">
             <p className="kicker">Exam complete</p>
             <h1 id="done-title">That’s the end of the test.</h1>
-            <p className="text-muted-foreground">All your answers are saved. Submit them for scoring — your report is usually ready within a couple of minutes.</p>
+            <p className="text-muted-foreground">
+              All your answers are saved. Submit them for scoring — your report is usually ready within a couple of minutes.
+            </p>
           </div>
           <PartSteps state={test.state} compact />
           {error && <Alert tone="error">{error}</Alert>}
@@ -219,7 +255,13 @@ export function TestRunnerPage() {
 
           <div className="grid items-start gap-4 md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.2fr)] md:gap-8">
             <div className="grid gap-4 border-b border-border pb-4 md:border-r md:border-b-0 md:pr-6 md:pb-0 md:min-h-full">
-              <RoomStage room={copy} showMeter={youHot || room.recording} micLevel={room.micLevel} secondsLeft={room.secondsLeft} totalSeconds={room.totalSeconds} />
+              <RoomStage
+                room={copy}
+                showMeter={youHot || room.recording}
+                micLevel={room.micLevel}
+                secondsLeft={room.secondsLeft}
+                totalSeconds={room.totalSeconds}
+              />
               {showRing && (
                 <div className="justify-self-end md:justify-self-center">
                   <TimerRing seconds={room.secondsLeft ?? 0} total={room.totalSeconds} />
@@ -248,7 +290,9 @@ export function TestRunnerPage() {
                     {showQuestion ? (
                       <p className="text-base leading-relaxed text-foreground md:text-lg">{room.turn.promptText}</p>
                     ) : (
-                      <p className="text-[13px] text-muted-foreground">Question text hidden — listen like the real test. Replay it any time.</p>
+                      <p className="text-[13px] text-muted-foreground">
+                        Question text hidden — listen like the real test. Replay it any time.
+                      </p>
                     )}
                     {room.turn.cueCard && (
                       <div className="grid gap-2 rounded-lg border border-gold/30 bg-gold-soft/60 px-4 py-3.5 text-sm">
@@ -267,7 +311,13 @@ export function TestRunnerPage() {
                       size="sm"
                       className="justify-self-start"
                       onClick={room.replayExaminer}
-                      disabled={room.recording || room.busy || room.examinerSpeaking || room.examinerCue === "buffering" || !room.turn.hasExaminerAudio}
+                      disabled={
+                        room.recording ||
+                        room.busy ||
+                        room.examinerSpeaking ||
+                        room.examinerCue === "buffering" ||
+                        !room.turn.hasExaminerAudio
+                      }
                     >
                       <Volume2 /> Replay question
                     </Button>
@@ -294,7 +344,12 @@ export function TestRunnerPage() {
                 <Alert
                   tone="info"
                   action={
-                    <button type="button" className="inline-grid size-8 place-items-center rounded-md text-muted-foreground hover:bg-muted" onClick={room.dismissNotice} aria-label="Dismiss">
+                    <button
+                      type="button"
+                      className="inline-grid size-8 place-items-center rounded-md text-muted-foreground hover:bg-muted"
+                      onClick={room.dismissNotice}
+                      aria-label="Dismiss"
+                    >
                       <X className="size-4" />
                     </button>
                   }
@@ -364,7 +419,12 @@ export function TestRunnerPage() {
                       {room.muted ? "Unmute examiner" : "Mute examiner"}
                     </Button>
                     {lastCompletedTurn && (
-                      <Button variant="ghost" size="sm" onClick={() => room.retakeTurn(lastCompletedTurn.id)} disabled={room.busy || room.recording || room.restoredDraftAvailable}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => room.retakeTurn(lastCompletedTurn.id)}
+                        disabled={room.busy || room.recording || room.restoredDraftAvailable}
+                      >
                         <RefreshCw /> Retake last answer
                       </Button>
                     )}
@@ -384,7 +444,10 @@ export function TestRunnerPage() {
               <strong>Session details</strong>
               <span className="text-[13px] text-muted-foreground">Questions so far, your transcripts, and a guide to each part</span>
             </span>
-            <ChevronDown className="size-[18px] shrink-0 text-muted-foreground transition-transform group-data-open:rotate-180" aria-hidden="true" />
+            <ChevronDown
+              className="size-[18px] shrink-0 text-muted-foreground transition-transform group-data-open:rotate-180"
+              aria-hidden="true"
+            />
           </CollapsibleTrigger>
           <CollapsibleContent>
             <div className="px-5 pb-5">

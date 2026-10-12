@@ -204,7 +204,11 @@ export function ReportPage() {
           <InsightPair report={report} />
         </div>
         <section id="skills" className="grid gap-4 scroll-mt-[calc(var(--topbar-h)+72px)]" aria-labelledby="skills-heading">
-          <SectionHeading title="The skills behind your score" titleId="skills-heading" lead="The four IELTS speaking criteria, with evidence from this test." />
+          <SectionHeading
+            title="The skills behind your score"
+            titleId="skills-heading"
+            lead="The four IELTS speaking criteria, with evidence from this test."
+          />
           <CriterionGrid criteria={report.criteria} />
         </section>
         <VocabularySection report={report} />

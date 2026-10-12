@@ -31,7 +31,12 @@ export function RoomStage({ room, showMeter, micLevel, secondsLeft, totalSeconds
         </div>
       </div>
       <div className="grid gap-0.5 md:gap-1.5" role="status" aria-live="polite">
-        <p className={cn("text-[11px] font-semibold tracking-[0.1em] uppercase", speaking || room.mode === "listen" ? "text-primary" : "text-muted-foreground")}>
+        <p
+          className={cn(
+            "text-[11px] font-semibold tracking-[0.1em] uppercase",
+            speaking || room.mode === "listen" ? "text-primary" : "text-muted-foreground",
+          )}
+        >
           {room.kicker}
         </p>
         <h1 className="text-[21px] md:text-[clamp(24px,2.4vw,30px)]">{room.title}</h1>

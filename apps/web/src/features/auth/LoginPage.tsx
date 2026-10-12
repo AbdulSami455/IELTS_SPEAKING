@@ -138,11 +138,7 @@ export function LoginPage() {
             </Field>
             {registering && (
               <Label className="group/field grid cursor-pointer grid-cols-[auto_1fr] items-start gap-3 text-[13px] leading-relaxed font-normal text-subtle">
-                <Checkbox
-                  className="mt-0.5 size-5"
-                  checked={acceptedTerms}
-                  onCheckedChange={(value) => setAcceptedTerms(value === true)}
-                />
+                <Checkbox className="mt-0.5 size-5" checked={acceptedTerms} onCheckedChange={(value) => setAcceptedTerms(value === true)} />
                 <span>
                   I agree to the{" "}
                   <Link to="/terms" className="underline">

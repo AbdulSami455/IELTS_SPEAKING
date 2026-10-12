@@ -37,8 +37,16 @@ const TOP = 16;
 const BOTTOM = 204;
 const HEIGHT = 236;
 
-export function ExamJourneyChart({ examHistory, target, compact = false }: { examHistory: ExamHistoryOverview; target?: number; compact?: boolean }) {
-  const exams = examHistory.exams ?? [];
+export function ExamJourneyChart({
+  examHistory,
+  target,
+  compact = false,
+}: {
+  examHistory: ExamHistoryOverview;
+  target?: number;
+  compact?: boolean;
+}) {
+  const exams = useMemo(() => examHistory.exams ?? [], [examHistory.exams]);
   const [visible, setVisible] = useState<Record<string, boolean>>(() => Object.fromEntries(SERIES.map((s) => [s.key, true])));
   const [hovered, setHovered] = useState<number | null>(null);
   const [frameRef, width] = useElementWidth<HTMLDivElement>(320);
@@ -70,7 +78,9 @@ export function ExamJourneyChart({ examHistory, target, compact = false }: { exa
     return (
       <Card className="grid gap-4" aria-labelledby="journey-title">
         <SectionHeading kicker="Every exam at a glance" title="Skill trends across tests" titleId="journey-title" />
-        <ChartEmpty title="Complete a scored test to unlock this chart">Each line tracks your overall band and the four speaking criteria, test by test.</ChartEmpty>
+        <ChartEmpty title="Complete a scored test to unlock this chart">
+          Each line tracks your overall band and the four speaking criteria, test by test.
+        </ChartEmpty>
       </Card>
     );
   }
@@ -112,10 +122,16 @@ export function ExamJourneyChart({ examHistory, target, compact = false }: { exa
               onClick={() => setVisible((prev) => ({ ...prev, [series.key]: !prev[series.key] }))}
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors",
-                on ? "border-transparent bg-accent text-foreground" : "border-border bg-card text-muted-foreground line-through decoration-muted-foreground/60",
+                on
+                  ? "border-transparent bg-accent text-foreground"
+                  : "border-border bg-card text-muted-foreground line-through decoration-muted-foreground/60",
               )}
             >
-              <i className={cn("inline-block size-2.5 rounded-full", !on && "opacity-30")} style={{ background: series.color }} aria-hidden="true" />
+              <i
+                className={cn("inline-block size-2.5 rounded-full", !on && "opacity-30")}
+                style={{ background: series.color }}
+                aria-hidden="true"
+              />
               {series.label}
             </button>
           );
@@ -149,7 +165,15 @@ export function ExamJourneyChart({ examHistory, target, compact = false }: { exa
           {hovered !== null && <line className="chart-crosshair" x1={x(hovered)} x2={x(hovered)} y1={TOP} y2={BOTTOM} />}
           {paths.map(({ series, points, d }) =>
             points.length > 1 ? (
-              <path key={series.key} d={d} fill="none" stroke={series.color} strokeWidth={series.key === "overall" ? 3 : 2} strokeLinejoin="round" strokeLinecap="round" />
+              <path
+                key={series.key}
+                d={d}
+                fill="none"
+                stroke={series.color}
+                strokeWidth={series.key === "overall" ? 3 : 2}
+                strokeLinejoin="round"
+                strokeLinecap="round"
+              />
             ) : null,
           )}
           {paths.map(({ series, points }) =>
@@ -235,7 +259,8 @@ export function ExamJourneyChart({ examHistory, target, compact = false }: { exa
       {!compact && (
         <Collapsible defaultOpen className="grid min-w-0 gap-3">
           <CollapsibleTrigger className="group inline-flex items-center gap-1.5 justify-self-start text-sm font-medium text-foreground">
-            All tests &amp; band scores <ChevronDown className="size-4 transition-transform group-data-open:rotate-180" aria-hidden="true" />
+            All tests &amp; band scores{" "}
+            <ChevronDown className="size-4 transition-transform group-data-open:rotate-180" aria-hidden="true" />
           </CollapsibleTrigger>
           <CollapsibleContent>
             <div className="overflow-x-auto rounded-lg border border-border">

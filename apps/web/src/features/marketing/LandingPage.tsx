@@ -6,9 +6,27 @@ import { MarketingShell } from "./MarketingShell";
 import { Link } from "react-router-dom";
 
 const STEPS: { n: string; icon: LucideIcon; title: string; body: string; detail: string }[] = [
-  { n: "01", icon: Mic, title: "Make yourself heard.", body: "Find a quiet spot and check your microphone. Your own speaking studio, wherever you are.", detail: "A quick sound check" },
-  { n: "02", icon: MessageSquareText, title: "Have the conversation.", body: "Speak with an AI examiner through all three parts, from familiar questions to a deeper discussion.", detail: "One complete practice test" },
-  { n: "03", icon: BookOpen, title: "Know what comes next.", body: "Get an estimated band, feedback on your answers, and a clear plan for your next attempt.", detail: "Feedback made for you" },
+  {
+    n: "01",
+    icon: Mic,
+    title: "Make yourself heard.",
+    body: "Find a quiet spot and check your microphone. Your own speaking studio, wherever you are.",
+    detail: "A quick sound check",
+  },
+  {
+    n: "02",
+    icon: MessageSquareText,
+    title: "Have the conversation.",
+    body: "Speak with an AI examiner through all three parts, from familiar questions to a deeper discussion.",
+    detail: "One complete practice test",
+  },
+  {
+    n: "03",
+    icon: BookOpen,
+    title: "Know what comes next.",
+    body: "Get an estimated band, feedback on your answers, and a clear plan for your next attempt.",
+    detail: "Feedback made for you",
+  },
 ];
 
 const SKILLS = [
@@ -37,18 +55,23 @@ export function LandingPage() {
             <em>Start speaking.</em>
           </h1>
           <p className="max-w-[52ch] text-lg text-subtle">
-            Feel more prepared for IELTS. Practise a full speaking test with an AI examiner and turn personal feedback into your next step forward.
+            Feel more prepared for IELTS. Practise a full speaking test with an AI examiner and turn personal feedback into your next step
+            forward.
           </p>
           <div className="flex flex-wrap items-center gap-5">
             <Button size="lg" to="/start">
               Find your starting point <ArrowRight />
             </Button>
-            <a href="#how-it-works" className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground no-underline hover:underline">
+            <a
+              href="#how-it-works"
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground no-underline hover:underline"
+            >
               How it works <ChevronDown className="size-4" aria-hidden="true" />
             </a>
           </div>
           <p className="inline-flex flex-wrap items-center gap-2 text-[13px] text-muted-foreground">
-            <Clock className="size-4 text-primary" aria-hidden="true" /> 11–14 minutes <span aria-hidden="true">/</span> Just you, a microphone, and a little focus.
+            <Clock className="size-4 text-primary" aria-hidden="true" /> 11–14 minutes <span aria-hidden="true">/</span> Just you, a
+            microphone, and a little focus.
           </p>
         </div>
         <div className="mx-auto w-full max-w-[460px]">
@@ -123,7 +146,8 @@ export function LandingPage() {
               <em>Clearer next steps.</em>
             </h2>
             <p className="max-w-[52ch] text-subtle">
-              Your report looks at the four speaking skills, with examples from your own answers. See what’s working and what to practise next.
+              Your report looks at the four speaking skills, with examples from your own answers. See what’s working and what to practise
+              next.
             </p>
             <ul className="grid gap-4 sm:grid-cols-2">
               {SKILLS.map((skill) => (

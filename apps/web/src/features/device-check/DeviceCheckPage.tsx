@@ -155,7 +155,11 @@ export function DeviceCheckPage() {
             const n = index + 1;
             const state = n < step || phase === "passed" ? "done" : n === step ? "on" : "todo";
             return (
-              <li key={label} className={cn("inline-flex items-center gap-2", state === "on" && "text-foreground", state === "done" && "text-subtle")} aria-current={state === "on" ? "step" : undefined}>
+              <li
+                key={label}
+                className={cn("inline-flex items-center gap-2", state === "on" && "text-foreground", state === "done" && "text-subtle")}
+                aria-current={state === "on" ? "step" : undefined}
+              >
                 <span
                   className={cn(
                     "inline-grid size-[26px] place-items-center rounded-full border-[1.5px] text-xs font-semibold",
@@ -173,7 +177,12 @@ export function DeviceCheckPage() {
           })}
         </ol>
 
-        <div className={cn("grid gap-3 rounded-lg border border-border bg-background p-5 transition-colors", phase === "recording" && "border-destructive/40 bg-destructive/5")}>
+        <div
+          className={cn(
+            "grid gap-3 rounded-lg border border-border bg-background p-5 transition-colors",
+            phase === "recording" && "border-destructive/40 bg-destructive/5",
+          )}
+        >
           <span className="kicker">Read this aloud when recording starts</span>
           <p className="font-serif text-xl leading-snug text-foreground">“{SAMPLE_SENTENCE}”</p>
           <div className="grid h-3 grid-cols-[repeat(24,minmax(0,1fr))] gap-[3px]" aria-hidden="true">
@@ -182,7 +191,10 @@ export function DeviceCheckPage() {
               return (
                 <span
                   key={index}
-                  className={cn("rounded-[2px] bg-border transition-colors duration-75", on && (index >= 22 ? "bg-destructive" : index >= 18 ? "bg-gold" : "bg-indigo-vivid"))}
+                  className={cn(
+                    "rounded-[2px] bg-border transition-colors duration-75",
+                    on && (index >= 22 ? "bg-destructive" : index >= 18 ? "bg-gold" : "bg-indigo-vivid"),
+                  )}
                 />
               );
             })}
@@ -195,7 +207,8 @@ export function DeviceCheckPage() {
             )}
             {phase === "recording" && (
               <>
-                <span className="animate-pulse-dot size-2.5 rounded-full bg-destructive" aria-hidden="true" /> Recording — {secondsLeft}s left
+                <span className="animate-pulse-dot size-2.5 rounded-full bg-destructive" aria-hidden="true" /> Recording — {secondsLeft}s
+                left
               </>
             )}
             {phase === "checking" && (
@@ -244,7 +257,8 @@ export function DeviceCheckPage() {
         </div>
 
         <p className="flex items-start gap-2 border-t border-border pt-4 text-[13px] text-muted-foreground">
-          <Headphones className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" /> Headphones help: they stop the examiner’s voice from being picked up as your answer.
+          <Headphones className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" /> Headphones help: they stop the examiner’s voice
+          from being picked up as your answer.
         </p>
       </Card>
     </AppShell>

@@ -11,12 +11,7 @@ import { LeaderboardPage } from "../features/leaderboard/LeaderboardPage";
 import { HomeGate } from "../features/marketing/HomeGate";
 import { LearnPage } from "../features/marketing/LearnPage";
 import { StartPage } from "../features/marketing/StartPage";
-import {
-  AcceptableUsePage,
-  PrivacyPage,
-  RefundPolicyPage,
-  TermsPage,
-} from "../features/marketing/LegalPage";
+import { AcceptableUsePage, PrivacyPage, RefundPolicyPage, TermsPage } from "../features/marketing/LegalPage";
 
 // New pages open at the top; back/forward keeps the browser's own restoration.
 function ScrollToTop() {

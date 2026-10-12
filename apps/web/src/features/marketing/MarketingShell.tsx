@@ -12,7 +12,10 @@ const navLink = ({ isActive }: { isActive: boolean }) =>
 export function MarketingShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-background text-subtle">
-      <a className="fixed top-3 left-4 z-[200] -translate-y-[200%] rounded-lg bg-card px-3.5 py-2.5 text-sm font-medium focus:translate-y-0" href="#main-content">
+      <a
+        className="fixed top-3 left-4 z-[200] -translate-y-[200%] rounded-lg bg-card px-3.5 py-2.5 text-sm font-medium focus:translate-y-0"
+        href="#main-content"
+      >
         Skip to content
       </a>
       <header className="sticky top-0 z-30 border-b border-border bg-card">
@@ -20,7 +23,10 @@ export function MarketingShell({ children }: { children: ReactNode }) {
           <Link to="/" className="shrink-0 rounded-lg no-underline" aria-label={`${PRODUCT_FULL} home`}>
             <Brand />
           </Link>
-          <nav className="order-3 flex w-full items-center justify-center gap-7 border-t border-border pt-3 md:order-none md:ml-auto md:w-auto md:border-0 md:pt-0" aria-label="Site">
+          <nav
+            className="order-3 flex w-full items-center justify-center gap-7 border-t border-border pt-3 md:order-none md:ml-auto md:w-auto md:border-0 md:pt-0"
+            aria-label="Site"
+          >
             <NavLink to="/" end className={navLink}>
               Home
             </NavLink>
@@ -79,7 +85,8 @@ export function MarketingShell({ children }: { children: ReactNode }) {
             </nav>
           </div>
           <p className="text-[11px] text-muted-foreground">
-            Independent IELTS practice. AI band estimates are for practice, not official results. Not affiliated with or endorsed by the IELTS partners.
+            Independent IELTS practice. AI band estimates are for practice, not official results. Not affiliated with or endorsed by the
+            IELTS partners.
           </p>
         </div>
       </footer>

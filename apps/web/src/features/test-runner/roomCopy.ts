@@ -58,9 +58,7 @@ export function roomCopy(args: RoomCopyArgs): RoomCopy {
       mode: "speak",
       kicker: "Recording",
       title: args.isIntro ? "Say your full name" : "Keep speaking",
-      hint: args.isIntro
-        ? "A short pause or Done speaking will save your answer."
-        : "Pause when finished, or tap Done speaking.",
+      hint: args.isIntro ? "A short pause or Done speaking will save your answer." : "Pause when finished, or tap Done speaking.",
     };
   }
   if (args.micPaused) {

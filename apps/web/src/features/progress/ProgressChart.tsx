@@ -55,7 +55,17 @@ export function ProgressChart({ timeline, target }: { timeline: Point[]; target?
         kicker="The bigger picture"
         title="Overall band over time"
         titleId="journey-overall-title"
-        action={sorted.length > 0 && <Segmented size="sm" label="Chart time range" value={range} onChange={setRange} options={RANGES.map((item) => ({ value: item.value, label: item.label }))} />}
+        action={
+          sorted.length > 0 && (
+            <Segmented
+              size="sm"
+              label="Chart time range"
+              value={range}
+              onChange={setRange}
+              options={RANGES.map((item) => ({ value: item.value, label: item.label }))}
+            />
+          )
+        }
       />
       {points.length ? (
         <>
@@ -101,7 +111,13 @@ export function ProgressChart({ timeline, target }: { timeline: Point[]; target?
               )}
               {points.map((p, i) => (
                 <g key={p.testId}>
-                  <circle className="chart-dot" cx={x(i)} cy={y(p.overallBand!)} r={selected?.testId === p.testId ? 7 : 5} fill={OVERALL_COLOR} />
+                  <circle
+                    className="chart-dot"
+                    cx={x(i)}
+                    cy={y(p.overallBand!)}
+                    r={selected?.testId === p.testId ? 7 : 5}
+                    fill={OVERALL_COLOR}
+                  />
                   <circle
                     cx={x(i)}
                     cy={y(p.overallBand!)}
@@ -135,7 +151,9 @@ export function ProgressChart({ timeline, target }: { timeline: Point[]; target?
           </div>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <span className="text-[13px] text-muted-foreground">
-              {points.length === 1 ? "Your baseline is set. A second scored test will show a trend." : "Hover or focus a point to explore. Tests are spaced evenly."}
+              {points.length === 1
+                ? "Your baseline is set. A second scored test will show a trend."
+                : "Hover or focus a point to explore. Tests are spaced evenly."}
             </span>
             {selected && (
               <TextLink to={`/reports/${selected.reportId}`} size="sm">
@@ -146,7 +164,9 @@ export function ProgressChart({ timeline, target }: { timeline: Point[]; target?
         </>
       ) : (
         <ChartEmpty title={sorted.length ? "No tests in this period" : "Every journey starts somewhere"}>
-          {sorted.length ? "Choose a longer time range to see your results." : "Complete your first speaking test to set your baseline. Your real scores will appear here."}
+          {sorted.length
+            ? "Choose a longer time range to see your results."
+            : "Complete your first speaking test to set your baseline. Your real scores will appear here."}
         </ChartEmpty>
       )}
     </Card>

@@ -1,6 +1,18 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowRight, ChartNoAxesCombined, Check, ChevronDown, Clock, Headphones, MessageSquare, Mic, Sparkles, Target, type LucideIcon } from "lucide-react";
+import {
+  ArrowRight,
+  ChartNoAxesCombined,
+  Check,
+  ChevronDown,
+  Clock,
+  Headphones,
+  MessageSquare,
+  Mic,
+  Sparkles,
+  Target,
+  type LucideIcon,
+} from "lucide-react";
 import { toast } from "sonner";
 import { api, type TestListItem } from "../../lib/api";
 import { bandText, criterionLabel, formatDateTime } from "../../lib/format";
@@ -31,8 +43,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 const PAGE_SIZE = 5;
 const RESUMABLE_STATES = ["CREATED", "DEVICE_CHECK", "READY", "PART1", "PART2_PREP", "PART2_SPEAK", "PART3", "UPLOADING"];
 
-const byNewest = (a: TestListItem, b: TestListItem) =>
-  (Date.parse(b.createdAt ?? "") || 0) - (Date.parse(a.createdAt ?? "") || 0);
+const byNewest = (a: TestListItem, b: TestListItem) => (Date.parse(b.createdAt ?? "") || 0) - (Date.parse(a.createdAt ?? "") || 0);
 
 const HOW_IT_WORKS: { icon: LucideIcon; title: string; body: string }[] = [
   { icon: Mic, title: "Check your microphone", body: "A 4-second sample makes sure the examiner can hear you." },
@@ -191,7 +202,10 @@ export function DashboardPage() {
 
         {localError && <Alert tone="error">{localError}</Alert>}
 
-        <section className="grid items-center gap-8 rounded-lg border border-border bg-blush p-6 md:grid-cols-[1.25fr_1fr] md:p-9" aria-labelledby="hero-title">
+        <section
+          className="grid items-center gap-8 rounded-lg border border-border bg-blush p-6 md:grid-cols-[1.25fr_1fr] md:p-9"
+          aria-labelledby="hero-title"
+        >
           <div className="grid gap-4">
             <span className="inline-flex items-center gap-1.5 justify-self-start rounded-md bg-card/70 px-2.5 py-1 text-xs font-semibold text-primary">
               <Sparkles className="size-3.5" aria-hidden="true" /> IELTS speaking practice
@@ -282,7 +296,9 @@ export function DashboardPage() {
                 );
               })}
             </ol>
-            <p className="text-[13px] text-muted-foreground">Your band history, skill balance, and practice plan will appear here after your first test.</p>
+            <p className="text-[13px] text-muted-foreground">
+              Your band history, skill balance, and practice plan will appear here after your first test.
+            </p>
           </Card>
         ) : (
           <>
@@ -315,16 +331,24 @@ export function DashboardPage() {
             )}
 
             {data?.weakestSkill && (
-              <Link to="/progress" className="group flex items-center gap-4 rounded-lg border border-border bg-blush px-5 py-4 no-underline transition-colors hover:border-input">
+              <Link
+                to="/progress"
+                className="group flex items-center gap-4 rounded-lg border border-border bg-blush px-5 py-4 no-underline transition-colors hover:border-input"
+              >
                 <IconTile className="bg-card">
                   <Target className="size-5" aria-hidden="true" />
                 </IconTile>
                 <span className="grid min-w-0 gap-0.5">
                   <span className="kicker">Recommended focus</span>
                   <strong className="text-base">{criterionLabel(data.weakestSkill)}</strong>
-                  <span className="text-[13px] text-muted-foreground">Your lowest average skill. See targeted activities in your practice plan.</span>
+                  <span className="text-[13px] text-muted-foreground">
+                    Your lowest average skill. See targeted activities in your practice plan.
+                  </span>
                 </span>
-                <ArrowRight className="ml-auto size-5 shrink-0 text-primary transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+                <ArrowRight
+                  className="ml-auto size-5 shrink-0 text-primary transition-transform group-hover:translate-x-0.5"
+                  aria-hidden="true"
+                />
               </Link>
             )}
 

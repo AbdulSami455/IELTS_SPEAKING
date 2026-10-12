@@ -44,10 +44,26 @@ const PARTS = [
 ];
 
 const BANDS = [
-  { name: "Fluency & coherence", listen: "Can you keep going, and do the ideas arrive in an order a listener can follow?", lift: "Replace fillers with a silent pause. Plan the second sentence before you finish the first." },
-  { name: "Lexical resource", listen: "Do you have words for this topic, or do you repeat “good”, “thing”, and “nice”?", lift: "Swap one repeated adjective per answer. Learn collocations for the topic, not isolated rare words." },
-  { name: "Grammar", listen: "Can you use more than one tense and still be accurate when the sentence gets longer?", lift: "Finish the sentence you started. A complete simple sentence beats a broken complex one." },
-  { name: "Pronunciation", listen: "Can a listener catch the word on the first pass? Stress and rhythm matter more than accent.", lift: "Slow the last word of a clause. Practise unclear words in a short sentence, not in isolation only." },
+  {
+    name: "Fluency & coherence",
+    listen: "Can you keep going, and do the ideas arrive in an order a listener can follow?",
+    lift: "Replace fillers with a silent pause. Plan the second sentence before you finish the first.",
+  },
+  {
+    name: "Lexical resource",
+    listen: "Do you have words for this topic, or do you repeat “good”, “thing”, and “nice”?",
+    lift: "Swap one repeated adjective per answer. Learn collocations for the topic, not isolated rare words.",
+  },
+  {
+    name: "Grammar",
+    listen: "Can you use more than one tense and still be accurate when the sentence gets longer?",
+    lift: "Finish the sentence you started. A complete simple sentence beats a broken complex one.",
+  },
+  {
+    name: "Pronunciation",
+    listen: "Can a listener catch the word on the first pass? Stress and rhythm matter more than accent.",
+    lift: "Slow the last word of a clause. Practise unclear words in a short sentence, not in isolation only.",
+  },
 ];
 
 const CONTAINER = "mx-auto w-full max-w-[1160px] px-5 md:px-10";

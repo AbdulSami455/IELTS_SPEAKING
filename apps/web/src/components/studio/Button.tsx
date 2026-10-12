@@ -1,7 +1,8 @@
-import type { ReactElement, ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { Button as BaseButton } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 type Variant = "primary" | "secondary" | "ghost" | "danger" | "danger-solid" | "coral" | "link";
@@ -30,11 +31,11 @@ const SIZE: Record<Size, string> = {
   icon: "size-10 p-0",
 };
 
-export interface ButtonProps extends Omit<React.ComponentProps<typeof BaseButton>, "variant" | "size"> {
+export interface ButtonProps extends Omit<ComponentProps<typeof BaseButton>, "variant" | "size" | "render"> {
   variant?: Variant;
   size?: Size;
   loading?: boolean;
-  /** Render as a router link instead of a button. */
+  /** Render a real router link (an <a>, with link semantics) styled as a button. */
   to?: string;
   children?: ReactNode;
 }
@@ -48,24 +49,32 @@ export function Button({
   children,
   type = "button",
   to,
-  render,
   ...rest
 }: ButtonProps) {
-  const asLink: ReactElement | undefined = to ? <Link to={to} /> : undefined;
+  const classes = cn(
+    buttonVariants({ variant: VARIANT[variant] }),
+    "gap-2 rounded-lg font-medium [&_svg:not([class*='size-'])]:size-4",
+    SIZE[size],
+    EXTRA[variant],
+    className,
+  );
+
+  if (to) {
+    // A plain Link keeps role="link"; Base UI's Button would stamp role="button" on an <a>.
+    return (
+      <Link to={to} className={classes} aria-disabled={disabled || loading || undefined} data-slot="button">
+        {children}
+      </Link>
+    );
+  }
+
   return (
     <BaseButton
       variant={VARIANT[variant]}
-      className={cn(
-        "gap-2 rounded-lg font-medium [&_svg:not([class*='size-'])]:size-4",
-        SIZE[size],
-        EXTRA[variant],
-        className,
-      )}
+      className={classes}
       disabled={disabled || loading}
       aria-busy={loading || undefined}
-      type={to ? undefined : type}
-      render={render ?? asLink}
-      nativeButton={!(render ?? asLink)}
+      type={type}
       {...rest}
     >
       {loading && <Loader2 className="animate-spin" aria-hidden="true" />}

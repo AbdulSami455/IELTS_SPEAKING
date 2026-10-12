@@ -7,9 +7,18 @@ import { Button, IconTile } from "../../components/studio";
 import { MarketingShell } from "./MarketingShell";
 
 const CHECKLIST = [
-  { title: "Find your quiet corner.", body: "Bring a working microphone and allow access when prompted. Headphones help keep the sound clear." },
-  { title: "Give yourself a little time.", body: "Set aside 11–14 minutes for the three parts. Listen to each question, then answer naturally, out loud." },
-  { title: "Leave with a next step.", body: "After scoring, your report brings together a practice band estimate, feedback, and a personal practice plan." },
+  {
+    title: "Find your quiet corner.",
+    body: "Bring a working microphone and allow access when prompted. Headphones help keep the sound clear.",
+  },
+  {
+    title: "Give yourself a little time.",
+    body: "Set aside 11–14 minutes for the three parts. Listen to each question, then answer naturally, out loud.",
+  },
+  {
+    title: "Leave with a next step.",
+    body: "After scoring, your report brings together a practice band estimate, feedback, and a personal practice plan.",
+  },
 ];
 
 export function StartPage() {
@@ -41,7 +50,9 @@ export function StartPage() {
             <br />
             <em>Then, just be yourself.</em>
           </h1>
-          <p className="text-lg text-subtle">You don’t need a perfect answer. You need a place to start. Here’s how to get comfortable before you speak.</p>
+          <p className="text-lg text-subtle">
+            You don’t need a perfect answer. You need a place to start. Here’s how to get comfortable before you speak.
+          </p>
         </header>
         <section className="grid items-start gap-8 pb-20 lg:grid-cols-[1.2fr_1fr]" aria-label="Prepare for your practice">
           <ol className="grid gap-4">

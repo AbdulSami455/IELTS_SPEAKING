@@ -78,12 +78,21 @@ function Callout({ title, tone = "info", children }: { title?: string; tone?: "i
 }
 
 function InsightCard({ children, focus = false }: { children: ReactNode; focus?: boolean }) {
-  return <li className={cn("grid gap-2 rounded-lg border border-border bg-background p-4 text-sm", focus && "border-coral/40 bg-blush")}>{children}</li>;
+  return (
+    <li className={cn("grid gap-2 rounded-lg border border-border bg-background p-4 text-sm", focus && "border-coral/40 bg-blush")}>
+      {children}
+    </li>
+  );
 }
 
 function WordChip({ children, practice = false }: { children: ReactNode; practice?: boolean }) {
   return (
-    <span className={cn("inline-flex items-center rounded-md px-2.5 py-1 text-[13px] font-medium", practice ? "bg-warning-soft text-warning" : "bg-accent text-accent-foreground")}>
+    <span
+      className={cn(
+        "inline-flex items-center rounded-md px-2.5 py-1 text-[13px] font-medium",
+        practice ? "bg-warning-soft text-warning" : "bg-accent text-accent-foreground",
+      )}
+    >
       {children}
     </span>
   );
@@ -107,7 +116,13 @@ function MetricTiles({ items }: { items: { label: string; value: string; status?
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
       {items.map((item) => (
-        <div key={item.label} className={cn("grid content-start gap-1 rounded-lg border p-3", METRIC_TONE[(item.status ?? "good").toLowerCase()] ?? METRIC_TONE.neutral)}>
+        <div
+          key={item.label}
+          className={cn(
+            "grid content-start gap-1 rounded-lg border p-3",
+            METRIC_TONE[(item.status ?? "good").toLowerCase()] ?? METRIC_TONE.neutral,
+          )}
+        >
           <span className="text-xs text-muted-foreground">{item.label}</span>
           <strong className="text-lg leading-tight text-foreground tabular-nums">{item.value}</strong>
           {item.hint && <p className="text-xs text-muted-foreground">{item.hint}</p>}
@@ -156,7 +171,14 @@ function groupMistakes(report: Report): MistakeGroup[] {
 
 function ComparisonBlock({ title, tone, items }: { title: string; tone: "up" | "minor" | "focus"; items: string[] }) {
   return (
-    <div className={cn("grid content-start gap-2 rounded-lg p-4", tone === "up" && "bg-success-soft", tone === "minor" && "bg-indigo-soft", tone === "focus" && "bg-blush")}>
+    <div
+      className={cn(
+        "grid content-start gap-2 rounded-lg p-4",
+        tone === "up" && "bg-success-soft",
+        tone === "minor" && "bg-indigo-soft",
+        tone === "focus" && "bg-blush",
+      )}
+    >
       <h3 className={cn("text-base", tone === "up" && "text-success")}>{title}</h3>
       <BulletList items={items} />
     </div>
@@ -177,7 +199,11 @@ export function ProgressComparisonSection({ report }: { report: Report }) {
   return (
     <ReportSection
       title="Compared with your last test"
-      lead={comparison?.hasPrevious && comparison.previousTestAt ? `Previous scored test: ${formatDate(comparison.previousTestAt)}.` : "Complete another test to unlock side-by-side progress."}
+      lead={
+        comparison?.hasPrevious && comparison.previousTestAt
+          ? `Previous scored test: ${formatDate(comparison.previousTestAt)}.`
+          : "Complete another test to unlock side-by-side progress."
+      }
     >
       {comparison?.hasPrevious && (
         <div className="grid gap-3 md:grid-cols-3">
@@ -190,17 +216,21 @@ export function ProgressComparisonSection({ report }: { report: Report }) {
         <div className="grid gap-1 text-[13px] text-muted-foreground">
           {(trends.resolved?.length ?? 0) > 0 && (
             <p>
-              <strong className="text-foreground">Resolved since last test:</strong> {trends.resolved.map((item) => humanize(item.type ?? "issue")).join(", ")}
+              <strong className="text-foreground">Resolved since last test:</strong>{" "}
+              {trends.resolved.map((item) => humanize(item.type ?? "issue")).join(", ")}
             </p>
           )}
           {(trends.newIssues?.length ?? 0) > 0 && (
             <p>
-              <strong className="text-foreground">New this test:</strong> {trends.newIssues.map((item) => humanize(item.type ?? "issue")).join(", ")}
+              <strong className="text-foreground">New this test:</strong>{" "}
+              {trends.newIssues.map((item) => humanize(item.type ?? "issue")).join(", ")}
             </p>
           )}
         </div>
       )}
-      {!comparison?.hasPrevious && minorFromTest.length > 0 && <ComparisonBlock title="Small wins in this test" tone="minor" items={minorFromTest} />}
+      {!comparison?.hasPrevious && minorFromTest.length > 0 && (
+        <ComparisonBlock title="Small wins in this test" tone="minor" items={minorFromTest} />
+      )}
     </ReportSection>
   );
 }
@@ -213,7 +243,11 @@ export function InsightPair({ report }: { report: Report }) {
         <BulletList items={report.strengths} />
       </Card>
       <Card className="grid content-start gap-4 border-coral/40 bg-blush" aria-labelledby="focus-title">
-        <SectionHeading title="Priority focus for next time" titleId="focus-title" lead="Highest-impact changes to practise before your next attempt." />
+        <SectionHeading
+          title="Priority focus for next time"
+          titleId="focus-title"
+          lead="Highest-impact changes to practise before your next attempt."
+        />
         <BulletList items={report.improvements} className="marker:text-coral" />
       </Card>
     </div>
@@ -226,7 +260,12 @@ export function MistakesSection({ report }: { report: Report }) {
   const trends = report.progressComparison?.mistakeTrends;
   const showTrends = Boolean(trends && report.progressComparison?.hasPrevious);
   return (
-    <ReportSection id="corrections" kicker="Grammar & accuracy" title="Corrections from your transcript" lead="Grouped by issue type with the rule, correction, and a short drill for each.">
+    <ReportSection
+      id="corrections"
+      kicker="Grammar & accuracy"
+      title="Corrections from your transcript"
+      lead="Grouped by issue type with the rule, correction, and a short drill for each."
+    >
       {showTrends && trends && (
         <div className="flex flex-wrap gap-2">
           {(trends.resolved?.length ?? 0) > 0 && <Badge tone="success">{trends.resolved.length} resolved</Badge>}
@@ -273,7 +312,12 @@ export function MistakesSection({ report }: { report: Report }) {
 export function RewritesSection({ report }: { report: Report }) {
   if (report.exampleRewrites.length === 0) return null;
   return (
-    <ReportSection id="rewrites" kicker="Better answers" title="Same idea. A stronger answer." lead="Examples that keep your meaning — not model answers.">
+    <ReportSection
+      id="rewrites"
+      kicker="Better answers"
+      title="Same idea. A stronger answer."
+      lead="Examples that keep your meaning — not model answers."
+    >
       <ul className="grid gap-3">
         {report.exampleRewrites.map((item, index) => (
           <li key={index} className="grid overflow-hidden rounded-lg border border-border md:grid-cols-2">
@@ -298,11 +342,20 @@ export function VocabularySection({ report }: { report: Report }) {
   if (!data?.hasContent && !hasLegacy) return null;
 
   return (
-    <ReportSection id="vocabulary" icon={BookOpen} kicker="Lexical resource" title="Words you used & how to level up" lead="A readable snapshot of your vocabulary in this test — not a word list dump.">
+    <ReportSection
+      id="vocabulary"
+      icon={BookOpen}
+      kicker="Lexical resource"
+      title="Words you used & how to level up"
+      lead="A readable snapshot of your vocabulary in this test — not a word list dump."
+    >
       {data?.stats && data.stats.length > 0 && <MetricTiles items={data.stats} />}
       {(data?.wordsYouUsed?.length ?? 0) > 0 && (
         <div className="grid gap-3">
-          <SubHeading title="Notable words from your answers" lead="Content words you used (excluding very common fillers). Stronger answers often mix everyday and topic-specific vocabulary." />
+          <SubHeading
+            title="Notable words from your answers"
+            lead="Content words you used (excluding very common fillers). Stronger answers often mix everyday and topic-specific vocabulary."
+          />
           <div className="flex flex-wrap gap-2">
             {data!.wordsYouUsed.map((word) => (
               <WordChip key={word}>{word}</WordChip>
@@ -353,7 +406,11 @@ export function VocabularySection({ report }: { report: Report }) {
           <BulletList items={data!.coachingTips} />
         </Callout>
       )}
-      {!data && hasLegacy && <p className="text-[13px] text-muted-foreground">Reassess this test with the current evaluator to unlock structured vocabulary feedback.</p>}
+      {!data && hasLegacy && (
+        <p className="text-[13px] text-muted-foreground">
+          Reassess this test with the current evaluator to unlock structured vocabulary feedback.
+        </p>
+      )}
     </ReportSection>
   );
 }
@@ -365,11 +422,16 @@ export function FluencySection({ report }: { report: Report }) {
 
   const metrics = data?.metrics ?? [];
   const observations =
-    data?.observations ??
-    legacy.map((body) => ({ kind: "coach", title: "Fluency note", body, quote: undefined as string | undefined }));
+    data?.observations ?? legacy.map((body) => ({ kind: "coach", title: "Fluency note", body, quote: undefined as string | undefined }));
 
   return (
-    <ReportSection id="fluency" icon={Sparkles} kicker="Fluency & coherence" title="How your delivery felt" lead="Pace, pauses, and coherence — tied to audio and your fluency band.">
+    <ReportSection
+      id="fluency"
+      icon={Sparkles}
+      kicker="Fluency & coherence"
+      title="How your delivery felt"
+      lead="Pace, pauses, and coherence — tied to audio and your fluency band."
+    >
       {data?.band != null && (
         <p className="text-sm text-subtle">
           Fluency band this test: <strong className="text-foreground">{bandText(data.band)}</strong>
@@ -426,7 +488,13 @@ export function TranscriptsSection({ report }: { report: Report }) {
   }
 
   return (
-    <ReportSection id="transcript" icon={MessageSquareText} kicker="Full transcript" title="Your conversation, in words" lead="Corrections are highlighted. Read alongside the vocabulary and fluency sections above.">
+    <ReportSection
+      id="transcript"
+      icon={MessageSquareText}
+      kicker="Full transcript"
+      title="Your conversation, in words"
+      lead="Corrections are highlighted. Read alongside the vocabulary and fluency sections above."
+    >
       <div className="grid gap-3">
         {report.transcripts.map((item, index) => (
           <article key={index} className="grid gap-2 rounded-lg border border-border bg-background p-4 text-sm">
@@ -465,7 +533,10 @@ export function PronunciationSection({ report }: { report: Report }) {
       )}
       {practiceWords.length > 0 && (
         <div className="grid gap-3">
-          <SubHeading title="Words to practise for clearer delivery" lead="These were harder for the speech recogniser to catch — often stress or consonant clarity, not “wrong accent”." />
+          <SubHeading
+            title="Words to practise for clearer delivery"
+            lead="These were harder for the speech recogniser to catch — often stress or consonant clarity, not “wrong accent”."
+          />
           <div className="flex flex-wrap gap-2">
             {practiceWords.map((word) => (
               <WordChip key={word} practice>
@@ -504,7 +575,9 @@ export function PronunciationSection({ report }: { report: Report }) {
           <BulletList items={data!.notes} className="marker:text-muted-foreground" />
         </div>
       )}
-      {!data && legacy.length > 0 && <p className="text-[13px] text-muted-foreground">Open this report again after reassessment for clearer pronunciation guidance.</p>}
+      {!data && legacy.length > 0 && (
+        <p className="text-[13px] text-muted-foreground">Open this report again after reassessment for clearer pronunciation guidance.</p>
+      )}
     </ReportSection>
   );
 }

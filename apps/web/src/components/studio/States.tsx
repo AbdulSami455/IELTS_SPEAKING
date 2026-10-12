@@ -4,7 +4,13 @@ import { Skeleton as BaseSkeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
 export function Spinner({ size = 22, className }: { size?: number; className?: string }) {
-  return <Loader2 className={cn("shrink-0 animate-spin text-indigo-vivid", className)} style={{ width: size, height: size }} aria-hidden="true" />;
+  return (
+    <Loader2
+      className={cn("shrink-0 animate-spin text-indigo-vivid", className)}
+      style={{ width: size, height: size }}
+      aria-hidden="true"
+    />
+  );
 }
 
 export function LoadingState({ label, compact = false }: { label: string; compact?: boolean }) {
@@ -22,7 +28,15 @@ export function LoadingState({ label, compact = false }: { label: string; compac
   );
 }
 
-export function Skeleton({ width, height = 16, className }: { width?: CSSProperties["width"]; height?: CSSProperties["height"]; className?: string }) {
+export function Skeleton({
+  width,
+  height = 16,
+  className,
+}: {
+  width?: CSSProperties["width"];
+  height?: CSSProperties["height"];
+  className?: string;
+}) {
   return <BaseSkeleton className={cn("max-w-full", className)} style={{ width, height }} aria-hidden="true" />;
 }
 

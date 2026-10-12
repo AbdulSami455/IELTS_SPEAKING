@@ -83,7 +83,10 @@ export function ConsentDialog({ user, onAccepted }: { user: User; onAccepted: (u
         </DialogHeader>
         <div className="grid gap-4">
           {ITEMS.map((item) => (
-            <Label key={item.key} className="group/field grid cursor-pointer grid-cols-[auto_1fr] items-start gap-3 text-sm leading-relaxed font-normal text-subtle">
+            <Label
+              key={item.key}
+              className="group/field grid cursor-pointer grid-cols-[auto_1fr] items-start gap-3 text-sm leading-relaxed font-normal text-subtle"
+            >
               <Checkbox
                 className="mt-1 size-5"
                 checked={checked[item.key]}

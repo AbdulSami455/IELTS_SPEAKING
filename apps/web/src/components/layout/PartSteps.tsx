@@ -43,7 +43,11 @@ export function PartSteps({ state, compact = false }: { state: string; compact?:
               className={cn(
                 "inline-grid shrink-0 place-items-center rounded-full border-[1.5px] text-xs font-semibold",
                 compact ? "size-[22px]" : "size-7",
-                done ? "border-primary bg-primary text-primary-foreground" : on ? "border-primary text-primary ring-4 ring-indigo-soft" : "border-input text-muted-foreground",
+                done
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : on
+                    ? "border-primary text-primary ring-4 ring-indigo-soft"
+                    : "border-input text-muted-foreground",
               )}
               aria-hidden="true"
             >

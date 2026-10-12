@@ -61,7 +61,12 @@ export function BandHero({ report }: { report: Report }) {
         aria-label={band === undefined ? "No overall band for this test" : `Overall band ${bandText(band)} out of 9`}
       >
         <div className="grid size-full place-content-center rounded-full bg-card">
-          <span className={cn("text-[50px] leading-none font-semibold tracking-tight tabular-nums md:text-[60px]", band === undefined ? "text-muted-foreground" : "text-foreground")}>
+          <span
+            className={cn(
+              "text-[50px] leading-none font-semibold tracking-tight tabular-nums md:text-[60px]",
+              band === undefined ? "text-muted-foreground" : "text-foreground",
+            )}
+          >
             {bandText(band)}
           </span>
           <span className="mt-1.5 text-xs font-medium text-muted-foreground">{band === undefined ? "No band" : "out of 9"}</span>

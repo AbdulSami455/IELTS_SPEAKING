@@ -27,9 +27,7 @@ function minVoicedMs(turn?: Turn): number {
 
 export function currentTurn(test: TestSession): Turn | undefined {
   if (test.currentTurn) return test.currentTurn;
-  return test.turns.find(
-    (item) => item.answerStatus !== "VALID" && item.answerStatus !== "READY",
-  );
+  return test.turns.find((item) => item.answerStatus !== "VALID" && item.answerStatus !== "READY");
 }
 
 export function canSpeak(state: string): boolean {
@@ -96,20 +94,17 @@ export function useVoiceRoom(testId: string) {
       .getTest(testId)
       .then(setTest)
       .catch((err: Error) => setError(err.message));
-    void _checkDraft().catch(() =>
-      setNotice("Answer recovery isn’t available in this browser, so keep this tab open while you speak."),
-    );
+    // An answer that never reached the server is offered back through the
+    // room's "Send saved answer" / "Discard" controls rather than a popup.
+    loadDraft(testId, "current-turn")
+      .then((saved) => {
+        if (saved) {
+          restoredDraftRef.current = saved;
+          setRestoredDraftAvailable(true);
+        }
+      })
+      .catch(() => setNotice("Answer recovery isn’t available in this browser, so keep this tab open while you speak."));
   }, [testId]);
-
-  // An answer that never reached the server is offered back through the
-  // room's "Send saved answer" / "Discard" controls rather than a popup.
-  async function _checkDraft() {
-    const saved = await loadDraft(testId, "current-turn");
-    if (saved) {
-      restoredDraftRef.current = saved;
-      setRestoredDraftAvailable(true);
-    }
-  }
 
   useEffect(() => {
     if (!recording && !busy) return;
@@ -124,15 +119,11 @@ export function useVoiceRoom(testId: string) {
   useEffect(() => {
     return () => {
       stopVad();
-      if (recorderRef.current?.state === "recording")
-        recorderRef.current.stop();
+      if (recorderRef.current?.state === "recording") recorderRef.current.stop();
       socketRef.current?.close();
-      streamRef.current
-        ?.getTracks()
-        .forEach((track: MediaStreamTrack) => track.stop());
+      streamRef.current?.getTracks().forEach((track: MediaStreamTrack) => track.stop());
       void audioContextRef.current?.close();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -142,10 +133,7 @@ export function useVoiceRoom(testId: string) {
       else if (recordingRef.current) void finishUtterance();
       return;
     }
-    const timer = window.setTimeout(
-      () => setSecondsLeft(secondsLeft - 1),
-      1000,
-    );
+    const timer = window.setTimeout(() => setSecondsLeft(secondsLeft - 1), 1000);
     return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [secondsLeft]);
@@ -159,9 +147,7 @@ export function useVoiceRoom(testId: string) {
       if (playbackTokenRef.current !== token) return;
       setExaminerCue("idle");
       setExaminerSpeaking(false);
-      setNotice(
-        "The question is on screen, but the voice didn’t load. Use Replay question to hear it.",
-      );
+      setNotice("The question is on screen, but the voice didn’t load. Use Replay question to hear it.");
     };
     const start = () => {
       if (started || playbackTokenRef.current !== token) return;
@@ -173,9 +159,7 @@ export function useVoiceRoom(testId: string) {
       void audio.play().catch(() => {
         examinerSpeakingRef.current = false;
         setExaminerSpeaking(false);
-        setNotice(
-          "The question audio didn’t start automatically. Use Replay question to hear it.",
-        );
+        setNotice("The question audio didn’t start automatically. Use Replay question to hear it.");
       });
     };
     audio.pause();
@@ -194,19 +178,11 @@ export function useVoiceRoom(testId: string) {
 
   useEffect(() => {
     const session = test;
-    if (
-      !session ||
-      !canSpeak(session.state) ||
-      micPaused ||
-      restoredDraftAvailable ||
-      examinerCue === "buffering"
-    ) {
+    if (!session || !canSpeak(session.state) || micPaused || restoredDraftAvailable || examinerCue === "buffering") {
       stopVad();
       return;
     }
-    void startVad().catch((err: Error) =>
-      setError(err.message || "Could not open the microphone."),
-    );
+    void startVad().catch((err: Error) => setError(err.message || "Could not open the microphone."));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [test?.state, test?.testId, micPaused, restoredDraftAvailable, examinerCue]);
 
@@ -234,9 +210,7 @@ export function useVoiceRoom(testId: string) {
       connectSocket(api.realtimeSocketUrl(test.testId));
       if (!session.examinerPlaybackUrl) await startVad();
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Could not start live room",
-      );
+      setError(err instanceof Error ? err.message : "Could not start live room");
     } finally {
       liveStartRef.current = false;
       setBusy(false);
@@ -300,20 +274,12 @@ export function useVoiceRoom(testId: string) {
     setBusy(true);
     setSecondsLeft(null);
     try {
-      const next = await api.transition(
-        session.testId,
-        "COMPLETE_PART2_PREP",
-        session.revision,
-      );
+      const next = await api.transition(session.testId, "COMPLETE_PART2_PREP", session.revision);
       setTest(next);
       await postRealtimeEvent("part2_prep_completed", "system");
       await startVad();
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Could not start your speaking turn. Try preparation again.",
-      );
+      setError(err instanceof Error ? err.message : "Could not start your speaking turn. Try preparation again.");
     } finally {
       busyRef.current = false;
       setBusy(false);
@@ -364,9 +330,7 @@ export function useVoiceRoom(testId: string) {
         !submittingRef.current;
       const level = rmsFromAnalyser(analyser);
       const now = performance.now();
-      const dt = lastTickAtRef.current
-        ? Math.min(80, now - lastTickAtRef.current)
-        : 16;
+      const dt = lastTickAtRef.current ? Math.min(80, now - lastTickAtRef.current) : 16;
       lastTickAtRef.current = now;
       if (now - lastMeterAtRef.current > 80) {
         lastMeterAtRef.current = now;
@@ -405,8 +369,7 @@ export function useVoiceRoom(testId: string) {
       if (starting || holding) {
         lastVoiceAtRef.current = now;
         if (recordingRef.current) voicedMsRef.current += dt;
-        if (!recordingRef.current && !startingRef.current && starting)
-          void beginUtterance();
+        if (!recordingRef.current && !startingRef.current && starting) void beginUtterance();
       } else if (recordingRef.current) {
         const quietFor = now - lastVoiceAtRef.current;
         const budget = silenceBudget(session?.state ?? "PART1", activeTurn);
@@ -417,9 +380,7 @@ export function useVoiceRoom(testId: string) {
           const caughtSomething = voicedMsRef.current > 0;
           void cancelUtterance();
           if (caughtSomething) {
-            setNotice(
-              "We only caught a short sound. Start speaking again when you’re ready.",
-            );
+            setNotice("We only caught a short sound. Start speaking again when you’re ready.");
           }
         }
       }
@@ -438,13 +399,7 @@ export function useVoiceRoom(testId: string) {
 
   async function beginUtterance() {
     const session = testRef.current;
-    if (
-      !session ||
-      recordingRef.current ||
-      startingRef.current ||
-      !canSpeak(session.state)
-    )
-      return;
+    if (!session || recordingRef.current || startingRef.current || !canSpeak(session.state)) return;
     const current = currentTurn(session);
     if (!current) return;
     startingRef.current = true;
@@ -452,9 +407,7 @@ export function useVoiceRoom(testId: string) {
     try {
       const stream = await ensureStream();
       const mime = recorderMime();
-      const recorder = mime
-        ? new MediaRecorder(stream, { mimeType: mime })
-        : new MediaRecorder(stream);
+      const recorder = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
       chunksRef.current = [];
       recorder.ondataavailable = (event) => {
         if (event.data.size > 0) chunksRef.current.push(event.data);
@@ -522,9 +475,7 @@ export function useVoiceRoom(testId: string) {
     const current = currentTurn(session);
     if (!current || !blob || blob.size < MIN_BLOB_BYTES) {
       submittingRef.current = false;
-      setNotice(
-        "That answer was too short to save. Please try it again.",
-      );
+      setNotice("That answer was too short to save. Please try it again.");
       return false;
     }
     setBusy(true);
@@ -532,11 +483,7 @@ export function useVoiceRoom(testId: string) {
     setNotice(null);
     try {
       await saveDraft(testId, "current-turn", blob);
-      const next = await api.realtimeTurnAudio(
-        session.testId,
-        current.id,
-        blob,
-      );
+      const next = await api.realtimeTurnAudio(session.testId, current.id, blob);
       await clearDraft(testId, "current-turn");
       restoredDraftRef.current = null;
       setRestoredDraftAvailable(false);
@@ -570,12 +517,7 @@ export function useVoiceRoom(testId: string) {
       navigate(`/tests/${submitted.testId}/processing`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not submit");
-      if (!micPausedRef.current)
-        void startVad().catch(() =>
-          setError(
-            "Could not resume your microphone. Reopen the session to continue.",
-          ),
-        );
+      if (!micPausedRef.current) void startVad().catch(() => setError("Could not resume your microphone. Reopen the session to continue."));
     } finally {
       setBusy(false);
     }
@@ -594,9 +536,7 @@ export function useVoiceRoom(testId: string) {
         await audioRef.current.play();
       }
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Could not replay this question.",
-      );
+      setError(err instanceof Error ? err.message : "Could not replay this question.");
     }
   }
 
@@ -616,9 +556,7 @@ export function useVoiceRoom(testId: string) {
     try {
       setTest(await api.retakeTurn(testId, turnId));
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Could not retake this answer.",
-      );
+      setError(err instanceof Error ? err.message : "Could not retake this answer.");
     } finally {
       setBusy(false);
     }
@@ -632,20 +570,14 @@ export function useVoiceRoom(testId: string) {
     setBusy(true);
     setError(null);
     try {
-      const next = await api.realtimeTurnAudio(
-        session.testId,
-        current.id,
-        blob,
-      );
+      const next = await api.realtimeTurnAudio(session.testId, current.id, blob);
       await clearDraft(testId, "current-turn");
       restoredDraftRef.current = null;
       setRestoredDraftAvailable(false);
       setTest(next.test);
       armExaminerAudio(next.examinerPlaybackUrl ?? null);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Could not restore the recording",
-      );
+      setError(err instanceof Error ? err.message : "Could not restore the recording");
     } finally {
       setBusy(false);
     }

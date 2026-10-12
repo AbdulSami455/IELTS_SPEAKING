@@ -68,7 +68,9 @@ export function LeaderboardPage() {
             </div>
             <Segmented label="Leaderboard period" value={period} onChange={setPeriod} options={PERIODS} />
           </div>
-          <p className="text-[13px] text-muted-foreground">Best estimated band per person. Equal scores share a rank. Days reset at 00:00 UTC; weeks start Monday.</p>
+          <p className="text-[13px] text-muted-foreground">
+            Best estimated band per person. Equal scores share a rank. Days reset at 00:00 UTC; weeks start Monday.
+          </p>
           <div aria-live="polite" aria-busy={loading}>
             {loading && <LoadingState label={`Loading ${label.toLowerCase()} rankings…`} compact />}
             {error && (
@@ -91,7 +93,11 @@ export function LeaderboardPage() {
                     <strong className="text-xl tabular-nums">
                       {current.yourEntry ? `#${current.yourEntry.rank} · Band ${current.yourEntry.bestBand.toFixed(1)}` : "Not ranked yet"}
                     </strong>
-                    {!current.yourEntry && <span className="text-[13px] text-muted-foreground">Complete a test with a scored report in this period to join.</span>}
+                    {!current.yourEntry && (
+                      <span className="text-[13px] text-muted-foreground">
+                        Complete a test with a scored report in this period to join.
+                      </span>
+                    )}
                   </div>
                   <Badge>
                     {current.totalParticipants} {current.totalParticipants === 1 ? "participant" : "participants"}
@@ -129,7 +135,9 @@ export function LeaderboardPage() {
                             <span className="mr-2 font-medium text-foreground break-words">{entry.displayName}</span>
                             {entry.isYou && <Badge tone="accent">You</Badge>}
                           </TableCell>
-                          <TableCell className="px-3 py-3 text-right text-base font-semibold text-primary tabular-nums">{entry.bestBand.toFixed(1)}</TableCell>
+                          <TableCell className="px-3 py-3 text-right text-base font-semibold text-primary tabular-nums">
+                            {entry.bestBand.toFixed(1)}
+                          </TableCell>
                           <TableCell className="px-3 py-3 text-right text-subtle tabular-nums">{entry.testsCompleted}</TableCell>
                         </TableRow>
                       ))}
@@ -138,7 +146,8 @@ export function LeaderboardPage() {
                 )}
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <p className="text-[13px] text-muted-foreground">
-                    Showing up to 50 learners · Updated {new Date(current.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    Showing up to 50 learners · Updated{" "}
+                    {new Date(current.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                   </p>
                   <Button variant="ghost" size="sm" onClick={() => setRevision((value) => value + 1)}>
                     Refresh rankings
@@ -149,7 +158,8 @@ export function LeaderboardPage() {
           </div>
         </Card>
         <p className="text-[13px] text-muted-foreground">
-          Rankings include completed, conclusive reports from the current scoring version. These are practice estimates, not official IELTS results.
+          Rankings include completed, conclusive reports from the current scoring version. These are practice estimates, not official IELTS
+          results.
         </p>
       </div>
     </AppShell>

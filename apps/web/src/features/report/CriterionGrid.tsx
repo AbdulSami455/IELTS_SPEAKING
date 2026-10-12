@@ -37,7 +37,9 @@ export function CriterionGrid({ criteria }: { criteria: CriterionScore[] }) {
               <div className="grid gap-2 text-[13px]">
                 {item.evidence.map((evidence, index) => (
                   <div key={index} className="grid gap-1.5">
-                    {evidence.quote && <blockquote className="border-l-[3px] border-input pl-3 text-foreground italic">“{evidence.quote}”</blockquote>}
+                    {evidence.quote && (
+                      <blockquote className="border-l-[3px] border-input pl-3 text-foreground italic">“{evidence.quote}”</blockquote>
+                    )}
                     {evidence.note && <p className="text-muted-foreground">{evidence.note}</p>}
                   </div>
                 ))}
