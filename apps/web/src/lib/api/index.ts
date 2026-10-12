@@ -1,4 +1,4 @@
-import { API_BASE_URL, ApiError, fetchText, logout, request, wsUrl } from "./client";
+import { API_BASE_URL, ApiError, fetchText, logout, onConsentRequired, request, wsUrl } from "./client";
 import type {
   Leaderboard,
   LeaderboardPeriod,
@@ -102,9 +102,13 @@ export const api = {
   patchAction: (id: string, payload: ActionPatch) =>
     request(`/practice-actions/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
   deleteTest: (id: string) => request(`/tests/${id}`, { method: "DELETE" }),
+  logoutAndLeave: async () => {
+    await logout();
+    window.location.href = "/login";
+  },
 };
 
-export { ApiError, logout };
+export { ApiError, logout, onConsentRequired };
 export type {
   ActionPatch,
   CriterionScore,

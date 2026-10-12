@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
+import { Check, Info } from "lucide-react";
 import { ApiError, api } from "../../lib/api";
 import { useDocumentTitle } from "../../lib/useDocumentTitle";
 import { AppShell } from "../../components/layout/AppShell";
-import { Alert, Spinner } from "../../components/ui";
-import { Icon } from "../../components/ui/Icon";
+import { Alert, Button, Card, Spinner } from "../../components/studio";
+import { Progress, ProgressIndicator, ProgressTrack } from "@/components/ui/progress";
+import { cn } from "@/lib/utils";
 
 const STAGES = [
   { id: "validating_audio", label: "Checking recordings" },
@@ -74,33 +76,50 @@ export function ProcessingPage() {
 
   return (
     <AppShell>
-      <section className="card stack workflow-card" aria-labelledby="processing-title">
-        <div className="section-head">
+      <Card className="mx-auto grid w-full max-w-[680px] gap-5 md:p-8" aria-labelledby="processing-title">
+        <div className="grid gap-1.5">
           <p className="kicker">Results &amp; feedback</p>
           <h1 id="processing-title">{failed ? "We couldn’t score this test" : "Preparing your report"}</h1>
-          {!failed && (
-            <p className="muted">This usually takes a minute or two. We’ll open your report as soon as it’s ready.</p>
-          )}
+          {!failed && <p className="text-muted-foreground">This usually takes a minute or two. We’ll open your report as soon as it’s ready.</p>}
         </div>
         {!failed && (
-          <div className="stack-sm">
-            <progress className="progress-track" value={progress} max={100} aria-label="Scoring progress" />
-            <p className="caption" aria-live="polite">
+          <div className="grid gap-2">
+            <Progress value={progress} aria-label="Scoring progress">
+              <ProgressTrack className="h-2 bg-border">
+                <ProgressIndicator className="bg-indigo-vivid" />
+              </ProgressTrack>
+            </Progress>
+            <p className="text-[13px] text-muted-foreground" aria-live="polite">
               {activeIndex === -1 ? "Waiting to start…" : `${progress}% complete`}
             </p>
           </div>
         )}
-        <ol className="stage-list">
+        <ol className="grid gap-1">
           {STAGES.map((item, index) => {
             const done = failed ? index < activeIndex : activeIndex !== -1 && index < activeIndex;
             const active = !failed && index === activeIndex;
             return (
-              <li key={item.id} className={done ? "done" : active ? "active" : ""} aria-current={active ? "step" : undefined}>
-                <span className="stage-marker" aria-hidden="true">
-                  {done ? <Icon name="check" size={14} /> : active ? <Spinner size={14} /> : null}
+              <li
+                key={item.id}
+                className={cn(
+                  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-muted-foreground transition-colors",
+                  done && "text-subtle",
+                  active && "bg-indigo-soft font-medium text-foreground",
+                )}
+                aria-current={active ? "step" : undefined}
+              >
+                <span
+                  className={cn(
+                    "inline-grid size-6 shrink-0 place-items-center rounded-full border-[1.5px] border-input text-primary-foreground",
+                    done && "border-primary bg-primary",
+                    active && "border-0",
+                  )}
+                  aria-hidden="true"
+                >
+                  {done ? <Check className="size-3.5" /> : active ? <Spinner size={16} /> : null}
                 </span>
                 {item.label}
-                <span className="visually-hidden">{done ? " — done" : active ? " — in progress" : ""}</span>
+                <span className="sr-only">{done ? " — done" : active ? " — in progress" : ""}</span>
               </li>
             );
           })}
@@ -111,17 +130,15 @@ export function ProcessingPage() {
           </Alert>
         )}
         {failed ? (
-          <div className="row workflow-actions">
-            <Link to="/" className="btn btn--primary">
-              Back to overview
-            </Link>
+          <div className="flex flex-wrap gap-3">
+            <Button to="/">Back to overview</Button>
           </div>
         ) : (
-          <p className="caption tip">
-            <Icon name="info" size={16} /> You can leave this page — scoring continues, and the report will appear under Recent practice.
+          <p className="flex items-start gap-2 border-t border-border pt-4 text-[13px] text-muted-foreground">
+            <Info className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" /> You can leave this page — scoring continues, and the report will appear under Recent practice.
           </p>
         )}
-      </section>
+      </Card>
     </AppShell>
   );
 }

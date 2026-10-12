@@ -1,7 +1,7 @@
 // One source of truth for the four IELTS speaking criteria. Colors are a
 // validated categorical palette (CVD-safe, >= 3:1 on white) and follow the
 // criterion everywhere it appears: charts, skill bars, and report cards.
-export const OVERALL_COLOR = "#00856f";
+export const OVERALL_COLOR = "#090335";
 
 export const CRITERIA = [
   {

@@ -15,10 +15,10 @@ const BARGE_IN_MS = 280;
 export type ConnectionState = "idle" | "connecting" | "live" | "offline";
 
 function silenceBudget(state: string, turn?: Turn): number {
-  if (turn?.isIntro) return 1600;
-  if (state === "PART2_SPEAK") return 8000;
-  if (state === "PART3") return 4500;
-  return 3200;
+  if (turn?.isIntro) return 1200;
+  if (state === "PART2_SPEAK") return 6000;
+  if (state === "PART3") return 3000;
+  return 2200;
 }
 
 function minVoicedMs(turn?: Turn): number {
@@ -53,6 +53,7 @@ export function useVoiceRoom(testId: string) {
   // calmly instead of as errors.
   const [notice, setNotice] = useState<string | null>(null);
   const [examinerUrl, setExaminerUrl] = useState<string | null>(null);
+  const [examinerCue, setExaminerCue] = useState<"idle" | "buffering">("idle");
   const [micLevel, setMicLevel] = useState(0);
   const [restoredDraftAvailable, setRestoredDraftAvailable] = useState(false);
 
@@ -79,6 +80,8 @@ export function useVoiceRoom(testId: string) {
   const bargeMsRef = useRef(0);
   const restoredDraftRef = useRef<Blob | null>(null);
   const pingResolverRef = useRef<(() => void) | null>(null);
+  const playbackTokenRef = useRef(0);
+  const liveStartRef = useRef(false);
 
   const turn = test ? currentTurn(test) : undefined;
 
@@ -148,20 +151,56 @@ export function useVoiceRoom(testId: string) {
   }, [secondsLeft]);
 
   useEffect(() => {
-    if (!examinerUrl || !audioRef.current) return;
-    audioRef.current.src = examinerUrl;
-    void audioRef.current
-      .play()
-      .catch(() =>
+    const audio = audioRef.current;
+    if (!examinerUrl || !audio) return;
+    const token = ++playbackTokenRef.current;
+    let started = false;
+    const giveUp = () => {
+      if (playbackTokenRef.current !== token) return;
+      setExaminerCue("idle");
+      setExaminerSpeaking(false);
+      setNotice(
+        "The question is on screen, but the voice didn’t load. Use Replay question to hear it.",
+      );
+    };
+    const start = () => {
+      if (started || playbackTokenRef.current !== token) return;
+      started = true;
+      window.clearTimeout(timer);
+      examinerSpeakingRef.current = true;
+      setExaminerSpeaking(true);
+      setExaminerCue("idle");
+      void audio.play().catch(() => {
+        examinerSpeakingRef.current = false;
+        setExaminerSpeaking(false);
         setNotice(
           "The question audio didn’t start automatically. Use Replay question to hear it.",
-        ),
-      );
+        );
+      });
+    };
+    audio.pause();
+    const timer = window.setTimeout(giveUp, 12000);
+    audio.addEventListener("canplay", start, { once: true });
+    audio.addEventListener("error", giveUp, { once: true });
+    audio.src = examinerUrl;
+    if (audio.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) start();
+    return () => {
+      window.clearTimeout(timer);
+      audio.removeEventListener("canplay", start);
+      audio.removeEventListener("error", giveUp);
+      audio.pause();
+    };
   }, [examinerUrl]);
 
   useEffect(() => {
     const session = test;
-    if (!session || !canSpeak(session.state) || micPaused || restoredDraftAvailable) {
+    if (
+      !session ||
+      !canSpeak(session.state) ||
+      micPaused ||
+      restoredDraftAvailable ||
+      examinerCue === "buffering"
+    ) {
       stopVad();
       return;
     }
@@ -169,23 +208,37 @@ export function useVoiceRoom(testId: string) {
       setError(err.message || "Could not open the microphone."),
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [test?.state, test?.testId, micPaused, restoredDraftAvailable]);
+  }, [test?.state, test?.testId, micPaused, restoredDraftAvailable, examinerCue]);
+
+  function armExaminerAudio(url: string | null) {
+    if (!url) {
+      playbackTokenRef.current += 1;
+      audioRef.current?.pause();
+      setExaminerCue("idle");
+      setExaminerUrl(null);
+      return;
+    }
+    setExaminerCue("buffering");
+    setExaminerUrl(url);
+  }
 
   async function beginLiveRoom() {
-    if (!test) return;
+    if (!test || liveStartRef.current || busyRef.current) return;
+    liveStartRef.current = true;
     setBusy(true);
     setError(null);
     try {
       const session = await api.createRealtimeSession(test.testId);
       setTest(session.test);
-      setExaminerUrl(session.examinerPlaybackUrl ?? null);
+      armExaminerAudio(session.examinerPlaybackUrl ?? null);
       connectSocket(api.realtimeSocketUrl(test.testId));
-      await startVad();
+      if (!session.examinerPlaybackUrl) await startVad();
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Could not start live room",
       );
     } finally {
+      liveStartRef.current = false;
       setBusy(false);
     }
   }
@@ -305,6 +358,7 @@ export function useVoiceRoom(testId: string) {
       const roomOpen =
         Boolean(session && canSpeak(session.state)) &&
         !busyRef.current &&
+        examinerCue !== "buffering" &&
         !micPausedRef.current &&
         !restoredDraftRef.current &&
         !submittingRef.current;
@@ -488,7 +542,7 @@ export function useVoiceRoom(testId: string) {
       setRestoredDraftAvailable(false);
       setTest(next.test);
       testRef.current = next.test;
-      setExaminerUrl(next.examinerPlaybackUrl ?? null);
+      armExaminerAudio(next.examinerPlaybackUrl ?? null);
       return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not send audio");
@@ -587,7 +641,7 @@ export function useVoiceRoom(testId: string) {
       restoredDraftRef.current = null;
       setRestoredDraftAvailable(false);
       setTest(next.test);
-      setExaminerUrl(next.examinerPlaybackUrl ?? null);
+      armExaminerAudio(next.examinerPlaybackUrl ?? null);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Could not restore the recording",
@@ -636,6 +690,7 @@ export function useVoiceRoom(testId: string) {
     micLevel,
     restoredDraftAvailable,
     turn,
+    examinerCue,
     audioRef,
     setMuted,
     setMicPaused,

@@ -7,6 +7,7 @@ export class ApiError extends Error {
   constructor(
     message: string,
     public code: string,
+    public status: number = 0,
   ) {
     super(message);
     this.name = "ApiError";
@@ -14,6 +15,13 @@ export class ApiError extends Error {
 }
 
 const ALLOWED_MIME_PREFIXES = ["audio/"];
+const CONSENT_EVENT = "ielts:consent-required";
+
+/** Subscribe to CONSENT_REQUIRED responses (policy version changed mid-session). */
+export function onConsentRequired(listener: () => void): () => void {
+  window.addEventListener(CONSENT_EVENT, listener);
+  return () => window.removeEventListener(CONSENT_EVENT, listener);
+}
 
 async function refreshSession(): Promise<boolean> {
   if (refreshPromise) return refreshPromise;
@@ -33,12 +41,21 @@ function canRefresh(path: string): boolean {
   return !path.startsWith("/auth/");
 }
 
+async function safeFetch(input: string, init: RequestInit): Promise<Response> {
+  try {
+    return await fetch(input, init);
+  } catch {
+    // fetch only rejects for network-level failures (offline, DNS, CORS, aborted).
+    throw new ApiError("We couldn’t reach the server. Check your connection and try again.", "NETWORK");
+  }
+}
+
 export async function request<T>(path: string, init: RequestInit = {}, retried = false): Promise<T> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(init.headers as Record<string, string> | undefined),
   };
-  const response = await fetch(`${API_BASE}${path}`, {
+  const response = await safeFetch(`${API_BASE}${path}`, {
     ...init,
     headers,
     credentials: "include",
@@ -48,16 +65,22 @@ export async function request<T>(path: string, init: RequestInit = {}, retried =
   }
   if (response.status === 204) return undefined as T;
   if (!response.headers.get("content-type")?.includes("application/json")) {
-    throw new ApiError("The service is temporarily unavailable. Please try again.", "INVALID_RESPONSE");
+    throw new ApiError("The service is temporarily unavailable. Please try again.", "INVALID_RESPONSE", response.status);
   }
-  const body = await response.json();
+  let body: { data?: T; error?: { message?: string; code?: string } };
+  try {
+    body = await response.json();
+  } catch {
+    throw new ApiError("The service returned an unreadable response. Please try again.", "INVALID_RESPONSE", response.status);
+  }
   if (!response.ok) {
     let errorMessage = body.error?.message ?? "Request failed";
     const code = body.error?.code ?? "ERROR";
     if (response.status === 401 && code !== "AUTH_REQUIRED") {
       errorMessage = "Session expired. Please sign in again.";
     }
-    throw new ApiError(errorMessage, code);
+    if (code === "CONSENT_REQUIRED") window.dispatchEvent(new CustomEvent(CONSENT_EVENT));
+    throw new ApiError(errorMessage, code, response.status);
   }
   return body.data as T;
 }
@@ -71,11 +94,11 @@ export function wsUrl(path: string): string {
 }
 
 export async function fetchText(path: string): Promise<string> {
-  let response = await fetch(`${API_BASE}${path}`, { credentials: "include" });
+  let response = await safeFetch(`${API_BASE}${path}`, { credentials: "include" });
   if (response.status === 401 && (await refreshSession())) {
-    response = await fetch(`${API_BASE}${path}`, { credentials: "include" });
+    response = await safeFetch(`${API_BASE}${path}`, { credentials: "include" });
   }
-  if (!response.ok) throw new ApiError("Could not download the report. Please try again.", "EXPORT_FAILED");
+  if (!response.ok) throw new ApiError("Could not download the report. Please try again.", "EXPORT_FAILED", response.status);
   return response.text();
 }
 

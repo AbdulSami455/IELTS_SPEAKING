@@ -1,10 +1,11 @@
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import type { CSSProperties } from "react";
+import { Download, RefreshCw } from "lucide-react";
 import { api, type Report } from "../../lib/api";
 import { bandDescriptor, bandText, confidenceText } from "../../lib/format";
-import { Alert, Badge, Button } from "../../components/ui";
-import { Icon } from "../../components/ui/Icon";
+import { Alert, Badge, Button } from "../../components/studio";
+import { cn } from "@/lib/utils";
 
 export function BandHero({ report }: { report: Report }) {
   const navigate = useNavigate();
@@ -49,49 +50,54 @@ export function BandHero({ report }: { report: Report }) {
   const descriptor = bandDescriptor(band);
 
   return (
-    <section className="report-hero card" aria-labelledby="band-heading">
+    <section
+      className="grid items-center gap-6 rounded-lg border border-border bg-blush p-6 text-center md:grid-cols-[200px_minmax(0,1fr)] md:gap-9 md:p-8 md:text-left"
+      aria-labelledby="band-heading"
+    >
       <div
-        className={`score-ring${band === undefined ? " score-ring--empty" : ""}`}
+        className="score-ring size-[156px] justify-self-center md:size-[188px]"
         style={{ "--score": ((band ?? 0) / 9) * 100 } as CSSProperties}
         role="img"
         aria-label={band === undefined ? "No overall band for this test" : `Overall band ${bandText(band)} out of 9`}
       >
-        <div>
-          <span className="band-display">{bandText(band)}</span>
-          <span className="score-caption">{band === undefined ? "No band" : "out of 9"}</span>
+        <div className="grid size-full place-content-center rounded-full bg-card">
+          <span className={cn("text-[50px] leading-none font-semibold tracking-tight tabular-nums md:text-[60px]", band === undefined ? "text-muted-foreground" : "text-foreground")}>
+            {bandText(band)}
+          </span>
+          <span className="mt-1.5 text-xs font-medium text-muted-foreground">{band === undefined ? "No band" : "out of 9"}</span>
         </div>
       </div>
-      <div className="stack">
-        <div className="row hero-badges">
+      <div className="grid gap-4 max-md:justify-items-center">
+        <div className="flex flex-wrap gap-2 max-md:justify-center">
           {descriptor && <Badge tone="accent">{descriptor}</Badge>}
           {report.isInconclusive && <Badge tone="warning">Inconclusive</Badge>}
           <Badge>{confidenceText(report.confidenceLabel)}</Badge>
         </div>
-        <h2 id="band-heading">
+        <h2 id="band-heading" className="text-[clamp(22px,2.6vw,28px)]">
           {report.isInconclusive ? "Let’s get a clearer picture." : `Overall band ${bandText(band)} for this test`}
         </h2>
-        <p>
+        <p className="max-w-[62ch] text-subtle">
           {report.isInconclusive
             ? "There wasn’t enough reliable evidence for an overall band. The reasons are below — one usable test is enough, so you don’t need more tests to unlock a score."
             : "A fair practice estimate, rounded to the nearest half band. Your progress page tracks how it compares with your other tests."}
         </p>
         {report.isInconclusive && (
-          <div className="stack-sm">
+          <div className="grid gap-3 max-md:justify-items-center">
             {(report.scoreReadiness?.reasons.length ?? 0) > 0 && (
-              <ul className="list">
+              <ul className="grid gap-1.5 pl-5 text-left text-sm text-subtle [list-style:disc] marker:text-indigo-vivid">
                 {report.scoreReadiness?.reasons.map((reason) => (
                   <li key={reason}>{reason}</li>
                 ))}
               </ul>
             )}
-            <Button variant="secondary" onClick={reassess} loading={reassessing} className="self-start">
-              <Icon name="refresh" size={16} /> Reassess saved recordings
+            <Button variant="secondary" onClick={reassess} loading={reassessing} className="justify-self-start">
+              <RefreshCw /> Reassess saved recordings
             </Button>
           </div>
         )}
-        <div className="row no-print">
-          <Button variant="primary" size="sm" onClick={exportReport} loading={exporting}>
-            {!exporting && <Icon name="download" size={16} />}
+        <div className="no-print flex flex-wrap gap-2 max-md:justify-center">
+          <Button size="sm" onClick={exportReport} loading={exporting}>
+            {!exporting && <Download />}
             Download report
           </Button>
           <Button variant="secondary" size="sm" onClick={() => window.print()}>
@@ -99,7 +105,7 @@ export function BandHero({ report }: { report: Report }) {
           </Button>
         </div>
         {error && <Alert tone="error">{error}</Alert>}
-        <p className="caption">{report.disclaimer}</p>
+        <p className="text-[13px] text-muted-foreground">{report.disclaimer}</p>
       </div>
     </section>
   );

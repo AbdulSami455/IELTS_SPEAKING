@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { ArrowRight, Check, Headphones, Mic, RefreshCw } from "lucide-react";
 import { api } from "../../lib/api";
 import { recorderMime } from "../../lib/audio";
 import { useDocumentTitle } from "../../lib/useDocumentTitle";
 import { AppShell } from "../../components/layout/AppShell";
-import { Alert, AudioPlayer, Button, Spinner } from "../../components/ui";
-import { Icon } from "../../components/ui/Icon";
+import { Alert, AudioPlayer, Button, Card, Spinner } from "../../components/studio";
+import { Progress, ProgressIndicator, ProgressTrack } from "@/components/ui/progress";
+import { cn } from "@/lib/utils";
 
 const SAMPLE_MS = 4000;
 // Matches the silence threshold the scoring pipeline uses per frame.
@@ -39,9 +41,12 @@ export function DeviceCheckPage() {
   useDocumentTitle("Microphone check");
 
   useEffect(() => () => cleanupRef.current?.(), []);
-  useEffect(() => () => {
-    if (playbackUrl) URL.revokeObjectURL(playbackUrl);
-  }, [playbackUrl]);
+  useEffect(
+    () => () => {
+      if (playbackUrl) URL.revokeObjectURL(playbackUrl);
+    },
+    [playbackUrl],
+  );
 
   async function run() {
     if (phase === "requesting" || phase === "recording" || phase === "checking") return;
@@ -114,9 +119,7 @@ export function DeviceCheckPage() {
       setPhase("checking");
       setPlaybackUrl(URL.createObjectURL(blob));
 
-      const silenceRatio = frames.length
-        ? frames.filter((value) => value < SILENT_FRAME_RMS).length / frames.length
-        : 1;
+      const silenceRatio = frames.length ? frames.filter((value) => value < SILENT_FRAME_RMS).length / frames.length : 1;
       const clippingRatio = total ? clipped / total : 0;
       await api.deviceCheck(testId, {
         sampleDurationMs: SAMPLE_MS,
@@ -140,23 +143,29 @@ export function DeviceCheckPage() {
 
   return (
     <AppShell>
-      <section className="card stack workflow-card" aria-labelledby="mic-title">
-        <div className="section-head">
+      <Card className="mx-auto grid w-full max-w-[680px] gap-5 md:p-8" aria-labelledby="mic-title">
+        <div className="grid gap-1.5">
           <p className="kicker">Before you begin</p>
           <h1 id="mic-title">Microphone check</h1>
-          <p className="muted">
-            A quick 4-second recording makes sure the examiner can hear you clearly.
-          </p>
+          <p className="text-muted-foreground">A quick 4-second recording makes sure the examiner can hear you clearly.</p>
         </div>
 
-        <ol className="check-steps" aria-label="Microphone check steps">
+        <ol className="flex flex-wrap gap-x-5 gap-y-2 text-[13px] font-medium text-muted-foreground" aria-label="Microphone check steps">
           {["Allow microphone", "Read the sentence", "Listen back"].map((label, index) => {
             const n = index + 1;
-            const state = n < step || phase === "passed" ? "done" : n === step ? "on" : "";
+            const state = n < step || phase === "passed" ? "done" : n === step ? "on" : "todo";
             return (
-              <li key={label} className={state} aria-current={state === "on" ? "step" : undefined}>
-                <span className="step-marker" aria-hidden="true">
-                  {state === "done" ? <Icon name="check" size={14} /> : n}
+              <li key={label} className={cn("inline-flex items-center gap-2", state === "on" && "text-foreground", state === "done" && "text-subtle")} aria-current={state === "on" ? "step" : undefined}>
+                <span
+                  className={cn(
+                    "inline-grid size-[26px] place-items-center rounded-full border-[1.5px] text-xs font-semibold",
+                    state === "done" && "border-primary bg-primary text-primary-foreground",
+                    state === "on" && "border-primary text-primary ring-4 ring-indigo-soft",
+                    state === "todo" && "border-input",
+                  )}
+                  aria-hidden="true"
+                >
+                  {state === "done" ? <Check className="size-3.5" /> : n}
                 </span>
                 {label}
               </li>
@@ -164,15 +173,21 @@ export function DeviceCheckPage() {
           })}
         </ol>
 
-        <div className={`mic-sample${phase === "recording" ? " is-recording" : ""}`}>
+        <div className={cn("grid gap-3 rounded-lg border border-border bg-background p-5 transition-colors", phase === "recording" && "border-destructive/40 bg-destructive/5")}>
           <span className="kicker">Read this aloud when recording starts</span>
-          <p className="mic-sentence">“{SAMPLE_SENTENCE}”</p>
-          <div className="level-meter" aria-hidden="true">
-            {Array.from({ length: 24 }, (_, index) => (
-              <span key={index} className={index / 24 < meterLevel ? "on" : ""} />
-            ))}
+          <p className="font-serif text-xl leading-snug text-foreground">“{SAMPLE_SENTENCE}”</p>
+          <div className="grid h-3 grid-cols-[repeat(24,minmax(0,1fr))] gap-[3px]" aria-hidden="true">
+            {Array.from({ length: 24 }, (_, index) => {
+              const on = index / 24 < meterLevel;
+              return (
+                <span
+                  key={index}
+                  className={cn("rounded-[2px] bg-border transition-colors duration-75", on && (index >= 22 ? "bg-destructive" : index >= 18 ? "bg-gold" : "bg-indigo-vivid"))}
+                />
+              );
+            })}
           </div>
-          <div className="mic-sample-status" role="status" aria-live="polite">
+          <div className="flex min-h-6 items-center gap-2 text-sm text-subtle" role="status" aria-live="polite">
             {phase === "requesting" && (
               <>
                 <Spinner size={16} /> Waiting for microphone permission…
@@ -180,7 +195,7 @@ export function DeviceCheckPage() {
             )}
             {phase === "recording" && (
               <>
-                <span className="rec-dot" aria-hidden="true" /> Recording — {secondsLeft}s left
+                <span className="animate-pulse-dot size-2.5 rounded-full bg-destructive" aria-hidden="true" /> Recording — {secondsLeft}s left
               </>
             )}
             {phase === "checking" && (
@@ -192,7 +207,11 @@ export function DeviceCheckPage() {
             {phase === "passed" && <>Sample recorded.</>}
           </div>
           {phase === "recording" && (
-            <progress className="progress-track" value={elapsed} max={SAMPLE_MS} aria-label="Recording progress" />
+            <Progress value={(elapsed / SAMPLE_MS) * 100} aria-label="Recording progress">
+              <ProgressTrack className="h-2 bg-border">
+                <ProgressIndicator className="bg-indigo-vivid" />
+              </ProgressTrack>
+            </Progress>
           )}
         </div>
 
@@ -206,33 +225,28 @@ export function DeviceCheckPage() {
         {playbackUrl && phase === "passed" && <AudioPlayer src={playbackUrl} label="Your sample" />}
         {error && <Alert tone="error">{error}</Alert>}
 
-        <div className="row workflow-actions">
+        <div className="flex flex-wrap gap-3 max-sm:[&>*]:w-full">
           {phase === "passed" ? (
             <>
               <Button size="lg" onClick={() => navigate(`/tests/${testId}`)}>
-                Continue to the test <Icon name="arrow" size={18} />
+                Continue to the test <ArrowRight />
               </Button>
               <Button variant="secondary" size="lg" onClick={run}>
-                <Icon name="refresh" size={16} /> Record again
+                <RefreshCw /> Record again
               </Button>
             </>
           ) : (
-            <Button
-              size="lg"
-              onClick={run}
-              loading={phase === "requesting" || phase === "checking"}
-              disabled={phase === "recording"}
-            >
-              <Icon name="mic" size={18} />
+            <Button size="lg" onClick={run} loading={phase === "requesting" || phase === "checking"} disabled={phase === "recording"}>
+              {phase !== "requesting" && phase !== "checking" && <Mic />}
               {phase === "recording" ? "Recording…" : phase === "failed" ? "Try again" : "Start 4-second check"}
             </Button>
           )}
         </div>
 
-        <p className="caption tip">
-          <Icon name="headphones" size={16} /> Headphones help: they stop the examiner’s voice from being picked up as your answer.
+        <p className="flex items-start gap-2 border-t border-border pt-4 text-[13px] text-muted-foreground">
+          <Headphones className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" /> Headphones help: they stop the examiner’s voice from being picked up as your answer.
         </p>
-      </section>
+      </Card>
     </AppShell>
   );
 }

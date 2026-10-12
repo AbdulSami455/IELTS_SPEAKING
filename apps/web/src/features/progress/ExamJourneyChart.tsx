@@ -1,10 +1,14 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { ChevronDown } from "lucide-react";
 import type { ExamHistoryOverview } from "../../lib/api/types";
 import { CRITERIA, OVERALL_COLOR } from "../../lib/criteria";
 import { bandDomain, bandText, criterionLabel, formatDate } from "../../lib/format";
-import { Icon } from "../../components/ui/Icon";
+import { Card, SectionHeading, TextLink } from "../../components/studio";
 import { useElementWidth } from "../../lib/useElementWidth";
+import { ChartEmpty } from "./ProgressChart";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { cn } from "@/lib/utils";
 
 const SERIES = [
   { key: "overall", label: "Overall", color: OVERALL_COLOR },
@@ -25,7 +29,7 @@ function deltaText(delta: number) {
 }
 
 function deltaClass(delta: number) {
-  return delta > 0 ? "delta-up" : delta < 0 ? "delta-down" : "delta-flat";
+  return delta > 0 ? "font-semibold text-success" : delta < 0 ? "font-semibold text-destructive" : "text-muted-foreground";
 }
 
 const LEFT = 36;
@@ -33,35 +37,19 @@ const TOP = 16;
 const BOTTOM = 204;
 const HEIGHT = 236;
 
-export function ExamJourneyChart({
-  examHistory,
-  target,
-  compact = false,
-}: {
-  examHistory: ExamHistoryOverview;
-  target?: number;
-  compact?: boolean;
-}) {
+export function ExamJourneyChart({ examHistory, target, compact = false }: { examHistory: ExamHistoryOverview; target?: number; compact?: boolean }) {
   const exams = examHistory.exams ?? [];
-  const [visible, setVisible] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(SERIES.map((s) => [s.key, true])),
-  );
+  const [visible, setVisible] = useState<Record<string, boolean>>(() => Object.fromEntries(SERIES.map((s) => [s.key, true])));
   const [hovered, setHovered] = useState<number | null>(null);
   const [frameRef, width] = useElementWidth<HTMLDivElement>(670);
   const RIGHT = width - 18;
 
   const [low, high] = useMemo(
-    () =>
-      bandDomain([
-        target,
-        ...exams.flatMap((exam) => SERIES.map((series) => bandForExam(exam, series.key))),
-      ]),
+    () => bandDomain([target, ...exams.flatMap((exam) => SERIES.map((series) => bandForExam(exam, series.key)))]),
     [exams, target],
   );
-  const x = (index: number) =>
-    exams.length === 1 ? (LEFT + RIGHT) / 2 : LEFT + (index * (RIGHT - LEFT)) / (exams.length - 1);
-  const y = (band: number) =>
-    BOTTOM - ((Math.max(low, Math.min(high, band)) - low) / (high - low)) * (BOTTOM - TOP);
+  const x = (index: number) => (exams.length === 1 ? (LEFT + RIGHT) / 2 : LEFT + (index * (RIGHT - LEFT)) / (exams.length - 1));
+  const y = (band: number) => BOTTOM - ((Math.max(low, Math.min(high, band)) - low) / (high - low)) * (BOTTOM - TOP);
   const ticks = Array.from({ length: high - low + 1 }, (_, i) => low + i);
 
   const paths = SERIES.filter((s) => visible[s.key]).map((series) => {
@@ -76,71 +64,73 @@ export function ExamJourneyChart({
   const hoveredExam = hovered !== null ? exams[hovered] : null;
   // Label every exam when there's room; otherwise just first, last, and hovered.
   const labelEvery = exams.length <= Math.max(2, Math.floor((RIGHT - LEFT) / 64) + 1);
+  const edge = hovered === 0 ? "start" : hovered === exams.length - 1 ? "end" : "middle";
 
   if (!exams.length) {
     return (
-      <section className="card chart-card stack" aria-labelledby="journey-title">
-        <div>
-          <p className="kicker">Every exam at a glance</p>
-          <h2 id="journey-title">Skill trends across tests</h2>
-        </div>
-        <div className="chart-empty">
-          <span className="icon-tile">
-            <Icon name="chart" size={24} />
-          </span>
-          <h3>Complete a scored test to unlock this chart</h3>
-          <p>Each line tracks your overall band and the four speaking criteria, test by test.</p>
-        </div>
-      </section>
+      <Card className="grid gap-4" aria-labelledby="journey-title">
+        <SectionHeading kicker="Every exam at a glance" title="Skill trends across tests" titleId="journey-title" />
+        <ChartEmpty title="Complete a scored test to unlock this chart">Each line tracks your overall band and the four speaking criteria, test by test.</ChartEmpty>
+      </Card>
     );
   }
 
   return (
-    <section className="card chart-card stack exam-journey-card" aria-labelledby="journey-title">
-      <div className="row between wrap-gap">
-        <div>
-          <p className="kicker">Every exam at a glance</p>
-          <h2 id="journey-title">Skill trends across tests</h2>
-          <p className="caption">
+    <Card className="grid gap-4" aria-labelledby="journey-title">
+      <SectionHeading
+        kicker="Every exam at a glance"
+        title="Skill trends across tests"
+        titleId="journey-title"
+        lead={
+          <>
             {examHistory.scoredExamCount} scored test{examHistory.scoredExamCount === 1 ? "" : "s"}
             {examHistory.lifetimeOverallBand != null && (
               <>
-                {" "}· lifetime average <strong>{bandText(examHistory.lifetimeOverallBand)}</strong>
+                {" "}
+                · lifetime average <strong className="text-foreground">{bandText(examHistory.lifetimeOverallBand)}</strong>
               </>
             )}
-          </p>
-        </div>
-        {compact && (
-          <Link className="text-link" to="/progress">
-            Full progress <Icon name="arrow" size={16} />
-          </Link>
-        )}
-      </div>
+          </>
+        }
+        action={
+          compact && (
+            <TextLink to="/progress" size="sm">
+              Full progress
+            </TextLink>
+          )
+        }
+      />
 
-      <div className="exam-series-legend" role="group" aria-label="Show or hide lines">
-        {SERIES.map((series) => (
-          <button
-            key={series.key}
-            type="button"
-            className={`series-pill${visible[series.key] ? " on" : ""}`}
-            aria-pressed={visible[series.key]}
-            onClick={() => setVisible((prev) => ({ ...prev, [series.key]: !prev[series.key] }))}
-          >
-            <i style={{ background: series.color }} aria-hidden="true" />
-            {series.label}
-          </button>
-        ))}
+      <div className="flex flex-wrap gap-2" role="group" aria-label="Show or hide lines">
+        {SERIES.map((series) => {
+          const on = visible[series.key];
+          return (
+            <button
+              key={series.key}
+              type="button"
+              aria-pressed={on}
+              onClick={() => setVisible((prev) => ({ ...prev, [series.key]: !prev[series.key] }))}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors",
+                on ? "border-transparent bg-accent text-foreground" : "border-border bg-card text-muted-foreground line-through decoration-muted-foreground/60",
+              )}
+            >
+              <i className={cn("inline-block size-2.5 rounded-full", !on && "opacity-30")} style={{ background: series.color }} aria-hidden="true" />
+              {series.label}
+            </button>
+          );
+        })}
         {target !== undefined && (
-          <span className="series-pill series-pill--static">
+          <span className="inline-flex items-center gap-1.5 rounded-md border border-dashed border-input px-2.5 py-1 text-xs font-medium text-muted-foreground">
             <i className="legend-dash" aria-hidden="true" />
             Target {bandText(target)}
           </span>
         )}
       </div>
 
-      <div className="chart-frame" ref={frameRef} onMouseLeave={() => setHovered(null)}>
+      <div className="relative w-full overflow-hidden" ref={frameRef} onMouseLeave={() => setHovered(null)}>
         <svg
-          className="band-chart"
+          className="block w-full"
           viewBox={`0 0 ${width} ${HEIGHT}`}
           width={width}
           height={HEIGHT}
@@ -155,23 +145,11 @@ export function ExamJourneyChart({
               </text>
             </g>
           ))}
-          {target !== undefined && (
-            <line className="chart-target" x1={LEFT} x2={RIGHT} y1={y(target)} y2={y(target)} />
-          )}
-          {hovered !== null && (
-            <line className="chart-crosshair" x1={x(hovered)} x2={x(hovered)} y1={TOP} y2={BOTTOM} />
-          )}
+          {target !== undefined && <line className="chart-target" x1={LEFT} x2={RIGHT} y1={y(target)} y2={y(target)} />}
+          {hovered !== null && <line className="chart-crosshair" x1={x(hovered)} x2={x(hovered)} y1={TOP} y2={BOTTOM} />}
           {paths.map(({ series, points, d }) =>
             points.length > 1 ? (
-              <path
-                key={series.key}
-                d={d}
-                fill="none"
-                stroke={series.color}
-                strokeWidth={series.key === "overall" ? 3 : 2}
-                strokeLinejoin="round"
-                strokeLinecap="round"
-              />
+              <path key={series.key} d={d} fill="none" stroke={series.color} strokeWidth={series.key === "overall" ? 3 : 2} strokeLinejoin="round" strokeLinecap="round" />
             ) : null,
           )}
           {paths.map(({ series, points }) =>
@@ -189,7 +167,12 @@ export function ExamJourneyChart({
           {exams.map((exam, i) => (
             <g key={exam.testId}>
               {(labelEvery || i === 0 || i === exams.length - 1 || i === hovered) && (
-                <text className="chart-tick" x={x(i)} y={BOTTOM + 24} textAnchor="middle">
+                <text
+                  className="chart-tick"
+                  x={x(i)}
+                  y={BOTTOM + 24}
+                  textAnchor={exams.length === 1 ? "middle" : i === 0 ? "start" : i === exams.length - 1 ? "end" : "middle"}
+                >
                   {exam.label}
                 </text>
               )}
@@ -206,19 +189,21 @@ export function ExamJourneyChart({
         </svg>
         {hoveredExam && (
           <div
-            className="chart-tooltip"
+            className={cn(
+              "pointer-events-none absolute top-2 z-10 grid min-w-[160px] gap-1 rounded-lg border border-border bg-card p-3 text-xs",
+              edge === "start" ? "translate-x-0" : edge === "end" ? "-translate-x-full" : "-translate-x-1/2",
+            )}
             style={{ left: x(hovered!) }}
-            data-edge={hovered === 0 ? "start" : hovered === exams.length - 1 ? "end" : undefined}
             role="presentation"
           >
-            <strong>
+            <strong className="text-foreground">
               {hoveredExam.label} · {formatDate(hoveredExam.date)}
             </strong>
             {SERIES.map((series) => (
-              <span key={series.key} className="chart-tooltip-row">
-                <i style={{ background: series.color }} aria-hidden="true" />
+              <span key={series.key} className="flex items-center gap-1.5 text-muted-foreground">
+                <i className="inline-block size-2 rounded-full" style={{ background: series.color }} aria-hidden="true" />
                 {series.label}
-                <b>{bandText(bandForExam(hoveredExam, series.key))}</b>
+                <b className="ml-auto text-foreground tabular-nums">{bandText(bandForExam(hoveredExam, series.key))}</b>
               </span>
             ))}
           </div>
@@ -226,21 +211,21 @@ export function ExamJourneyChart({
       </div>
 
       {!compact && journey && (
-        <div className="journey-insight stack-sm">
-          <h3>First test → latest test</h3>
-          <p>
-            From <strong>{journey.fromLabel}</strong> ({bandText(journey.firstOverallBand)}) to{" "}
-            <strong>{journey.toLabel}</strong> ({bandText(journey.lastOverallBand)}): overall{" "}
+        <div className="grid gap-3 rounded-lg bg-blush p-4">
+          <h3 className="text-base">First test → latest test</h3>
+          <p className="text-sm text-subtle">
+            From <strong className="text-foreground">{journey.fromLabel}</strong> ({bandText(journey.firstOverallBand)}) to{" "}
+            <strong className="text-foreground">{journey.toLabel}</strong> ({bandText(journey.lastOverallBand)}): overall{" "}
             <span className={deltaClass(journey.overallDelta)}>{deltaText(journey.overallDelta)}</span>.
           </p>
-          <ul className="journey-deltas">
+          <ul className="grid gap-2 sm:grid-cols-2">
             {journey.criteria.map((item) => (
-              <li key={item.criterion}>
-                <span>{criterionLabel(item.criterion)}</span>
-                <span className="caption">
+              <li key={item.criterion} className="flex items-center justify-between gap-3 rounded-md bg-card px-3 py-2 text-sm">
+                <span className="text-foreground">{criterionLabel(item.criterion)}</span>
+                <span className="ml-auto text-[13px] text-muted-foreground tabular-nums">
                   {bandText(item.firstBand)} → {bandText(item.lastBand)}
                 </span>
-                <span className={deltaClass(item.delta)}>{deltaText(item.delta)}</span>
+                <span className={cn("min-w-14 text-right tabular-nums", deltaClass(item.delta))}>{deltaText(item.delta)}</span>
               </li>
             ))}
           </ul>
@@ -248,46 +233,50 @@ export function ExamJourneyChart({
       )}
 
       {!compact && (
-        <details className="chart-data" open>
-          <summary>All tests &amp; band scores</summary>
-          <div className="table-scroll">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th scope="col">Test</th>
-                  <th scope="col">Date</th>
-                  {SERIES.map((s) => (
-                    <th scope="col" key={s.key} className="num">
-                      {s.label}
-                    </th>
-                  ))}
-                  <th scope="col">
-                    <span className="visually-hidden">Report</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {exams.map((exam) => (
-                  <tr key={exam.testId}>
-                    <th scope="row">{exam.label}</th>
-                    <td>{formatDate(exam.date)}</td>
+        <Collapsible defaultOpen className="grid gap-3">
+          <CollapsibleTrigger className="group inline-flex items-center gap-1.5 justify-self-start text-sm font-medium text-foreground">
+            All tests &amp; band scores <ChevronDown className="size-4 transition-transform group-data-open:rotate-180" aria-hidden="true" />
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="overflow-x-auto rounded-lg border border-border">
+              <Table>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="px-3 text-xs text-muted-foreground">Test</TableHead>
+                    <TableHead className="px-3 text-xs text-muted-foreground">Date</TableHead>
                     {SERIES.map((s) => (
-                      <td key={s.key} className="num">
-                        {bandText(bandForExam(exam, s.key))}
-                      </td>
+                      <TableHead key={s.key} className="px-3 text-right text-xs text-muted-foreground">
+                        {s.label}
+                      </TableHead>
                     ))}
-                    <td>
-                      <Link className="text-link text-link--sm" to={`/reports/${exam.reportId}`}>
-                        Report
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </details>
+                    <TableHead className="px-3">
+                      <span className="sr-only">Report</span>
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {exams.map((exam) => (
+                    <TableRow key={exam.testId}>
+                      <TableCell className="px-3 py-2.5 font-medium text-foreground">{exam.label}</TableCell>
+                      <TableCell className="px-3 py-2.5 text-subtle">{formatDate(exam.date)}</TableCell>
+                      {SERIES.map((s) => (
+                        <TableCell key={s.key} className="px-3 py-2.5 text-right text-subtle tabular-nums">
+                          {bandText(bandForExam(exam, s.key))}
+                        </TableCell>
+                      ))}
+                      <TableCell className="px-3 py-2.5 text-right">
+                        <TextLink to={`/reports/${exam.reportId}`} size="sm">
+                          Report
+                        </TextLink>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
       )}
-    </section>
+    </Card>
   );
 }
