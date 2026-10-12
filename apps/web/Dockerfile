@@ -13,8 +13,9 @@ ARG VITE_API_BASE_URL=/v1
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 RUN npm run build
 
-FROM nginx:1.27-alpine
-# nginx renders /etc/nginx/templates/*.template with envsubst at start-up.
+FROM nginxinc/nginx-unprivileged:1.27-alpine
+# Unprivileged nginx (runs as uid 101). It renders /etc/nginx/templates/*.template with
+# envsubst at start-up, exactly like the stock image.
 COPY nginx.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=build /web/dist /usr/share/nginx/html
 ENV PORT=8080
