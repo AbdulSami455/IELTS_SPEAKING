@@ -30,6 +30,14 @@ def test_clean_transcript_drops_non_english_script():
 
     assert "pizza" in clean_transcript("I received pizza. 有的。 别把人冲了。").lower()
     assert "有" not in clean_transcript("I received pizza. 有的。")
+
+
+def test_clean_transcript_drops_punctuation_only_noise():
+    from ielts_inference.transcript import clean_transcript
+
+    assert clean_transcript("！ ！ ， ， 。") == ""
+    assert clean_transcript("？ ， 。") == ""
+    assert clean_transcript("OK.") == "OK."
     from ielts_audio.media import acoustic_observations
 
     result = acoustic_observations(b"not-a-wav", [{"w": "hello", "startMs": 0, "endMs": 200}])

@@ -318,9 +318,10 @@ async def evaluate_test(session: AsyncSession, test_id: str, config: Environment
             prompt = answer.session_question.prompt_text if answer.session_question else ""
             existing = await session.execute(select(Transcript).where(Transcript.answer_id == answer.id))
             saved = existing.scalar_one_or_none()
-            if saved and saved.text:
+            cached_text = clean_transcript(saved.text) if saved is not None else ""
+            if saved is not None and cached_text:
                 transcript = TranscriptResult(
-                    text=clean_transcript(saved.text),
+                    text=cached_text,
                     language="en",
                     duration_seconds=0,
                     words=saved.words or [],
@@ -330,29 +331,38 @@ async def evaluate_test(session: AsyncSession, test_id: str, config: Environment
             else:
                 try:
                     await reserve_model_call(session, test.user_id, test_id, "transcription", config)
-                    transcript = client.transcribe(wav if is_wav else audio, fmt)
-                    text = clean_transcript(transcript.text)
-                    session.add(
-                        Transcript(
+                    transcribed = client.transcribe(wav if is_wav else audio, fmt)
+                    text = clean_transcript(transcribed.text)
+                    if saved is None:
+                        saved = Transcript(
                             answer_id=answer.id,
                             part=part,
                             evaluator_version=EVALUATOR_VERSION,
                             text=text,
-                            words=transcript.words,
+                            words=transcribed.words,
                             model_policy_version=config.openrouter_scoring_model[:50],
                         )
-                    )
+                        session.add(saved)
+                    else:
+                        saved.text = text
+                        saved.words = transcribed.words
+                        saved.part = part
+                        saved.evaluator_version = EVALUATOR_VERSION
+                        saved.model_policy_version = config.openrouter_scoring_model[:50]
                     transcript = TranscriptResult(
                         text=text,
-                        language=transcript.language,
-                        duration_seconds=transcript.duration_seconds,
-                        words=transcript.words,
-                        segments=transcript.segments,
-                        model=transcript.model,
+                        language=transcribed.language,
+                        duration_seconds=transcribed.duration_seconds,
+                        words=transcribed.words,
+                        segments=transcribed.segments,
+                        model=transcribed.model,
                     )
                 except InferenceError:
                     degrade_reasons.append("Speech recognition could not finish for at least one answer.")
                     transcript = _unavailable_transcript()
+                    if saved is not None and not (saved.text or "").strip():
+                        saved.text = ""
+                        saved.words = []
             features = extract_features(transcript.text, transcript.words, acoustic)
             merged_features = _merge_features(merged_features, features)
             speech = acoustic_observations(wav if is_wav else audio, transcript.words)
