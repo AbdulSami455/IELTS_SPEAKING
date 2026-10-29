@@ -9,10 +9,10 @@ export function criterionLabel(key: string): string {
   return criterionMeta(key)?.label ?? humanize(key);
 }
 
-export function partLabel(state: string): string {
-  if (state === "PART1") return "Part 1 · Interview";
+export function partLabel(state: string, options?: { isFollowUp?: boolean }): string {
+  if (state === "PART1") return options?.isFollowUp ? "Part 1 · Follow-up" : "Part 1 · Interview";
   if (state === "PART2_PREP") return "Part 2 · Preparation";
-  if (state === "PART2_SPEAK") return "Part 2 · Long turn";
+  if (state === "PART2_SPEAK") return options?.isFollowUp ? "Part 2 · Follow-up" : "Part 2 · Long turn";
   if (state === "PART3") return "Part 3 · Discussion";
   if (state === "UPLOADING") return "Ready to finish";
   if (state === "READY") return "Ready to begin";

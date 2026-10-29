@@ -51,7 +51,7 @@ export function TestRunnerPage() {
   const { test, error } = room;
   const { confirm, dialog } = useConfirm();
   const [showQuestion, setShowQuestion] = useState(true);
-  useDocumentTitle(test ? partLabel(test.state) : "Speaking room");
+  useDocumentTitle(test ? partLabel(test.state, { isFollowUp: room.turn?.isFollowUp }) : "Speaking room");
 
   async function exitRoom() {
     const midAnswer = room.recording || room.busy;
