@@ -566,7 +566,12 @@ class TestService:
             latest = max(test.processing_jobs, key=lambda item: item.created_at)
             if latest.error_message:
                 # Provider error text stays in logs/DB; learners see a steady, actionable message.
-                error = "Scoring could not be completed for this test. You can reassess it from the report page."
+                next_step = (
+                    "You can reassess it from the report page."
+                    if test.report is not None
+                    else "Retry scoring from this page."
+                )
+                error = f"Scoring could not be completed for this test. {next_step}"
         return {
             "test_id": test.id,
             "state": test.status,
@@ -642,17 +647,24 @@ class TestService:
         report = await self.reports.get_by_id(report_id)
         if report is None:
             raise not_found("Report not found")
+        return await self.reassess_test(user_id, report.test_session_id)
+
+    async def reassess_test(self, user_id: int, test_id: str) -> str:
+        # Lock the row so concurrent reassess/submit cannot race.
         await self.session.execute(
-            select(TestSession.id).where(
-                TestSession.id == report.test_session_id, TestSession.user_id == user_id,
-            ).with_for_update()
+            select(TestSession.id)
+            .where(TestSession.id == test_id, TestSession.user_id == user_id)
+            .with_for_update()
         )
-        test = await self.tests.get_owned(report.test_session_id, user_id)
+        test = await self.tests.get_owned(test_id, user_id)
         if test is None:
-            raise not_found("Report not found")
+            raise not_found("Test session not found")
         if test.status not in {TestState.COMPLETED.value, TestState.FAILED.value}:
             raise conflict("This test is already being processed")
-        if not test.answers or any(answer.media_object is None for answer in test.answers):
+        recordings_missing = not test.answers or any(
+            answer.media_object is None for answer in test.answers
+        )
+        if recordings_missing:
             raise validation("Saved recordings are unavailable. Please start a new test.")
         test.status = TestState.SUBMITTED.value
         test.revision += 1

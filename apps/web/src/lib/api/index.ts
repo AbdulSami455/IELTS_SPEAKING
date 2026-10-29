@@ -81,6 +81,7 @@ export const api = {
     request<{ playbackUrl: string }>(`/tests/${testId}/questions/${questionId}/examiner-audio`),
   answerPlayback: (testId: string, answerId: string) => request<{ playbackUrl: string }>(`/tests/${testId}/answers/${answerId}/playback`),
   reassessReport: (id: string) => request<{ testId: string }>(`/reports/${id}/reassess`, { method: "POST" }),
+  reassessTest: (id: string) => request<{ testId: string }>(`/tests/${id}/reassess`, { method: "POST" }),
   exportReport: (id: string) => fetchText(`/reports/${id}/export`),
   deleteAccount: () => request<{ deleted: boolean }>("/me", { method: "DELETE" }),
   report: (id: string) => request<Report>(`/reports/${id}`),

@@ -23,6 +23,8 @@ export function ProcessingPage() {
   const [stage, setStage] = useState("queued");
   const [error, setError] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
+  const [retrying, setRetrying] = useState(false);
+  const [pollKey, setPollKey] = useState(0);
   useDocumentTitle(failed ? "Scoring failed" : "Preparing your report");
 
   useEffect(() => {
@@ -48,9 +50,10 @@ export function ProcessingPage() {
         if (status.stage === "failed" || status.state === "FAILED") {
           cancelled = true;
           setFailed(true);
-          setError(status.error ?? "Scoring failed. No band was invented.");
+          setError(status.error ?? "Scoring failed. Retry from this page to build your feedback report.");
           return;
         }
+        setFailed(false);
       } catch (err) {
         if (cancelled) return;
         if (err instanceof ApiError && err.code === "RATE_LIMITED") {
@@ -70,7 +73,24 @@ export function ProcessingPage() {
     return () => {
       cancelled = true;
     };
-  }, [navigate, testId]);
+  }, [navigate, testId, pollKey]);
+
+  async function retryScoring() {
+    setRetrying(true);
+    setError(null);
+    setFailed(false);
+    setProgress(5);
+    setStage("validating_audio");
+    try {
+      await api.reassessTest(testId);
+      setPollKey((value) => value + 1);
+    } catch (err) {
+      setFailed(true);
+      setError(err instanceof Error ? err.message : "Could not restart scoring.");
+    } finally {
+      setRetrying(false);
+    }
+  }
 
   const activeIndex = STAGES.findIndex((item) => item.id === stage);
 
@@ -79,9 +99,14 @@ export function ProcessingPage() {
       <Card className="mx-auto grid w-full max-w-[680px] gap-5 md:p-8" aria-labelledby="processing-title">
         <div className="grid gap-1.5">
           <p className="kicker">Results &amp; feedback</p>
-          <h1 id="processing-title">{failed ? "We couldn’t score this test" : "Preparing your report"}</h1>
+          <h1 id="processing-title">{failed ? "We couldn’t finish scoring" : "Preparing your report"}</h1>
           {!failed && (
             <p className="text-muted-foreground">This usually takes a minute or two. We’ll open your report as soon as it’s ready.</p>
+          )}
+          {failed && (
+            <p className="text-muted-foreground">
+              Your recordings are saved. Retry scoring to get feedback, even if some analysis steps are limited.
+            </p>
           )}
         </div>
         {!failed && (
@@ -98,7 +123,7 @@ export function ProcessingPage() {
         )}
         <ol className="grid gap-1">
           {STAGES.map((item, index) => {
-            const done = failed ? index < activeIndex : activeIndex !== -1 && index < activeIndex;
+            const done = activeIndex !== -1 && index < activeIndex;
             const active = !failed && index === activeIndex;
             return (
               <li
@@ -127,13 +152,18 @@ export function ProcessingPage() {
           })}
         </ol>
         {error && (
-          <Alert tone={failed ? "error" : "warning"} title={failed ? "Scoring failed" : "Having trouble checking status — still trying."}>
+          <Alert tone={failed ? "error" : "warning"} title={failed ? "Scoring interrupted" : "Having trouble checking status — still trying."}>
             {error}
           </Alert>
         )}
         {failed ? (
           <div className="flex flex-wrap gap-3">
-            <Button to="/">Back to overview</Button>
+            <Button onClick={() => void retryScoring()} disabled={retrying}>
+              {retrying ? "Restarting…" : "Retry scoring"}
+            </Button>
+            <Button to="/" variant="secondary">
+              Back to overview
+            </Button>
           </div>
         ) : (
           <p className="flex items-start gap-2 border-t border-border pt-4 text-[13px] text-muted-foreground">

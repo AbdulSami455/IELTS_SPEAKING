@@ -423,6 +423,20 @@ async def status_route(
     return envelope(await svc.status(user.user_id, test_id))
 
 
+@router.post("/tests/{test_id}/reassess")
+async def reassess_test(
+    test_id: str,
+    background: BackgroundTasks,
+    user: AuthenticatedUser = Depends(require_consent),
+    svc: TestService = Depends(service),
+) -> dict:
+    from ielts_api.jobs import enqueue_evaluate
+
+    resolved = await svc.reassess_test(user.user_id, test_id)
+    background.add_task(enqueue_evaluate, resolved)
+    return envelope({"test_id": resolved})
+
+
 @router.get("/tests/{test_id}/events")
 async def events(
     test_id: str,
