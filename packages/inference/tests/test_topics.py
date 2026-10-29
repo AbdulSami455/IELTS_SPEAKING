@@ -32,6 +32,10 @@ def test_part2_catalog_covers_reference_prompt_types():
         "organised_event",
         "routine_change",
     } <= ids
+    for theme in PART2_THEMES:
+        assert theme["task"].lower().startswith("describe")
+        assert len(theme["prompts"]) == 4
+        assert all(len(item) >= 8 for item in theme["prompts"])
 
 
 def test_part1_rotates_across_three_topics():

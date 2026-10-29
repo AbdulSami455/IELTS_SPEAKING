@@ -65,7 +65,18 @@ def build(case: dict[str, Any]) -> tuple[str, str]:
         )
     if kind == "part2":
         return PART2_INSTRUCTIONS + DATA_HANDLING_RULES, part2_prompt_input(
-            history, theme_label=case["theme_label"], task=case["task"], part3_theme=case["part3_theme"]
+            history,
+            theme_label=case["theme_label"],
+            task=case["task"],
+            prompts=case.get("prompts")
+            or [
+                "what it was",
+                "when it happened",
+                "what you did",
+                "why it mattered",
+            ],
+            part3_theme=case["part3_theme"],
+            avoid_repeating=case.get("asked_prompts", []),
         )
     if kind == "part3":
         return PART3_INSTRUCTIONS + DATA_HANDLING_RULES, part3_prompt_input(
