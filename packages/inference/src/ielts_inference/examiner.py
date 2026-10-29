@@ -98,11 +98,28 @@ Return JSON only:
 
 Rules:
 - Sound like a real examiner. One sentence. English only.
-- Part 1: everyday follow-up if the answer was short or invites a related detail.
-- Part 2: after the long turn, at most one rounding-off question about what they said.
-- Part 3: a discussion probe that asks why, compared with, or consequences.
+- Part 1: everyday follow-up if the answer was short or invites a related detail about their personal experience.
+- Do not ask abstract society, policy, government, or future-trend discussion questions.
 - Do not teach, correct, or score.
 - If the transcript is empty or unusable, ask_follow_up false.
+"""
+
+PART2_FOLLOW_UP_INSTRUCTIONS = """You are an IELTS Speaking examiner finishing Part 2 of a practice test.
+
+After the candidate's long turn, decide whether to ask ONE short rounding-off question about what THEY personally described.
+
+Return JSON only:
+{"ask_follow_up": true or false, "question": "one spoken question or empty"}
+
+Rules:
+- Sound like a real Cambridge examiner. One short sentence. English only.
+- Stay personal and concrete: ask about their feelings, a detail they mentioned, or what happened next for them.
+- Good: "Would you like to do that again?" / "How did you feel afterwards?" / "Who else was involved?"
+- Bad / forbidden: abstract discussion such as "Why do people…?", "Should governments…?", "How might society…?", "What are the advantages…?", "Do you think in the future…?"
+- Never start Part 3 early. Do not ask compare/society/policy/future questions.
+- Prefer ask_follow_up false unless the long turn clearly invites one personal follow-up.
+- Do not teach, correct, or score.
+- If the transcript is empty, very short, or unusable, ask_follow_up false.
 """
 
 PART1_INTRO_TEXT = (
@@ -201,6 +218,44 @@ def parse_follow_up(raw: dict) -> str | None:
     if "?" not in question:
         question = question.rstrip(".") + "?"
     return question
+
+
+_PART3_DISCUSSION_MARKERS = (
+    "why do people",
+    "why do some people",
+    "why are",
+    "should governments",
+    "should schools",
+    "should cities",
+    "should companies",
+    "what are the advantages",
+    "what are the disadvantages",
+    "how might",
+    "how can cities",
+    "how can society",
+    "in the future",
+    "in society",
+    "for society",
+    "younger and older",
+    "compare",
+    "compared with",
+    "compared to",
+)
+
+
+def looks_like_part3_discussion(question: str) -> bool:
+    """True when a follow-up has drifted into abstract Part 3 discussion style."""
+    text = re.sub(r"\s+", " ", str(question or "").strip().lower())
+    if not text:
+        return False
+    if any(marker in text for marker in _PART3_DISCUSSION_MARKERS):
+        return True
+    # Generic third-person policy probes without personal framing.
+    starts_abstract = text.startswith(
+        ("should ", "why do ", "why are ", "how can ", "how might ", "what effects ")
+    )
+    has_personal = any(token in text for token in ("you ", "your ", "yourself"))
+    return starts_abstract and not has_personal
 
 
 _INTRO_PREFIXES = (PART2_INTRO_PREFIX, PART3_INTRO_PREFIX)

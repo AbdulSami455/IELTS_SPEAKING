@@ -7,6 +7,7 @@ from ielts_inference.examiner import (
     first_part1_turn_after_intro,
     first_part3_turn_after_part2,
     is_repeated_question,
+    looks_like_part3_discussion,
     parse_cue_card,
     parse_follow_up,
     parse_spoken_question,
@@ -17,6 +18,14 @@ from ielts_inference.examiner import (
     question_core,
 )
 from ielts_inference.topics import part2_theme
+
+
+def test_part2_follow_up_rejects_discussion_style_questions():
+    assert looks_like_part3_discussion("Why do people enjoy outdoor activities?")
+    assert looks_like_part3_discussion("Should governments spend more on parks?")
+    assert looks_like_part3_discussion("How might tourism change in the future?")
+    assert not looks_like_part3_discussion("How did you feel afterwards?")
+    assert not looks_like_part3_discussion("Would you like to do that again?")
 
 
 def test_parse_follow_up_requires_a_real_question():

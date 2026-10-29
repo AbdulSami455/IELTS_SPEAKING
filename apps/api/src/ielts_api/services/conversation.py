@@ -15,6 +15,7 @@ from ielts_inference.examiner import (
     FOLLOW_UP_INSTRUCTIONS,
     PART1_INSTRUCTIONS,
     PART1_TARGET_QUESTIONS,
+    PART2_FOLLOW_UP_INSTRUCTIONS,
     PART2_INSTRUCTIONS,
     PART3_INSTRUCTIONS,
     PART3_TARGET_QUESTIONS,
@@ -25,6 +26,7 @@ from ielts_inference.examiner import (
     first_part3_turn_after_part2,
     is_repeated_question,
     looks_like_injection,
+    looks_like_part3_discussion,
     parse_cue_card,
     parse_follow_up,
     parse_spoken_question,
@@ -413,12 +415,14 @@ class ConversationOrchestrator:
     async def _generate_part2_follow_up(self, test: TestSession, question: SessionQuestion) -> GeneratedTurn | None:
         history = await self._history(test.id, 2)
         transcript = history[-1]["transcript"] if history else ""
-        if not transcript.strip():
+        # Real exams often skip the optional rounding-off question; only ask when
+        # the long turn is developed enough to invite one personal follow-up.
+        if len(transcript.split()) < 40:
             return None
         excluded = await self._exclusion_prompts(test)
         payload = await self._chat_json(
             test,
-            FOLLOW_UP_INSTRUCTIONS + DATA_HANDLING_RULES,
+            PART2_FOLLOW_UP_INSTRUCTIONS + DATA_HANDLING_RULES,
             json.dumps(
                 {
                     "part": 2,
@@ -432,6 +436,7 @@ class ConversationOrchestrator:
         if (
             follow_up is None
             or looks_like_injection(follow_up)
+            or looks_like_part3_discussion(follow_up)
             or echoes_candidate(follow_up, [transcript])
             or is_repeated_question(follow_up, excluded)
         ):
