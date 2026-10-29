@@ -28,7 +28,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from ielts_inference.assembler import EVALUATOR_VERSION, assemble
+from ielts_inference.assembler import CRITERIA, EVALUATOR_VERSION, assemble
 from ielts_inference.features import extract_features
 from ielts_inference.openrouter import InferenceError, OpenRouterClient, ScoreSchema, TranscriptResult
 from ielts_inference.progress import rebuild_progress_snapshot
@@ -98,6 +98,117 @@ Rules:
 def _guard_transcript(text: str) -> str:
     escaped = text.replace("<", "&lt;").replace(">", "&gt;")
     return f"<CANDIDATE_TRANSCRIPT>\n{escaped}\n</CANDIDATE_TRANSCRIPT>"
+
+
+def _fallback_practice_plan() -> dict:
+    return {
+        "days": [
+            {
+                "day": 1,
+                "focus": "fluency",
+                "task": "Answer one familiar Part 1 topic for 45 seconds without long pauses.",
+                "minutes": 10,
+                "successCriteria": "Speak continuously with only short natural pauses",
+            },
+            {
+                "day": 2,
+                "focus": "vocabulary",
+                "task": "Retell a recent personal experience using 5 precise topic words.",
+                "minutes": 12,
+                "successCriteria": "Use each word naturally at least once",
+            },
+            {
+                "day": 3,
+                "focus": "grammar",
+                "task": "Record a one-minute answer and check past/present tense consistency.",
+                "minutes": 12,
+                "successCriteria": "Correct at least two tense slips on a second take",
+            },
+            {
+                "day": 4,
+                "focus": "pronunciation",
+                "task": "Shadow a short news clip for clarity and word endings.",
+                "minutes": 10,
+                "successCriteria": "Endings stay audible on a replay",
+            },
+            {
+                "day": 5,
+                "focus": "coherence",
+                "task": "Give a Part 2-style talk with a clear beginning, middle, and ending.",
+                "minutes": 15,
+                "successCriteria": "Listener can summarise the three stages",
+            },
+            {
+                "day": 6,
+                "focus": "discussion",
+                "task": "Answer two Part 3-style why/compare questions with reasons and examples.",
+                "minutes": 12,
+                "successCriteria": "Each answer includes a reason and an example",
+            },
+            {
+                "day": 7,
+                "focus": "retest",
+                "task": "Complete a short timed speaking practice and note one improvement target.",
+                "minutes": 15,
+                "successCriteria": "Write one specific focus for the next full test",
+            },
+        ]
+    }
+
+
+def _unavailable_transcript() -> TranscriptResult:
+    return TranscriptResult(
+        text="",
+        language="en",
+        duration_seconds=0,
+        words=[],
+        segments=[],
+        model="unavailable",
+    )
+
+
+def _degraded_score_model(reasons: list[str]) -> dict:
+    note = reasons[0] if reasons else "Scoring services were unavailable for this attempt."
+    return {
+        "criteria": [
+            {
+                "criterion": key,
+                "band": None,
+                "confidence": "inconclusive",
+                "subdimensions": {},
+                "evidence": [],
+            }
+            for key in CRITERIA
+        ],
+        "strengths": ["You completed the speaking attempt and your recordings were saved for feedback."],
+        "improvements": [
+            "Reassess this test once scoring is available, or start a new attempt with clear mic audio.",
+            "Keep answers developed across all three parts so there is enough speech to band fairly.",
+        ],
+        "minorImprovements": [],
+        "mistakes": [],
+        "fluencyNotes": [note],
+        "exampleRewrites": [],
+        "practicePlan": _fallback_practice_plan(),
+    }
+
+
+def _apply_degrade_reasons(assembled: dict, degrade_reasons: list[str]) -> None:
+    assembled["is_inconclusive"] = True
+    assembled["overall_band"] = None
+    assembled["confidence_label"] = "inconclusive"
+    readiness = assembled.setdefault("score_readiness", {"reasons": []})
+    reasons = list(readiness.get("reasons") or [])
+    for reason in degrade_reasons:
+        if reason not in reasons:
+            reasons.append(reason)
+    readiness["reasons"] = reasons
+    if not assembled.get("improvements"):
+        assembled["improvements"] = [
+            "Reassess this test when scoring is available, or record another attempt with clear microphone audio."
+        ]
+    if not assembled.get("practice_plan", {}).get("days"):
+        assembled["practice_plan"] = _fallback_practice_plan()
 
 
 def _build_scoring_prompt(part_payloads: list[dict], merged_features: dict, mean_coverage: float, conversation_context: list[dict]) -> str:
@@ -170,12 +281,23 @@ async def evaluate_test(session: AsyncSession, test_id: str, config: Environment
         if not usable_answers:
             raise InferenceError("No uploaded answers to evaluate")
 
+        degrade_reasons: list[str] = []
         for answer in usable_answers:
-            object_key = answer.media_object.object_key if answer.media_object is not None else f"tests/{test_id}/answers/{answer.id}.webm"
-            audio = store.get_bytes(config.minio_candidate_bucket, object_key)
-            source_ext = Path(object_key).suffix or ".webm"
-            wav = normalize_to_wav(audio, source_ext)
+            object_key = (
+                answer.media_object.object_key
+                if answer.media_object is not None
+                else f"tests/{test_id}/answers/{answer.id}.webm"
+            )
+            try:
+                audio = store.get_bytes(config.minio_candidate_bucket, object_key)
+                source_ext = Path(object_key).suffix or ".webm"
+                wav = normalize_to_wav(audio, source_ext)
+            except Exception:  # noqa: BLE001 — keep scoring other answers when one recording is unreadable
+                degrade_reasons.append("One recording could not be opened for scoring.")
+                continue
             wav_parts.append(wav)
+            is_wav = wav[:4] == b"RIFF"
+            fmt = "wav" if is_wav else "webm"
             quality = measure_wav(wav)
             acoustic = {
                 "duration_ms": quality.duration_ms,
@@ -185,8 +307,11 @@ async def evaluate_test(session: AsyncSession, test_id: str, config: Environment
                 "speech_ratio": quality.speech_ratio,
             }
             derivative_key = f"tests/{test_id}/answers/{answer.id}.wav"
-            if wav[:4] == b"RIFF":
-                store.put_bytes(config.minio_derivative_bucket, derivative_key, wav, "audio/wav")
+            if is_wav:
+                try:
+                    store.put_bytes(config.minio_derivative_bucket, derivative_key, wav, "audio/wav")
+                except Exception:  # noqa: BLE001
+                    pass
             _set_stage(job, "transcribing", 40)
             await session.commit()
             part = answer.session_question.part if answer.session_question else 1
@@ -203,32 +328,34 @@ async def evaluate_test(session: AsyncSession, test_id: str, config: Environment
                     model="cached",
                 )
             else:
-                await reserve_model_call(session, test.user_id, test_id, "transcription", config)
-                fmt = "wav" if wav[:4] == b"RIFF" else "webm"
-                transcript = client.transcribe(wav if fmt == "wav" else audio, fmt)
-                text = clean_transcript(transcript.text)
-                session.add(
-                    Transcript(
-                        answer_id=answer.id,
-                        part=part,
-                        evaluator_version=EVALUATOR_VERSION,
-                        text=text,
-                        words=transcript.words,
-                        model_policy_version=config.openrouter_scoring_model[:50],
+                try:
+                    await reserve_model_call(session, test.user_id, test_id, "transcription", config)
+                    transcript = client.transcribe(wav if is_wav else audio, fmt)
+                    text = clean_transcript(transcript.text)
+                    session.add(
+                        Transcript(
+                            answer_id=answer.id,
+                            part=part,
+                            evaluator_version=EVALUATOR_VERSION,
+                            text=text,
+                            words=transcript.words,
+                            model_policy_version=config.openrouter_scoring_model[:50],
+                        )
                     )
-                )
-                transcript = TranscriptResult(
-                    text=text,
-                    language=transcript.language,
-                    duration_seconds=transcript.duration_seconds,
-                    words=transcript.words,
-                    segments=transcript.segments,
-                    model=transcript.model,
-                )
-            fmt = "wav" if wav[:4] == b"RIFF" else "webm"
+                    transcript = TranscriptResult(
+                        text=text,
+                        language=transcript.language,
+                        duration_seconds=transcript.duration_seconds,
+                        words=transcript.words,
+                        segments=transcript.segments,
+                        model=transcript.model,
+                    )
+                except InferenceError:
+                    degrade_reasons.append("Speech recognition could not finish for at least one answer.")
+                    transcript = _unavailable_transcript()
             features = extract_features(transcript.text, transcript.words, acoustic)
             merged_features = _merge_features(merged_features, features)
-            speech = acoustic_observations(wav if fmt == "wav" else audio, transcript.words)
+            speech = acoustic_observations(wav if is_wav else audio, transcript.words)
             coverage = float(speech.get("coverage") or 0)
             if quality.speech_ratio < 0.3:
                 coverage = min(coverage, quality.speech_ratio)
@@ -279,24 +406,40 @@ async def evaluate_test(session: AsyncSession, test_id: str, config: Environment
                 }
             )
 
+        if not part_payloads:
+            raise InferenceError("No usable recordings were available to evaluate")
+
         _set_stage(job, "analyzing_language", 70)
         await session.commit()
         if wav_parts:
-            combined = concat_wavs(wav_parts)
-            store.put_bytes(
-                config.minio_derivative_bucket,
-                f"tests/{test_id}/manifest.wav",
-                combined,
-                "audio/wav",
-            )
+            try:
+                combined = concat_wavs(wav_parts)
+                store.put_bytes(
+                    config.minio_derivative_bucket,
+                    f"tests/{test_id}/manifest.wav",
+                    combined,
+                    "audio/wav",
+                )
+            except Exception:  # noqa: BLE001
+                degrade_reasons.append("Combined audio preview could not be stored.")
         mean_coverage = sum(coverage_values) / max(len(coverage_values), 1)
         _set_stage(job, "analyzing_pronunciation", 80)
         await session.commit()
-        await reserve_model_call(session, test.user_id, test_id, "holistic_scoring", config)
-        scoring_prompt = _build_scoring_prompt(part_payloads, merged_features, mean_coverage, conversation_context)
-        scored = client.score_speaking(scoring_prompt)
         merged_features["transcripts"] = [item["transcript"] for item in part_payloads]
-        assembled = assemble(scored.raw, merged_features, mean_coverage)
+        scoring_prompt = _build_scoring_prompt(part_payloads, merged_features, mean_coverage, conversation_context)
+        model_json: dict
+        try:
+            await reserve_model_call(session, test.user_id, test_id, "holistic_scoring", config)
+            scored = client.score_speaking(scoring_prompt)
+            model_json = scored.raw
+        except InferenceError:
+            degrade_reasons.append(
+                "Full band scoring was unavailable, so this report focuses on what we could recover from your recordings."
+            )
+            model_json = _degraded_score_model(degrade_reasons)
+        assembled = assemble(model_json, merged_features, mean_coverage)
+        if degrade_reasons:
+            _apply_degrade_reasons(assembled, degrade_reasons)
         _set_stage(job, "building_report", 90)
         await session.commit()
 
@@ -385,6 +528,8 @@ async def evaluate_test(session: AsyncSession, test_id: str, config: Environment
         test.revision = completed.new_revision
         job.status = "COMPLETED"
         job.completed_at = datetime.now(UTC)
+        job.error_code = None
+        job.error_message = None
         _set_stage(job, "completed", 100)
         await session.flush()
         await rebuild_progress_snapshot(session, test.user_id)

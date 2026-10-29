@@ -104,7 +104,10 @@ def assemble(model_json: dict, features: dict, acoustic_coverage: float) -> dict
         band_value = None
         if item["band"] is not None:
             band_value = BandScore.round_to_nearest_half(item["band"]).value
-        if not transcript_text.strip() or key in {"fluency_and_coherence", "pronunciation"} and (low_audio or voiced_ms < MIN_VOICED_MS):
+        audio_unsafe = key in {"fluency_and_coherence", "pronunciation"} and (
+            low_audio or voiced_ms < MIN_VOICED_MS
+        )
+        if not transcript_text.strip() or audio_unsafe:
             confidence = "inconclusive"
             band_value = None
         validated_evidence = _validate_evidence(key, item["evidence"], transcript_text, rejected_evidence)
@@ -195,26 +198,36 @@ def _validate_rewrites(rewrites: list, transcript: str) -> list:
 
 
 def _criterion(model_json: dict, key: str) -> dict:
-    block = {}
-    for item in model_json.get("criteria") or []:
-        name = item.get("criterion") or item.get("key")
-        if name == key:
-            block = item
-            break
-    if not block:
+    block = next(
+        (
+            item
+            for item in (model_json.get("criteria") or [])
+            if (item.get("criterion") or item.get("key")) == key
+        ),
+        None,
+    )
+    if block is None:
         return {
             "band": None,
             "confidence": "inconclusive",
             "subdimensions": {},
             "evidence": [],
         }
-    raw_band = float(block.get("band") or 0)
-    raw_band = min(9.0, max(0.0, raw_band))
+    subdimensions = block.get("subdimensions") or {}
+    evidence = block.get("evidence") or []
+    raw = block.get("band")
+    if raw is None or raw == "":
+        return {
+            "band": None,
+            "confidence": "inconclusive",
+            "subdimensions": subdimensions,
+            "evidence": evidence,
+        }
     return {
-        "band": raw_band,
+        "band": min(9.0, max(0.0, float(raw))),
         "confidence": block.get("confidence") or "medium",
-        "subdimensions": block.get("subdimensions") or {},
-        "evidence": block.get("evidence") or [],
+        "subdimensions": subdimensions,
+        "evidence": evidence,
     }
 
 

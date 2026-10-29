@@ -52,6 +52,27 @@ def test_missing_model_criteria_are_inconclusive():
     assert all(item["confidence"] == "inconclusive" for item in result["criteria"])
 
 
+def test_null_bands_stay_inconclusive_not_zero():
+    result = assemble(
+        {
+            "criteria": [
+                {"criterion": "fluency_and_coherence", "band": None, "confidence": "inconclusive"},
+                {"criterion": "lexical_resource", "band": None, "confidence": "inconclusive"},
+                {"criterion": "grammatical_range_and_accuracy", "band": None, "confidence": "inconclusive"},
+                {"criterion": "pronunciation", "band": None, "confidence": "inconclusive"},
+            ],
+            "strengths": ["Recordings were saved."],
+            "improvements": ["Reassess when scoring is available."],
+            "transcripts": [{"text": "I visited a park with my friends last weekend"}],
+        },
+        {"speaking_duration_ms": 120_000, "silence_ratio": 0.1, "transcripts": ["I visited a park with my friends last weekend"]},
+        acoustic_coverage=0.8,
+    )
+    assert result["is_inconclusive"] is True
+    assert result["overall_band"] is None
+    assert all(item["band"] is None for item in result["criteria"])
+
+
 def test_hallucination_guard_softens_single_criterion_without_killing_whole_report():
     result = assemble(
         {
