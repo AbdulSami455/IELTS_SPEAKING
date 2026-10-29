@@ -19,6 +19,8 @@ from ielts_inference.examiner import (
     PART3_INSTRUCTIONS,
     PART3_TARGET_QUESTIONS,
     GeneratedTurn,
+    cue_card_is_strong,
+    curated_part2_turn,
     echoes_candidate,
     first_part3_turn_after_part2,
     is_repeated_question,
@@ -161,46 +163,55 @@ class ConversationOrchestrator:
         return None
 
     async def _generate_part1_follow_up(self, test: TestSession, transcript: str) -> GeneratedTurn | None:
-        from ielts_inference.examiner import FOLLOW_UP_INSTRUCTIONS, parse_follow_up
-
+        excluded = await self._exclusion_prompts(test)
         prompt = json.dumps(
             {
                 "part": 1,
                 "question": test.session_questions[-1].prompt_text if test.session_questions else "",
                 "transcript": sanitize_candidate_text(transcript),
+                "avoid_repeating": excluded[-12:],
             }
         )
         payload = await self._chat_json(test, FOLLOW_UP_INSTRUCTIONS + DATA_HANDLING_RULES, prompt)
         follow_up = parse_follow_up(payload)
-        if follow_up is None or looks_like_injection(follow_up) or echoes_candidate(follow_up, [transcript]):
+        if (
+            follow_up is None
+            or looks_like_injection(follow_up)
+            or echoes_candidate(follow_up, [transcript])
+            or is_repeated_question(follow_up, excluded)
+        ):
             return None
         return GeneratedTurn(prompt_text=follow_up, timing_seconds=35, asset_version="follow-up")
 
     async def _generate_part3_turn(self, test: TestSession) -> GeneratedTurn:
-        asked = [item.prompt_text for item in test.session_questions if item.part == 3]
+        asked = await self._exclusion_prompts(test)
         history = await self._history(test.id)
         plan = self._topic_plan(test)
-        part2_theme = ""
+        part2_theme_label = ""
         is_nervous = self._detect_nervousness(test, history)
         if test.topic_plan and isinstance(test.topic_plan, dict) and "part2" in test.topic_plan:
-            from ielts_inference.topics import part2_theme as get_part2_theme
-
-            theme_info = get_part2_theme(test.topic_plan["part2"])
-            part2_theme = theme_info["label"]
+            theme_info = part2_theme(test.topic_plan["part2"])
+            part2_theme_label = theme_info["label"]
         part3_count = self._answered_count(test, 3)
         theme = str(plan.get("part3_theme") or "society")
         fallback_questions = (
             f"Looking at {theme}, what differences do you see between younger and older generations?",
             f"What should governments or local communities do to improve {theme}?",
+            f"How might {theme} change over the next twenty years?",
         )
         fallback = (
-            first_part3_turn_after_part2(theme, part2_theme)
+            first_part3_turn_after_part2(theme, part2_theme_label)
             if part3_count == 0
             else GeneratedTurn(
                 fallback_questions[min(part3_count - 1, len(fallback_questions) - 1)],
                 40,
             )
         )
+        if is_repeated_question(fallback.prompt_text, asked):
+            for candidate in fallback_questions:
+                if not is_repeated_question(candidate, asked):
+                    fallback = GeneratedTurn(candidate, 40)
+                    break
         return await self._chat_turn(
             test,
             PART3_INSTRUCTIONS,
@@ -208,7 +219,7 @@ class ConversationOrchestrator:
                 history,
                 asked,
                 theme=theme,
-                part2_theme=part2_theme,
+                part2_theme=part2_theme_label,
                 is_first_part3_question=part3_count == 0,
                 is_nervous=is_nervous,
             ),
@@ -312,12 +323,45 @@ class ConversationOrchestrator:
             return plan  # type: ignore[return-value]
         return choose_session_topics([])
 
-    async def _generate_part1_turn(self, test: TestSession) -> GeneratedTurn:
-        asked = [
+    def _session_prompts(self, test: TestSession) -> list[str]:
+        return [
             item.prompt_text
             for item in test.session_questions
-            if item.part == 1 and item.examiner_asset_version not in {"intro", "follow-up"}
+            if item.prompt_text and item.examiner_asset_version != "intro"
         ]
+
+    async def _recent_user_prompts(self, user_id: int, *, exclude_test_id: str | None = None) -> list[str]:
+        stmt = (
+            select(SessionQuestion.prompt_text)
+            .join(TestSession, TestSession.id == SessionQuestion.test_session_id)
+            .where(
+                TestSession.user_id == user_id,
+                SessionQuestion.examiner_asset_version != "intro",
+            )
+            .order_by(TestSession.created_at.desc(), SessionQuestion.sort_order.desc())
+            .limit(80)
+        )
+        if exclude_test_id:
+            stmt = stmt.where(TestSession.id != exclude_test_id)
+        rows = await self._session.execute(stmt)
+        return [text for text in rows.scalars().all() if text]
+
+    async def _exclusion_prompts(self, test: TestSession) -> list[str]:
+        current = self._session_prompts(test)
+        recent = await self._recent_user_prompts(test.user_id, exclude_test_id=test.id)
+        # Current-test prompts first so in-session uniqueness is strongest.
+        merged: list[str] = []
+        seen: set[str] = set()
+        for prompt in [*current, *recent]:
+            key = prompt.strip().lower()
+            if not key or key in seen:
+                continue
+            seen.add(key)
+            merged.append(prompt)
+        return merged
+
+    async def _generate_part1_turn(self, test: TestSession) -> GeneratedTurn:
+        asked = await self._exclusion_prompts(test)
         history = await self._history(test.id, 1)
         plan = self._topic_plan(test)
         main_index = self._part1_main_question_count(test)
@@ -342,19 +386,28 @@ class ConversationOrchestrator:
     async def _generate_part2_prompt(self, test: TestSession) -> GeneratedTurn:
         history = await self._history(test.id)
         theme = part2_theme(self._topic_plan(test)["part2"])
-        payload = await self._chat_json(
-            test,
-            PART2_INSTRUCTIONS + DATA_HANDLING_RULES,
-            part2_prompt_input(
-                history,
-                theme_label=theme["label"],
-                task=theme["task"],
-                part3_theme=theme["part3"],
-            ),
-        )
+        excluded = await self._exclusion_prompts(test)
+        curated = curated_part2_turn(theme)
+        try:
+            payload = await self._chat_json(
+                test,
+                PART2_INSTRUCTIONS + DATA_HANDLING_RULES,
+                part2_prompt_input(
+                    history,
+                    theme_label=theme["label"],
+                    task=theme["task"],
+                    prompts=list(theme["prompts"]),
+                    part3_theme=theme["part3"],
+                    avoid_repeating=excluded,
+                ),
+            )
+        except InferenceError:
+            return curated
+        if not cue_card_is_strong(payload):
+            return curated
         parsed = parse_cue_card(payload)
-        if parsed is None:
-            raise InferenceError("Part 2 prompt generation returned invalid JSON", retryable=True)
+        if parsed is None or is_repeated_question(parsed.prompt_text, excluded):
+            return curated
         return parsed
 
     async def _generate_part2_follow_up(self, test: TestSession, question: SessionQuestion) -> GeneratedTurn | None:
@@ -362,6 +415,7 @@ class ConversationOrchestrator:
         transcript = history[-1]["transcript"] if history else ""
         if not transcript.strip():
             return None
+        excluded = await self._exclusion_prompts(test)
         payload = await self._chat_json(
             test,
             FOLLOW_UP_INSTRUCTIONS + DATA_HANDLING_RULES,
@@ -370,11 +424,17 @@ class ConversationOrchestrator:
                     "part": 2,
                     "question": question.prompt_text,
                     "transcript": sanitize_candidate_text(transcript),
+                    "avoid_repeating": excluded[-12:],
                 }
             ),
         )
         follow_up = parse_follow_up(payload)
-        if follow_up is None or looks_like_injection(follow_up) or echoes_candidate(follow_up, [transcript]):
+        if (
+            follow_up is None
+            or looks_like_injection(follow_up)
+            or echoes_candidate(follow_up, [transcript])
+            or is_repeated_question(follow_up, excluded)
+        ):
             return None
         return GeneratedTurn(prompt_text=follow_up, timing_seconds=35, asset_version="follow-up")
 
