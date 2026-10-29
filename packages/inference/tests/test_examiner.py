@@ -2,6 +2,8 @@ from ielts_inference.examiner import (
     PART1_INTRO_TEXT,
     PART2_INTRO_PREFIX,
     PART3_INTRO_PREFIX,
+    cue_card_is_strong,
+    curated_part2_turn,
     first_part1_turn_after_intro,
     first_part3_turn_after_part2,
     is_repeated_question,
@@ -12,7 +14,9 @@ from ielts_inference.examiner import (
     part1_prompt_input,
     part2_prompt_input,
     part3_prompt_input,
+    question_core,
 )
+from ielts_inference.topics import part2_theme
 
 
 def test_parse_follow_up_requires_a_real_question():
@@ -40,7 +44,17 @@ def test_repeated_question_detects_exact_and_near_duplicates():
     asked = ["Should cities provide more opportunities for outdoor activities?"]
     assert is_repeated_question("Should cities provide more opportunities for outdoor activities?", asked)
     assert is_repeated_question("Should cities provide more opportunities for outdoor activities", asked)
+    assert is_repeated_question(
+        "Should cities provide more opportunities for outdoor activities for people?",
+        asked,
+    )
     assert not is_repeated_question("Why do some people spend little time outdoors?", asked)
+
+
+def test_question_core_strips_part_intros():
+    core = question_core(PART2_INTRO_PREFIX + "Describe a teacher who helped you.")
+    assert core.startswith("describe a teacher")
+    assert "end of part 1" not in core
 
 
 def test_parse_cue_card_requires_three_points():
@@ -111,7 +125,33 @@ def test_prompt_inputs_pin_the_assigned_topic():
     assert "music" in part1
     assert "listening habits" in part1
     assert "live music event" in part1
-    part2 = part2_prompt_input([], theme_label="a useful skill", task="Describe a skill.", part3_theme="training")
+    part2 = part2_prompt_input(
+        [],
+        theme_label="a useful skill",
+        task="Describe a skill you learned that later helped you in real life.",
+        prompts=["what the skill is", "how you learned it", "when it helped", "why others should learn it"],
+        part3_theme="training",
+        avoid_repeating=["Describe a meal you enjoyed."],
+    )
     assert "a useful skill" in part2
+    assert "avoid_repeating" in part2
     part3 = part3_prompt_input([], [], theme="education and teaching quality")
     assert "education and teaching quality" in part3
+
+
+def test_curated_part2_turn_is_strong_and_playable():
+    theme = part2_theme("skill")
+    turn = curated_part2_turn(theme)
+    assert turn.cue_card is not None
+    assert len(turn.cue_card["prompts"]) == 4
+    assert turn.prompt_text.startswith(PART2_INTRO_PREFIX)
+    assert cue_card_is_strong(
+        {"topic": theme["label"], "task": theme["task"], "prompts": theme["prompts"]}
+    )
+    assert not cue_card_is_strong(
+        {
+            "topic": "Vague",
+            "task": "Describe something important.",
+            "prompts": ["one", "two", "three", "four"],
+        }
+    )

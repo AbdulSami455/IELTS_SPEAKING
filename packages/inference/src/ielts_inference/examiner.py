@@ -156,19 +156,20 @@ PART2_INSTRUCTIONS = """You are an IELTS Speaking examiner for a practice test.
 Generate one Part 2 cue-card task in English for the assigned theme.
 
 Rules:
-- Stay on the assigned theme. You may rephrase the task slightly so it sounds natural.
-- Use an IELTS long-turn event/person/place/object/experience task such as a useful skill, memorable journey, celebration, decision, team project, useful technology, local change, conversation, tradition, or well-organised event.
-- Begin the task with "Describe" and make it specific and vivid — not a generic "describe something important".
-- Bullet prompts must ask for concrete details (who, where, when, what happened, how you felt, why it matters).
-- Include 3 or 4 bullet prompts.
-- Do not switch to an unrelated theme such as food unless that is the assigned theme.
-- Do not score, teach, or add extra commentary.
+- Stay on the assigned theme. Use preferred_task and preferred_prompts as the base; you may polish wording so it sounds like a real Cambridge cue card.
+- Begin the task with "Describe" and make it specific and personal — name a concrete person/place/object/experience, not a vague idea.
+- Good: "Describe a skill you taught yourself so you could solve a practical problem."
+- Bad: "Describe something important in your life." / "Describe a memorable experience."
+- Include exactly 4 bullet prompts that cover: who/what/where, what happened or how it worked, how you felt or what changed, and why it still matters.
+- Each bullet must be a short phrase (not a full lecture) and must be different from the others.
+- Do not reuse any task or bullet from avoid_repeating.
+- Do not switch theme. Do not score, teach, or add commentary outside the JSON.
 
 Return JSON only:
 {
   "topic": "short cue-card title",
   "task": "Describe ...",
-  "prompts": ["...", "...", "..."]
+  "prompts": ["...", "...", "...", "..."]
 }
 """
 
@@ -202,19 +203,43 @@ def parse_follow_up(raw: dict) -> str | None:
     return question
 
 
-def is_repeated_question(question: str, asked_prompts: list[str]) -> bool:
-    normalized = re.sub(r"[^a-z0-9]+", " ", question.lower()).strip()
+_INTRO_PREFIXES = (PART2_INTRO_PREFIX, PART3_INTRO_PREFIX)
+
+
+def question_core(text: str) -> str:
+    """Strip fixed examiner intros so Part 2/3 wording can be compared fairly."""
+    cleaned = str(text or "").strip()
+    for prefix in _INTRO_PREFIXES:
+        if cleaned.startswith(prefix):
+            cleaned = cleaned[len(prefix) :].strip()
+            break
+    # Cue cards append title + bullets after the task; compare on the task sentence when present.
+    if cleaned.lower().startswith("describe"):
+        stop = cleaned.find("?")
+        if stop == -1:
+            stop = cleaned.find(".")
+        if stop != -1 and stop < 220:
+            cleaned = cleaned[: stop + 1]
+    return re.sub(r"[^a-z0-9]+", " ", cleaned.lower()).strip()
+
+
+def is_repeated_question(question: str, asked_prompts: list[str], *, threshold: float = 0.78) -> bool:
+    normalized = question_core(question)
     if not normalized:
         return False
-    return any(
-        SequenceMatcher(
-            None,
-            normalized,
-            re.sub(r"[^a-z0-9]+", " ", previous.lower()).strip(),
-        ).ratio()
-        >= 0.9
-        for previous in asked_prompts
-    )
+    for previous in asked_prompts:
+        prior = question_core(previous)
+        if not prior:
+            continue
+        if normalized == prior:
+            return True
+        if SequenceMatcher(None, normalized, prior).ratio() >= threshold:
+            return True
+        # Catch paraphrases that keep a long shared span.
+        overlap = SequenceMatcher(None, normalized, prior).find_longest_match(0, len(normalized), 0, len(prior))
+        if overlap.size >= 48 and overlap.size >= 0.55 * min(len(normalized), len(prior)):
+            return True
+    return False
 
 
 def _spoken_question_text(raw: dict) -> str:
@@ -270,7 +295,8 @@ def parse_cue_card(raw: dict, *, include_part2_intro: bool = True) -> GeneratedT
         return None
     if len(prompts) < 3 or len(prompts) > 4:
         return None
-    cue = {"title": topic or "Part 2", "prompts": prompts}
+    # Prefer four concrete bullets; keep three for older catalog/test fixtures.
+    cue = {"title": topic or "Part 2", "prompts": prompts[:4]}
     spoken_parts = []
     if include_part2_intro:
         spoken_parts.append(PART2_INTRO_PREFIX)
@@ -301,16 +327,60 @@ def part1_prompt_input(
     )
 
 
-def part2_prompt_input(history: list[dict], *, theme_label: str, task: str, part3_theme: str) -> str:
+def part2_prompt_input(
+    history: list[dict],
+    *,
+    theme_label: str,
+    task: str,
+    prompts: list[str],
+    part3_theme: str,
+    avoid_repeating: list[str] | None = None,
+) -> str:
     return json.dumps(
         {
             "part": 2,
             "assigned_theme": theme_label,
             "preferred_task": task,
+            "preferred_prompts": prompts,
             "later_part3_theme": part3_theme,
+            "avoid_repeating": (avoid_repeating or [])[-12:],
             "candidate_profile": sanitize_history(history, limit=4),
         }
     )
+
+
+def curated_part2_turn(theme: dict) -> GeneratedTurn:
+    """Build a high-quality Part 2 turn from the catalog without calling a model."""
+    prompts = [str(item).strip() for item in (theme.get("prompts") or []) if str(item).strip()]
+    payload = {
+        "topic": str(theme.get("label") or "Part 2").strip().capitalize(),
+        "task": str(theme.get("task") or "").strip(),
+        "prompts": prompts,
+    }
+    turn = parse_cue_card(payload)
+    if turn is None:
+        raise ValueError(f"Invalid Part 2 theme catalog entry: {theme.get('id')}")
+    return turn
+
+
+def cue_card_is_strong(raw: dict) -> bool:
+    task = str(raw.get("task") or "").strip()
+    prompts = [str(item).strip() for item in (raw.get("prompts") or []) if str(item).strip()]
+    if not task.lower().startswith("describe"):
+        return False
+    if len(task) < 36 or len(task) > 220:
+        return False
+    vague = ("something important", "a memorable experience", "an interesting thing", "something special")
+    if any(phrase in task.lower() for phrase in vague):
+        return False
+    if len(prompts) != 4:
+        return False
+    if any(len(item) < 8 or len(item) > 90 for item in prompts):
+        return False
+    cores = [question_core(item) for item in prompts]
+    if len(set(cores)) < 4:
+        return False
+    return True
 
 
 def part3_prompt_input(
