@@ -15,11 +15,25 @@ def to_camel(name: str) -> str:
     return parts[0] + "".join(part.title() for part in parts[1:])
 
 
+# Criterion map keys must stay snake_case so the web client can look them up.
+_PRESERVED_DICT_KEYS = frozenset(
+    {
+        "fluency_and_coherence",
+        "lexical_resource",
+        "grammatical_range_and_accuracy",
+        "pronunciation",
+    }
+)
+
+
 def camelize(value):
     if isinstance(value, list):
         return [camelize(item) for item in value]
     if isinstance(value, dict):
-        return {to_camel(key): camelize(item) for key, item in value.items()}
+        return {
+            (key if key in _PRESERVED_DICT_KEYS else to_camel(key)): camelize(item)
+            for key, item in value.items()
+        }
     return value
 
 

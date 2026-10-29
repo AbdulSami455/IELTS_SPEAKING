@@ -445,7 +445,7 @@ class TestService:
         question = answer.session_question
         if question is None:
             raise validation("Answer is missing its question")
-        if answer.transcript is not None and answer.transcript.text:
+        if answer.transcript is not None and clean_transcript(answer.transcript.text):
             return answer.transcript
         client = OpenRouterClient(self.config, read_timeout=LIVE_READ_TIMEOUT)
         suffix = ".wav" if audio[:4] == b"RIFF" else ".webm"

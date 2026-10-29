@@ -239,5 +239,13 @@ def _strings(value: object, limit: int) -> list[str]:
 
 def _overall_confidence(criteria: list[dict]) -> str:
     ranks = {"high": 3, "medium": 2, "low": 1, "inconclusive": 0}
-    lowest = min(ranks.get(item["confidence"], 1) for item in criteria)
-    return {3: "high", 2: "medium", 1: "low", 0: "inconclusive"}[lowest]
+    # Ignore criteria we could not band; they already mark is_inconclusive when needed.
+    scored = [
+        item
+        for item in criteria
+        if item.get("confidence") != "inconclusive" and item.get("band") is not None
+    ]
+    if not scored:
+        return "inconclusive"
+    lowest = min(ranks.get(str(item["confidence"]), 1) for item in scored)
+    return {3: "high", 2: "medium", 1: "low"}[lowest]
