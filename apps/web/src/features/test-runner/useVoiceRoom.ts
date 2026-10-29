@@ -4,18 +4,23 @@ import { api, type TestSession, type Turn } from "../../lib/api";
 import { recorderMime, rmsFromAnalyser } from "../../lib/audio";
 import { clearDraft, loadDraft, saveDraft } from "../../lib/drafts";
 
-const SPEECH_START_RMS = 0.05;
+const SPEECH_START_RMS = 0.055;
 const SPEECH_HOLD_RMS = 0.028;
+const BARGE_SPEECH_RMS = 0.11;
 const MIN_VOICED_MS = 2200;
 const INTRO_MIN_VOICED_MS = 700;
 const NOISE_BLIP_MS = 400;
 const MIN_BLOB_BYTES = 2500;
-const BARGE_IN_MS = 280;
+const BARGE_IN_MS = 850;
+const BARGE_GRACE_MS = 700;
+const POST_TTS_SETTLE_MS = 280;
 
 export type ConnectionState = "idle" | "connecting" | "live" | "offline";
 
 function silenceBudget(state: string, turn?: Turn): number {
   if (turn?.isIntro) return 1200;
+  // Part 2 follow-ups are short answers, not another long turn.
+  if (turn?.isFollowUp) return 3000;
   if (state === "PART2_SPEAK") return 6000;
   if (state === "PART3") return 3000;
   return 2200;
@@ -76,6 +81,8 @@ export function useVoiceRoom(testId: string) {
   const voicedMsRef = useRef(0);
   const lastTickAtRef = useRef(0);
   const bargeMsRef = useRef(0);
+  const examinerSpeakStartedAtRef = useRef(0);
+  const examinerEndedAtRef = useRef(0);
   const restoredDraftRef = useRef<Blob | null>(null);
   const pingResolverRef = useRef<(() => void) | null>(null);
   const playbackTokenRef = useRef(0);
@@ -154,10 +161,13 @@ export function useVoiceRoom(testId: string) {
       started = true;
       window.clearTimeout(timer);
       examinerSpeakingRef.current = true;
+      examinerSpeakStartedAtRef.current = performance.now();
+      bargeMsRef.current = 0;
       setExaminerSpeaking(true);
       setExaminerCue("idle");
       void audio.play().catch(() => {
         examinerSpeakingRef.current = false;
+        examinerEndedAtRef.current = performance.now();
         setExaminerSpeaking(false);
         setNotice("The question audio didn’t start automatically. Use Replay question to hear it.");
       });
@@ -337,18 +347,22 @@ export function useVoiceRoom(testId: string) {
         setMicLevel(level);
       }
       const activeTurn = session ? currentTurn(session) : undefined;
-      if (
+      const bargeGraceElapsed = now - examinerSpeakStartedAtRef.current >= BARGE_GRACE_MS;
+      const canBargeIn =
         examinerSpeakingRef.current &&
         roomOpen &&
         !recordingRef.current &&
         !startingRef.current &&
         !activeTurn?.isIntro &&
-        level >= SPEECH_START_RMS
-      ) {
+        bargeGraceElapsed &&
+        level >= BARGE_SPEECH_RMS;
+      if (canBargeIn) {
+        // Contiguous speech only — quiet gaps reset the barge counter.
         bargeMsRef.current += dt;
         if (bargeMsRef.current >= BARGE_IN_MS) {
           bargeMsRef.current = 0;
           examinerSpeakingRef.current = false;
+          examinerEndedAtRef.current = now;
           if (audioRef.current) {
             audioRef.current.volume = 0.3;
             audioRef.current.pause();
@@ -360,10 +374,11 @@ export function useVoiceRoom(testId: string) {
           setExaminerSpeaking(false);
           void beginUtterance();
         }
-      } else if (!examinerSpeakingRef.current) {
+      } else {
         bargeMsRef.current = 0;
       }
-      const open = roomOpen && !examinerSpeakingRef.current;
+      const settledAfterTts = now - examinerEndedAtRef.current >= POST_TTS_SETTLE_MS;
+      const open = roomOpen && !examinerSpeakingRef.current && settledAfterTts;
       const holding = recordingRef.current && level >= SPEECH_HOLD_RMS;
       const starting = open && level >= SPEECH_START_RMS;
       if (starting || holding) {
@@ -605,6 +620,17 @@ export function useVoiceRoom(testId: string) {
     });
   }
 
+  function markExaminerSpeaking(next: boolean) {
+    examinerSpeakingRef.current = next;
+    bargeMsRef.current = 0;
+    if (next) {
+      examinerSpeakStartedAtRef.current = performance.now();
+    } else {
+      examinerEndedAtRef.current = performance.now();
+    }
+    setExaminerSpeaking(next);
+  }
+
   return {
     test,
     connection,
@@ -628,7 +654,7 @@ export function useVoiceRoom(testId: string) {
     setMicPaused,
     toggleMicrophone,
     replayExaminer,
-    setExaminerSpeaking,
+    setExaminerSpeaking: markExaminerSpeaking,
     postRealtimeEvent,
     beginLiveRoom,
     startPrep,

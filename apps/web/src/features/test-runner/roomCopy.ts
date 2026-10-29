@@ -40,7 +40,7 @@ export function roomCopy(args: RoomCopyArgs): RoomCopy {
       title: args.isIntro ? "Listen to the introduction" : "Listen to the question",
       hint: args.isIntro
         ? "Wait for the examiner to finish, then say your full name."
-        : "Start answering when you’re ready. Speaking will stop the question.",
+        : "Listen to the full question first. Clear, sustained speech can interrupt if you need to answer early.",
     };
   }
   if (args.busy) {
