@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 
 from ielts_config.config import EnvironmentConfig
+from ielts_config.envfile import apply_env_file, load_local_env
 from ielts_db.database import DatabaseConfig, get_database_url
 from ielts_db.models import Base, Question, QuestionSet
 from ielts_db.storage import ObjectStore
@@ -17,19 +18,11 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def _load_env() -> None:
-    env_path = ROOT / ".env"
-    example = ROOT / ".env.example"
-    if env_path.exists():
-        source = env_path
-    elif example.exists():
-        source = example
-    else:
+    if load_local_env(ROOT) is not None:
         return
-    for line in source.read_text().splitlines():
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        key, value = line.split("=", 1)
-        os.environ.setdefault(key.strip(), value.strip())
+    example = ROOT / ".env.example"
+    if example.is_file():
+        apply_env_file(example)
 
 
 async def main() -> None:

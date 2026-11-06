@@ -11,16 +11,9 @@ from celery.signals import worker_process_init
 
 
 def _load_env() -> None:
-    here = Path(__file__).resolve()
-    for parent in [here.parent, *here.parents]:
-        env_path = parent / ".env"
-        if env_path.exists():
-            for line in env_path.read_text().splitlines():
-                if not line or line.startswith("#") or "=" not in line:
-                    continue
-                key, value = line.split("=", 1)
-                os.environ.setdefault(key.strip(), value.strip())
-            return
+    from ielts_config import load_local_env
+
+    load_local_env(Path(__file__).resolve())
 
 
 _load_env()
