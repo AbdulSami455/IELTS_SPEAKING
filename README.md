@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/assets/mark.svg" width="56" height="56" alt="Hinterbuild" />
+</p>
+
 # IELTS Speaking Practice
 
 [![CI](https://github.com/AbdulSami455/IELTS_SPEAKING/actions/workflows/ci.yml/badge.svg)](https://github.com/AbdulSami455/IELTS_SPEAKING/actions/workflows/ci.yml)
@@ -16,6 +20,10 @@ through a React app.
 > Council, IDP, and Cambridge. Practice bands are coaching estimates only.
 > See [NOTICE](NOTICE).
 
+<p align="center">
+  <img src="docs/assets/studio.svg" width="420" alt="The speaking studio — a learner at the microphone" />
+</p>
+
 | | |
 | --- | --- |
 | **Live exam** | WebSocket speaking room, examiner TTS, mic capture, VAD |
@@ -26,6 +34,7 @@ through a React app.
 
 ## Contents
 
+- [Who this is for](#who-this-is-for)
 - [What you get](#what-you-get)
 - [How a practice test works](#how-a-practice-test-works)
 - [Architecture](#architecture)
@@ -34,11 +43,27 @@ through a React app.
 - [Models](#models)
 - [Deploy](#deploy)
 - [Configuration](#configuration)
+- [What is stored](#what-is-stored)
 - [Security](#security)
 - [Tests](#tests)
 - [Operations](#operations)
 - [Troubleshooting](#troubleshooting)
+- [FAQ](#faq)
 - [Contributing](#contributing)
+
+## Who this is for
+
+| You | Why this repo |
+| --- | --- |
+| A teacher, lab, or bootcamp | Run a private speaking studio on your own machines |
+| A developer who wants a real speaking loop | Mic → examiner → STT → band report, not a chat demo |
+| Someone self-hosting study tools | MIT-licensed, Docker Compose, Railway / Render / Fly templates |
+
+It is **not** an official exam, a drop-in replacement for a human examiner, or
+a hosted SaaS you log into. You operate the instance. Learners register on
+*your* deployment.
+
+You do **not** need a GPU. All inference is HTTP to an OpenAI-compatible API.
 
 ## What you get
 
@@ -52,6 +77,10 @@ A full speaking loop, not a chatbot demo:
 5. **Scoring** — Celery transcribes the audio, scores the four criteria, and
    writes a report the dashboard can chart.
 
+<p align="center">
+  <img src="docs/assets/feedback.svg" width="380" alt="Feedback notes for the next conversation" />
+</p>
+
 The same session also produces:
 
 - Per-answer transcripts and examiner audio you can replay.
@@ -61,6 +90,15 @@ The same session also produces:
 
 Typical sitting: **11–14 minutes**, then a few minutes of worker time for the
 report.
+
+```mermaid
+flowchart LR
+  A[Sound check] --> B[Part 1 interview]
+  B --> C[Part 2 cue card]
+  C --> D[Part 3 discussion]
+  D --> E[Async scoring]
+  E --> F[Report + plan]
+```
 
 ## How a practice test works
 
@@ -176,6 +214,7 @@ evals/            Scoring golden set, examiner checks, STT/TTS probes
 migrations/       Alembic revisions
 infra/deploy/     Railway, Render, Fly.io, Docker notes
 docs/             Models · Deploy · Maintainers
+docs/assets/      README illustrations
 ```
 
 | Doc | When you need it |
@@ -186,6 +225,16 @@ docs/             Models · Deploy · Maintainers
 | [evals/README.md](evals/README.md) | How to run and extend AI evals |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Setup, tests, PR bar |
 | [SECURITY.md](SECURITY.md) | How to report a vulnerability |
+
+Useful Make targets:
+
+| Target | What it runs |
+| --- | --- |
+| `make compose-up` | `docker compose up` |
+| `make stack` | Native API + worker + web (`scripts/dev_stack.sh`) |
+| `make worker` | Celery worker only |
+| `make evals` | Live scoring + examiner + STT/TTS probes |
+| `make evals-replay` | Offline replay of committed recordings |
 
 ## Run it locally
 
@@ -236,7 +285,7 @@ cd apps/web && npm ci && npm run dev
 | Web (Vite) | http://localhost:3000 |
 | API | http://localhost:4000/v1 |
 | API docs (dev only) | http://localhost:4000/docs |
-| MinIO console | http://localhost:9001 |
+| MinIO console | http://localhost:9001 (`minio` / `minio-development-only`) |
 
 The web app talks to `VITE_API_BASE_URL` (default `http://localhost:4000/v1`).
 In production nginx proxies `/v1` on the same origin.
@@ -253,6 +302,9 @@ override rather than editing `docker-compose.yml`.
 5. Wait for the report after Part 3 — scoring is async.
 
 There is no seeded demo user. You register locally like a learner.
+
+Optional: load extra cue cards with `make db-seed` (needs the API database
+already migrated).
 
 ## Models
 
@@ -307,6 +359,13 @@ Ollama, or LiteLLM and change the slugs. The env **names** stay
 `REALTIME_STT_MODEL` / `REALTIME_TTS_MODEL` are session labels for telemetry.
 **Live HTTP STT/TTS always uses `OPENROUTER_STT_*` and `OPENROUTER_TTS_*`.**
 
+The client refuses to start without a non-empty `OPENROUTER_API_KEY`, even
+against a local server that ignores it. Use a placeholder.
+
+Not every host implements `/audio/transcriptions` and `/audio/speech`. If a
+host only does chat, put a gateway (OpenRouter, LiteLLM) in front — this
+codebase talks to **one** base URL for all five jobs.
+
 Full matrix, provider examples, and pitfalls: **[docs/models.md](docs/models.md)**.
 
 ## Deploy
@@ -325,7 +384,7 @@ Postgres, Redis, and an S3-compatible bucket.
 Production checklist (do this before the first real learner):
 
 - [ ] `APP_ENV=production`
-- [ ] `AUTH_TOKEN_SECRET` ≥ 32 random characters (not the example value)
+- [ ] `AUTH_TOKEN_SECRET` ≥ 32 random characters (`openssl rand -hex 32`)
 - [ ] `WEB_ORIGIN` = the public HTTPS origin of the web app
 - [ ] `CONSENT_VERSION` set to the date your policies last changed
 - [ ] `TRUSTED_PROXY_HOPS=1` behind Railway / Render / Fly
@@ -333,6 +392,12 @@ Production checklist (do this before the first real learner):
 - [ ] Model provider funded; `make evals` run once against production slugs
 - [ ] Migrations applied as a release step (`alembic upgrade head`)
 - [ ] `AUTO_MIGRATE=false` in production
+- [ ] Exactly **one** `beat` replica
+- [ ] Web has `API_UPSTREAM` so nginx can proxy `/v1`
+
+Object storage is S3-compatible. You do not have to run MinIO in production;
+set `MINIO_*` to R2, Tigris, AWS S3, or a Railway/Fly bucket. One bucket is
+enough if the three logical names share it — object keys do not collide.
 
 ## Configuration
 
@@ -355,6 +420,26 @@ Settings are environment variables read by `packages/config`
 | `TRANSCRIPT_RETENTION_DAYS` / `REPORT_RETENTION_DAYS` | Later retention passes |
 | `PAID_DAILY_BUDGET_USD` / `PAID_TEST_COST_CEILING_USD` | Soft cost rails |
 
+## What is stored
+
+| Data | Where | Default lifetime |
+| --- | --- | --- |
+| Email, password hash, consent version | Postgres | Until the account is deleted |
+| Test metadata, band report, practice plan | Postgres | `REPORT_RETENTION_DAYS` (365) |
+| Answer transcripts | Postgres | Blanked after `TRANSCRIPT_RETENTION_DAYS` (30) |
+| Candidate audio + derivatives | S3-compatible bucket | Deleted after `RAW_AUDIO_RETENTION_DAYS` (7) |
+| Examiner TTS clips | S3-compatible bucket | Kept with the session (not in the raw-audio pass) |
+| Rate-limit counters, Celery broker | Redis | Ephemeral |
+
+Celery beat runs retention hourly. Abandoned tests stuck in
+`CREATED` / `DEVICE_CHECK` / `READY` expire so they stop counting as
+resumable.
+
+Recording only happens after the learner accepts consent. Bumping
+`CONSENT_VERSION` forces a new acceptance before the next sitting.
+
+Do not commit `.env`, provider keys, or dumps of learner audio.
+
 ## Security
 
 - **Auth**: email + password, PBKDF2 hashes, short-lived access cookie and a
@@ -373,8 +458,6 @@ Settings are environment variables read by `packages/config`
 - **Secrets**: local `.env` files are loaded only from this repository, never
   from a parent directory. CI runs Gitleaks. Report vulnerabilities privately —
   [SECURITY.md](SECURITY.md).
-
-Do not commit `.env`, provider keys, or dumps of learner audio.
 
 ## Tests
 
@@ -409,17 +492,13 @@ every 30 minutes (`GET /health/providers`).
 | `GET /health/providers` | Bearer `METRICS_TOKEN` | Last STT/TTS probe |
 | `GET /metrics` | Bearer `METRICS_TOKEN` | Prometheus |
 
-Logs are JSON with PII redaction.
+Logs are JSON with PII redaction. Point platform health checks at
+`/health/ready` on **api** and `/` on **web**.
 
 New migration:
 
 ```sh
 uv run alembic revision --autogenerate -m "describe the change"
-```
-
-Apply:
-
-```sh
 uv run --env-file .env alembic upgrade head
 ```
 
@@ -434,10 +513,46 @@ uv run --env-file .env alembic upgrade head
 | Test finishes, report stays “scoring” | Worker down, or scoring model returned non-JSON | `docker compose logs worker`; confirm `OPENROUTER_SCORING_MODEL` |
 | `403 CONSENT_REQUIRED` | `CONSENT_VERSION` changed | Sign in and accept the new consent screen |
 | `/docs` missing in production | Expected | `APP_ENV=production` hides OpenAPI |
+| API will not start, empty key | `OPENROUTER_API_KEY` is blank | Set a real key or a placeholder for local gateways |
 
 Worker logs are the first place to look after a failed sitting. Scoring errors
 are persisted on the test row so the UI can show a real failure instead of
 spinning forever.
+
+## FAQ
+
+**Is this an official IELTS test?**
+No. It is independent practice software. Do not present scores as official
+results. See [NOTICE](NOTICE).
+
+**Can I use it commercially?**
+The code is [MIT](LICENSE). You may run it for a class or product. You may
+**not** imply endorsement by the British Council, IDP, or Cambridge, and you
+must respect model-provider terms for any API you call.
+
+**Do I need OpenRouter?**
+No. Any host that implements OpenAI `/chat/completions`,
+`/audio/transcriptions`, and `/audio/speech` works. Change
+`OPENROUTER_BASE_URL` and the slugs. Details in [docs/models.md](docs/models.md).
+
+**Do I need a GPU?**
+No. The app calls out over HTTP. Self-hosting vLLM/Ollama is optional.
+
+**Is there a demo account?**
+No. Register on your instance after accepting consent.
+
+**Does it work on a phone?**
+The UI is responsive. A sitting still needs a microphone the browser can use,
+and a stable connection for the WebSocket.
+
+**Why did scoring fail after a good conversation?**
+The worker or the scoring model failed, not the exam itself. Check worker
+logs. Failed tests still land in the database with an error the UI can show.
+
+**How much does a test cost?**
+Depends entirely on the models you pick. Soft rails
+`PAID_DAILY_BUDGET_USD` and `PAID_TEST_COST_CEILING_USD` are in `.env.example`.
+Run `make evals` on your slugs before inviting learners.
 
 ## Contributing
 
