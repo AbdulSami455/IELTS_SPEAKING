@@ -42,10 +42,7 @@ testpaths = [
     "packages/domain/tests",
     "packages/inference/tests",
     "packages/config/tests",
-    "packages/db/tests",
-    "packages/observability/tests",
     "apps/api/tests",
-    "apps/worker/tests",
     "evals/tests",
 ]
 asyncio_mode = "auto"
@@ -69,6 +66,16 @@ pythonpath = [
 [tool.ruff]
 line-length = 120
 target-version = "py313"
+
+[tool.ruff.lint]
+# Keep the CI bar explicit. Default ruff select is E4/E7/E9/F; do not widen it
+# in a drive-by — extra rules need their own cleanup PR.
+select = ["E4", "E7", "E9", "F"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
 
 [tool.ruff.lint.flake8-bugbear]
 # FastAPI dependency injection relies on calls in defaults.

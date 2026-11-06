@@ -1,6 +1,7 @@
 SHELL := /bin/sh
 
 .PHONY: infra-up infra-down db-seed worker stack compose-up compose-down
+.PHONY: lint test check evals evals-replay
 
 infra-up:
 	docker compose -f infra/docker-compose.yml up -d
@@ -24,7 +25,16 @@ compose-up:
 compose-down:
 	docker compose down
 
-.PHONY: evals evals-replay
+lint:
+	uv run ruff check .
+	cd apps/web && npm run typecheck && npm run lint && npm run format:check
+
+test:
+	uv run pytest -q
+	cd apps/web && npm test -- --run
+
+check: lint test
+
 evals:
 	uv run --env-file .env python evals/scoring/run.py --live --record
 	uv run --env-file .env python evals/examiner/run.py --live --record
