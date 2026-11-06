@@ -1,0 +1,19 @@
+[Unit]
+Description=IELTS speaking Celery worker
+After=network.target postgresql.service redis.service ielts-api.service
+Requires=network.target
+
+[Service]
+Type=simple
+User=ielts
+Group=ielts
+WorkingDirectory=/opt/ielts
+EnvironmentFile=/etc/ielts/ielts.env
+ExecStart=/opt/ielts/.venv/bin/celery -A ielts_worker.tasks:celery_app worker --loglevel=info --concurrency=2
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target
