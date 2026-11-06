@@ -11,7 +11,8 @@ Do these yourself. This file is a checklist, not an automated publish step.
    `noreply` address *before* the first public push (`git filter-repo` or
    BFG). History rewrite is destructive; only you should run it.
 5. Confirm GitHub Actions secrets: `OPENROUTER_API_KEY` for nightly evals.
-   Repository **variables** (`vars.*`) must not hold keys.
+   Repository **variables** (`vars.*`) must not hold keys. GHCR images from
+   `publish-images.yml` stay private until you change package visibility.
 6. Set the GitHub description, topics, and LICENSE detection (MIT is already
    in the tree).
 7. Add a real `CODEOWNERS` file if you want review gates.
