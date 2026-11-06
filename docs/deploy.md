@@ -38,15 +38,25 @@ flowchart TB
   Beat --> S3
 ```
 
-Pick a template:
+Pick a template (full catalogue: [infra/deploy/README.md](../infra/deploy/README.md)):
 
 | Where | Template |
 | --- | --- |
 | Your laptop | [README](../README.md#run-it-locally) / `docker compose up` |
-| Any VPS or Kubernetes node | [`docker-compose.prod.yml`](../docker-compose.prod.yml) — [notes](../infra/deploy/docker.md) |
+| VPS (Docker) | [`docker-compose.prod.yml`](../docker-compose.prod.yml) — [notes](../infra/deploy/docker.md) |
+| VPS + HTTPS | [Caddy overlay](../infra/deploy/caddy/) · [`docker-compose.caddy.yml`](../docker-compose.caddy.yml) |
+| VPS without Docker | [systemd](../infra/deploy/systemd/) |
+| Kubernetes | [Kustomize](../infra/deploy/k8s/) |
 | Railway | [`infra/deploy/railway.md`](../infra/deploy/railway.md) |
 | Render | [`infra/deploy/render.yaml`](../infra/deploy/render.yaml) — [notes](../infra/deploy/render.md) |
 | Fly.io | [`infra/deploy/fly/`](../infra/deploy/fly/) |
+| DigitalOcean App Platform | [`infra/deploy/digitalocean/`](../infra/deploy/digitalocean/) |
+| Coolify / Dokploy / Portainer | [compose-platforms.md](../infra/deploy/compose-platforms.md) |
+| Cloudflare Tunnel | [cloudflare.md](../infra/deploy/cloudflare.md) |
+| Publish images (GHCR) | [github-packages.md](../infra/deploy/github-packages.md) |
+
+Skip Lambda, Cloud Run, and other one-shot HTTP hosts: they cannot run the
+WebSocket room, the Celery worker, and a single beat replica together.
 
 Object storage is **S3-compatible**. You do not have to run MinIO in
 production; set `MINIO_*` to R2, Tigris, AWS S3, or a Railway/Fly bucket.

@@ -6,7 +6,7 @@
 
 [![CI](https://github.com/AbdulSami455/IELTS_SPEAKING/actions/workflows/ci.yml/badge.svg)](https://github.com/AbdulSami455/IELTS_SPEAKING/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Python 3.12](https://img.shields.io/badge/python-3.12-3776AB.svg)](https://www.python.org/)
+[![Python 3.13](https://img.shields.io/badge/python-3.13-3776AB.svg)](https://www.python.org/)
 [![Node 22](https://img.shields.io/badge/node-22-339933.svg)](https://nodejs.org/)
 [![FastAPI](https://img.shields.io/badge/API-FastAPI-009688.svg)](https://fastapi.tiangolo.com/)
 [![React 19](https://img.shields.io/badge/UI-React%2019-61DAFB.svg)](https://react.dev/)
@@ -42,6 +42,7 @@ through a React app.
 - [Run it locally](#run-it-locally)
 - [Models](#models)
 - [Deploy](#deploy)
+- [Code quality](#code-quality)
 - [Configuration](#configuration)
 - [What is stored](#what-is-stored)
 - [Security](#security)
@@ -212,8 +213,8 @@ apps/worker       Celery worker + beat
 packages/         config, domain, db, inference, audio, observability
 evals/            Scoring golden set, examiner checks, STT/TTS probes
 migrations/       Alembic revisions
-infra/deploy/     Railway, Render, Fly.io, Docker notes
-docs/             Models · Deploy · Maintainers
+infra/deploy/     Railway, Render, Fly, Docker, k8s, systemd, Caddy, DO
+docs/             Models · Deploy · Code standards · Maintainers
 docs/assets/      README illustrations
 ```
 
@@ -221,6 +222,8 @@ docs/assets/      README illustrations
 | --- | --- |
 | [docs/models.md](docs/models.md) | Swap OpenRouter for Groq, vLLM, Ollama, … |
 | [docs/deploy.md](docs/deploy.md) | Production topology, env, health |
+| [infra/deploy/README.md](infra/deploy/README.md) | Every deploy template |
+| [docs/code-standards.md](docs/code-standards.md) | Python and TypeScript conventions |
 | [docs/maintainers.md](docs/maintainers.md) | Release and incident notes |
 | [evals/README.md](evals/README.md) | How to run and extend AI evals |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Setup, tests, PR bar |
@@ -230,6 +233,8 @@ Useful Make targets:
 
 | Target | What it runs |
 | --- | --- |
+| `make check` | Ruff + pytest + web typecheck / lint / Prettier / Vitest |
+| `make lint` / `make test` | The two halves of `check` |
 | `make compose-up` | `docker compose up` |
 | `make stack` | Native API + worker + web (`scripts/dev_stack.sh`) |
 | `make worker` | Celery worker only |
@@ -371,15 +376,26 @@ Full matrix, provider examples, and pitfalls: **[docs/models.md](docs/models.md)
 ## Deploy
 
 Same four processes everywhere: **web**, **api**, **worker**, **beat**, plus
-Postgres, Redis, and an S3-compatible bucket.
+Postgres, Redis, and an S3-compatible bucket. Catalogue:
+[infra/deploy/README.md](infra/deploy/README.md).
 
 | Target | Start here |
 | --- | --- |
-| Any Linux host | [`docker-compose.prod.yml`](docker-compose.prod.yml) · [notes](infra/deploy/docker.md) |
+| VPS (Docker) | [`docker-compose.prod.yml`](docker-compose.prod.yml) · [notes](infra/deploy/docker.md) |
+| VPS + HTTPS | [Caddy overlay](infra/deploy/caddy/) · [`docker-compose.caddy.yml`](docker-compose.caddy.yml) |
+| VPS without Docker | [systemd units + nginx](infra/deploy/systemd/) |
+| Kubernetes | [Kustomize base](infra/deploy/k8s/) |
 | Railway | [infra/deploy/railway.md](infra/deploy/railway.md) |
 | Render | [infra/deploy/render.yaml](infra/deploy/render.yaml) · [notes](infra/deploy/render.md) |
 | Fly.io | [infra/deploy/fly/](infra/deploy/fly/) |
+| DigitalOcean App Platform | [infra/deploy/digitalocean/](infra/deploy/digitalocean/) |
+| Coolify / Dokploy / Portainer | [infra/deploy/compose-platforms.md](infra/deploy/compose-platforms.md) |
+| Cloudflare Tunnel | [infra/deploy/cloudflare.md](infra/deploy/cloudflare.md) |
+| Publish images | [GHCR](infra/deploy/github-packages.md) (`v*` tag or workflow_dispatch) |
 | Overview | [docs/deploy.md](docs/deploy.md) |
+
+A poor fit: AWS Lambda, Cloud Run, or any host that cannot keep a WebSocket,
+a Celery worker, and **one** beat replica running together.
 
 Production checklist (do this before the first real learner):
 
@@ -387,7 +403,7 @@ Production checklist (do this before the first real learner):
 - [ ] `AUTH_TOKEN_SECRET` ≥ 32 random characters (`openssl rand -hex 32`)
 - [ ] `WEB_ORIGIN` = the public HTTPS origin of the web app
 - [ ] `CONSENT_VERSION` set to the date your policies last changed
-- [ ] `TRUSTED_PROXY_HOPS=1` behind Railway / Render / Fly
+- [ ] `TRUSTED_PROXY_HOPS=1` behind one TLS edge (Caddy, Railway, Fly, Cloudflare, …)
 - [ ] `METRICS_TOKEN` set (protects `/metrics` and `/health/providers`)
 - [ ] Model provider funded; `make evals` run once against production slugs
 - [ ] Migrations applied as a release step (`alembic upgrade head`)
@@ -398,6 +414,28 @@ Production checklist (do this before the first real learner):
 Object storage is S3-compatible. You do not have to run MinIO in production;
 set `MINIO_*` to R2, Tigris, AWS S3, or a Railway/Fly bucket. One bucket is
 enough if the three logical names share it — object keys do not collide.
+
+## Code quality
+
+The written bar is [docs/code-standards.md](docs/code-standards.md).
+Contributors: [CONTRIBUTING.md](CONTRIBUTING.md). Agents: [AGENTS.md](AGENTS.md).
+
+| Layer | Tool | CI |
+| --- | --- | --- |
+| Python lint | Ruff (`E4`, `E7`, `E9`, `F`), line length 120 | `uv run ruff check .` |
+| Python tests | pytest (+ Alembic on an empty DB) | `uv run pytest -q` |
+| TypeScript | `tsc --noEmit`, ESLint, Prettier | web job |
+| Web tests | Vitest + Playwright (mocked API) | web job |
+| Images | backend + web Dockerfiles | build, no push on PR |
+| Secrets | Gitleaks | every push / PR |
+| Images to GHCR | optional | tag `v*` or `workflow_dispatch` |
+
+```sh
+make check                          # ruff + pytest + web lint/typecheck/vitest
+uvx pre-commit install              # optional git hooks (Ruff + basic file checks)
+```
+
+Python is **3.13**. Node is **22**. Do not commit `.env`, recordings, or learner data.
 
 ## Configuration
 
@@ -462,10 +500,8 @@ Do not commit `.env`, provider keys, or dumps of learner audio.
 ## Tests
 
 ```sh
-uv run ruff check .
-uv run pytest -q
+make check
 TEST_DATABASE_URL=postgresql://ielts:ielts@127.0.0.1:5432/ielts_test uv run pytest -q
-cd apps/web && npm run lint && npm run format:check && npm test -- --run && npm run build
 cd apps/web && npx playwright install chromium && npm run test:e2e
 ```
 
@@ -554,9 +590,15 @@ Depends entirely on the models you pick. Soft rails
 `PAID_DAILY_BUDGET_USD` and `PAID_TEST_COST_CEILING_USD` are in `.env.example`.
 Run `make evals` on your slugs before inviting learners.
 
+**Can I run this on Kubernetes / a bare VPS / Coolify?**
+Yes. Start at [infra/deploy/README.md](infra/deploy/README.md). Compose +
+Caddy is the shortest path to HTTPS on a VPS. Kustomize is the shortest
+path on a cluster (bring your own Postgres, Redis, and bucket).
+
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT.md).
+See [CONTRIBUTING.md](CONTRIBUTING.md), [docs/code-standards.md](docs/code-standards.md),
+and the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 Licensed under the [MIT License](LICENSE).
 
