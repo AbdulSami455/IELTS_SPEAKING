@@ -1,0 +1,23 @@
+IELTS Speaking Practice
+Copyright (c) 2026 Hinterbuild contributors
+
+This product is licensed under the MIT License. See LICENSE.
+
+Trademarks
+----------
+IELTS is a registered trademark of the British Council, IDP: IELTS Australia,
+and Cambridge University Press & Assessment. This project is an independent
+practice tool. It is not affiliated with, endorsed by, or an official product
+of those organisations. Practice band estimates are coaching feedback, not
+official examination results.
+
+Third-party services
+--------------------
+Runtime inference typically uses OpenRouter (https://openrouter.ai) or any
+OpenAI-compatible HTTP API you configure. Model weights, terms, and pricing
+belong to their respective providers. See docs/models.md.
+
+Fonts and UI
+------------
+The web app may load fonts from Google Fonts at runtime. Those fonts remain
+under their own licenses.
