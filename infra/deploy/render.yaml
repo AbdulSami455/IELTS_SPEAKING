@@ -1,0 +1,115 @@
+# Render Blueprint. Dashboard: New + Blueprint, then point at this file.
+# You still need an S3-compatible bucket (Cloudflare R2, AWS S3, Tigris).
+# Docs: infra/deploy/render.md
+#
+# After first deploy, set WEB_ORIGIN to the web service URL and redeploy api.
+
+databases:
+  - name: ielts-postgres
+    plan: basic-1gb
+    postgresMajorVersion: 16
+    databaseName: ielts
+    user: ielts
+
+services:
+  - type: redis
+    name: ielts-redis
+    plan: starter
+    maxmemoryPolicy: noeviction
+    ipAllowList: []
+
+  - type: web
+    name: ielts-api
+    runtime: docker
+    dockerfilePath: ./infra/Dockerfile.backend
+    dockerCommand: uvicorn ielts_api.api:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips='*'
+    healthCheckPath: /health/ready
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: AUTH_MODE
+        value: jwt
+      - key: TRUSTED_PROXY_HOPS
+        value: "1"
+      - key: AUTO_MIGRATE
+        value: "false"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ielts-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: ielts-redis
+          type: redis
+          property: connectionString
+      - key: CELERY_BROKER_URL
+        fromService:
+          name: ielts-redis
+          type: redis
+          property: connectionString
+      - key: AUTH_TOKEN_SECRET
+        generateValue: true
+      - key: METRICS_TOKEN
+        generateValue: true
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: MINIO_ENDPOINT
+        sync: false
+      - key: MINIO_PUBLIC_ENDPOINT
+        sync: false
+      - key: MINIO_ACCESS_KEY
+        sync: false
+      - key: MINIO_SECRET_KEY
+        sync: false
+      - key: MINIO_REGION
+        value: auto
+      - key: MINIO_FORCE_PATH_STYLE
+        value: "true"
+      - key: MINIO_CANDIDATE_BUCKET
+        sync: false
+      - key: MINIO_DERIVATIVE_BUCKET
+        sync: false
+      - key: MINIO_EXAMINER_BUCKET
+        sync: false
+      - key: WEB_ORIGIN
+        sync: false
+      - key: CONSENT_VERSION
+        value: "2026-10-12"
+      - fromGroup: ielts-models
+
+  - type: worker
+    name: ielts-worker
+    runtime: docker
+    dockerfilePath: ./infra/Dockerfile.backend
+    dockerCommand: celery -A ielts_worker.tasks:celery_app worker --loglevel=info --concurrency=2
+    envVars:
+      - fromService:
+          name: ielts-api
+          type: web
+          envVarKey: DATABASE_URL
+      - fromGroup: ielts-backend
+      - fromGroup: ielts-models
+
+  - type: worker
+    name: ielts-beat
+    runtime: docker
+    dockerfilePath: ./infra/Dockerfile.backend
+    dockerCommand: celery -A ielts_worker.tasks:celery_app beat --loglevel=info --schedule /tmp/celerybeat-schedule
+    envVars:
+      - fromGroup: ielts-backend
+      - fromGroup: ielts-models
+
+  - type: web
+    name: ielts-web
+    runtime: docker
+    dockerfilePath: ./apps/web/Dockerfile
+    dockerContext: ./apps/web
+    healthCheckPath: /
+    envVars:
+      - key: PORT
+        value: "8080"
+      - key: API_UPSTREAM
+        fromService:
+          name: ielts-api
+          type: web
+          property: hostport

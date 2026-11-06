@@ -1,5 +1,9 @@
 # Deploying to Railway
 
+Platform overview and shared rules: [docs/deploy.md](../../docs/deploy.md).
+Model slugs: [docs/models.md](../../docs/models.md).
+
+
 Four services from one repo, plus managed Postgres, Redis, and an S3-compatible bucket.
 
 | Service | Config file (set "Config file path" in service settings) | Notes |

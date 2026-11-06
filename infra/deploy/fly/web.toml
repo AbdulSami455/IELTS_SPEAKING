@@ -1,0 +1,26 @@
+app = "ielts-web"
+primary_region = "lhr"
+
+[build]
+  dockerfile = "apps/web/Dockerfile"
+
+[env]
+  PORT = "8080"
+  API_UPSTREAM = "ielts-api.internal:4000"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "off"
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    grace_period = "10s"
+    interval = "15s"
+    timeout = "5s"
+    method = "GET"
+    path = "/"
+
+[[vm]]
+  memory = "256mb"
+  cpus = 1

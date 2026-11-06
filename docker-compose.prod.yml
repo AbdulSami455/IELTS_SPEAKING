@@ -1,0 +1,186 @@
+# Production-style Compose stack. Fill a real .env first (APP_ENV=production).
+# Usage: docker compose -f docker-compose.prod.yml up -d --build
+#
+# TLS is not included. Put Caddy/Traefik/Cloudflare in front and set WEB_ORIGIN.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ielts
+      POSTGRES_USER: ielts
+      POSTGRES_PASSWORD: ielts
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ielts -d ielts"]
+      interval: 5s
+      timeout: 5s
+      retries: 8
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 8
+    restart: unless-stopped
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minio}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:?Set MINIO_SECRET_KEY in .env — production rejects the example placeholder}
+    volumes:
+      - minio_data:/data
+    restart: unless-stopped
+
+  minio-setup:
+    image: amazon/aws-cli:latest
+    depends_on:
+      minio:
+        condition: service_started
+    environment:
+      AWS_ACCESS_KEY_ID: ${MINIO_ACCESS_KEY:-minio}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_SECRET_KEY:?Set MINIO_SECRET_KEY in .env}
+      AWS_DEFAULT_REGION: us-east-1
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        set -eu
+        i=0
+        until aws --endpoint-url http://minio:9000 s3 ls; do
+          i=$$((i+1))
+          if [ "$$i" -gt 30 ]; then exit 1; fi
+          sleep 2
+        done
+        aws --endpoint-url http://minio:9000 s3 mb s3://ielts-candidate-private || true
+        aws --endpoint-url http://minio:9000 s3 mb s3://ielts-derived-private || true
+        aws --endpoint-url http://minio:9000 s3 mb s3://ielts-examiner-private || true
+
+  migrate:
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.backend
+    env_file: .env
+    environment: &backend
+      DATABASE_URL: postgresql://ielts:ielts@postgres:5432/ielts
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_PUBLIC_ENDPOINT: http://minio:9000
+      AUTO_MIGRATE: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["alembic", "upgrade", "head"]
+    restart: "no"
+
+  api:
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.backend
+    env_file: .env
+    environment:
+      <<: *backend
+      API_HOST: 0.0.0.0
+      API_PORT: 4000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio-setup:
+        condition: service_completed_successfully
+      migrate:
+        condition: service_completed_successfully
+    command:
+      [
+        "sh",
+        "-c",
+        "uvicorn ielts_api.api:app --host 0.0.0.0 --port 4000 --proxy-headers --forwarded-allow-ips='*'",
+      ]
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:4000/health/live')",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 8
+      start_period: 20s
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.backend
+    env_file: .env
+    environment: *backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    command:
+      [
+        "celery",
+        "-A",
+        "ielts_worker.tasks:celery_app",
+        "worker",
+        "--loglevel=info",
+        "--concurrency=2",
+      ]
+    restart: unless-stopped
+
+  beat:
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.backend
+    env_file: .env
+    environment: *backend
+    depends_on:
+      redis:
+        condition: service_healthy
+    command:
+      [
+        "celery",
+        "-A",
+        "ielts_worker.tasks:celery_app",
+        "beat",
+        "--loglevel=info",
+        "--schedule",
+        "/tmp/celerybeat-schedule",
+      ]
+    restart: unless-stopped
+    deploy:
+      replicas: 1
+
+  web:
+    build:
+      context: apps/web
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: /v1
+    environment:
+      PORT: "8080"
+      API_UPSTREAM: api:4000
+    ports:
+      - "8080:8080"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  minio_data:
