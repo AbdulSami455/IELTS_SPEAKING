@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ielts
+  namespace: ielts
+data:
+  APP_ENV: "production"
+  AUTH_MODE: "jwt"
+  AUTO_MIGRATE: "false"
+  TRUSTED_PROXY_HOPS: "1"
+  CONSENT_VERSION: "2026-10-12"
+  INFERENCE_MODE: "openrouter"
+  MINIO_REGION: "us-east-1"
+  MINIO_FORCE_PATH_STYLE: "true"
+  MINIO_CANDIDATE_BUCKET: "ielts-candidate-private"
+  MINIO_DERIVATIVE_BUCKET: "ielts-derived-private"
+  MINIO_EXAMINER_BUCKET: "ielts-examiner-private"
+  LOG_LEVEL: "info"

@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: beat
+  namespace: ielts
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: beat
+  template:
+    metadata:
+      labels:
+        app: beat
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        fsGroup: 10001
+      containers:
+        - name: beat
+          image: ielts-api
+          args:
+            [
+              "celery",
+              "-A",
+              "ielts_worker.tasks:celery_app",
+              "beat",
+              "--loglevel=info",
+              "--schedule",
+              "/tmp/celerybeat-schedule",
+            ]
+          envFrom:
+            - configMapRef:
+                name: ielts
+            - secretRef:
+                name: ielts
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              memory: 256Mi
