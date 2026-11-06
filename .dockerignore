@@ -25,3 +25,11 @@ secrets.json
 *.log
 .DS_Store
 uv.lock.bak
+docs
+evals
+playwright-report
+apps/web/playwright-report
+apps/web/test-results
+design.md
+plan.md
+Untitled-1-07.png

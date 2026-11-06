@@ -1,5 +1,14 @@
 .venv/
 .cache/
+.idea/
+.vscode/
+*.code-workspace
+playwright-report/
+apps/web/playwright-report/
+apps/web/test-results/
+celerybeat-schedule
+celerybeat-schedule.db
+.kilo/
 __pycache__/
 *.py[cod]
 *.egg-info/
