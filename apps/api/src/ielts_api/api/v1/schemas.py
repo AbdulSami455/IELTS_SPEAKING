@@ -1,4 +1,4 @@
-"""Pydantic v1 API schemas with camelCase JSON."""
+"""Pydantic v2 API schemas with camelCase JSON."""
 
 from __future__ import annotations
 

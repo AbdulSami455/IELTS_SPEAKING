@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
@@ -35,6 +36,8 @@ from ielts_inference.progress import rebuild_progress_snapshot
 from ielts_inference.pronunciation import check_pronunciation
 from ielts_inference.quota import reserve_model_call
 from ielts_inference.transcript import clean_transcript
+
+_logger = logging.getLogger(__name__)
 
 PUBLIC_STAGES = (
     "validating_audio",
@@ -310,8 +313,8 @@ async def evaluate_test(session: AsyncSession, test_id: str, config: Environment
             if is_wav:
                 try:
                     store.put_bytes(config.minio_derivative_bucket, derivative_key, wav, "audio/wav")
-                except Exception:  # noqa: BLE001
-                    pass
+                except Exception:
+                    _logger.warning("derivative upload failed key=%s", derivative_key, exc_info=True)
             _set_stage(job, "transcribing", 40)
             await session.commit()
             part = answer.session_question.part if answer.session_question else 1

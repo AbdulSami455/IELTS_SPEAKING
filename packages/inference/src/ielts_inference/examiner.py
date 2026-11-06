@@ -433,9 +433,7 @@ def cue_card_is_strong(raw: dict) -> bool:
     if any(len(item) < 8 or len(item) > 90 for item in prompts):
         return False
     cores = [question_core(item) for item in prompts]
-    if len(set(cores)) < 4:
-        return False
-    return True
+    return len(set(cores)) >= 4
 
 
 def part3_prompt_input(
