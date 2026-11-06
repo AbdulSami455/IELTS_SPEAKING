@@ -1,4 +1,4 @@
-SHELL := /bin/zsh
+SHELL := /bin/sh
 
 .PHONY: infra-up infra-down db-seed worker stack compose-up compose-down
 
@@ -16,7 +16,7 @@ worker:
 	uv run celery -A ielts_worker.tasks:celery_app worker --loglevel=info
 
 stack:
-	zsh scripts/dev_stack.sh
+	sh scripts/dev_stack.sh
 
 compose-up:
 	docker compose up

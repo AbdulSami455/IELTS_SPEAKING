@@ -25,9 +25,9 @@ jobs:
       MINIO_ACCESS_KEY: minio
       MINIO_SECRET_KEY: minio-development-only
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-      OPENROUTER_SCORING_MODEL: ${{ vars.OPENROUTER_SCORING_MODEL }}
-      OPENROUTER_SCORING_FALLBACK_MODEL: ${{ vars.OPENROUTER_SCORING_FALLBACK_MODEL }}
-      REALTIME_LLM_MODEL: ${{ vars.REALTIME_LLM_MODEL }}
+      # Do not map empty GitHub variables onto these keys — an empty string
+      # would override the code defaults. Set repository variables only when
+      # you intend to pin a slug, then add them here explicitly.
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5

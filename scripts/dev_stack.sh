@@ -1,6 +1,6 @@
-#!/bin/zsh
-set -euo pipefail
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+#!/bin/sh
+set -eu
+ROOT="$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 make infra-up
 test -f .env || cp .env.example .env

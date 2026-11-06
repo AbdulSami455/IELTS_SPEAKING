@@ -2,6 +2,7 @@
 name = "ielts-speaking"
 version = "0.1.0"
 description = "IELTS-style speaking practice"
+license = { text = "MIT" }
 requires-python = ">=3.13"
 dependencies = [
     "ielts-api",
