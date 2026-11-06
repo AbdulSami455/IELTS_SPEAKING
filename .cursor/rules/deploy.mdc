@@ -1,0 +1,13 @@
+---
+description: Production process model and deploy constraints
+globs: "{infra/**,docker-compose*.yml,docs/deploy.md,.github/workflows/**}"
+alwaysApply: false
+---
+
+# Deploy
+
+- Production is four processes: web (nginx), api (FastAPI), worker (Celery), beat (Celery). Plus Postgres, Redis, S3-compatible storage.
+- Exactly one beat replica. Never `AUTO_MIGRATE=true` in production.
+- Web is the only public surface. It proxies `/v1` and `/health` to the API so cookies stay first-party.
+- `WEB_ORIGIN` is the public HTTPS origin of web. `TRUSTED_PROXY_HOPS=1` behind one edge proxy.
+- Templates live under `infra/deploy/`. Document new env vars in `.env.example` and `docs/`.

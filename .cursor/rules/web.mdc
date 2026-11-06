@@ -1,0 +1,15 @@
+---
+description: React / TypeScript conventions for apps/web
+globs: "apps/web/**/*.{ts,tsx}"
+alwaysApply: false
+---
+
+# Web
+
+- React 19, Vite, strict TypeScript, alias `@/` → `src/`.
+- Pages and product components are named exports. Default export only `App.tsx`.
+- Edit `src/components/studio/`. Do not hand-edit generated `src/components/ui/`.
+- API types in `src/lib/api/types.ts` match camelCase JSON. Do not recase in JSX.
+- Colocate Vitest files (`*.test.ts(x)`). Playwright in `e2e/` mocks the API.
+- Prettier: width 140, double quotes, trailing commas, semicolons.
+- After UI changes run `npm run typecheck && npm run lint && npm run format:check && npm test -- --run` from `apps/web`.

@@ -3,6 +3,9 @@
 Thanks for helping improve this speaking-practice studio. This document is the
 shortest path from a clone to a useful pull request.
 
+Style, layout, and typing rules: **[docs/code-standards.md](docs/code-standards.md)**.
+Behaviour for coding agents: **[AGENTS.md](AGENTS.md)**.
+
 ## Ground rules
 
 - Keep secrets out of git. Copy `.env.example` to `.env` and fill keys locally.
@@ -18,6 +21,8 @@ shortest path from a clone to a useful pull request.
 - ffmpeg (for local audio normalisation)
 - An [OpenRouter](https://openrouter.ai) API key, or another OpenAI-compatible
   endpoint (see [docs/models.md](docs/models.md))
+
+Optional: `uvx pre-commit install` to run Ruff before each commit.
 
 ## Local setup
 
@@ -44,14 +49,19 @@ native (non-container) equivalent.
 The web app talks to `VITE_API_BASE_URL` (default `http://localhost:4000/v1`).
 In production nginx proxies `/v1` on the same origin.
 
-## Tests
+## Checks
 
 ```sh
-uv run ruff check .
-uv run pytest -q
-# Integration tests that need Postgres:
+make check
+```
+
+That runs Ruff, pytest, and the web typecheck / lint / Prettier / Vitest
+suite. CI also applies Alembic to an empty database, builds both images, and
+runs Playwright.
+
+```sh
+# Integration tests that need Postgres (CI always does this):
 TEST_DATABASE_URL=postgresql://ielts:ielts@127.0.0.1:5432/ielts_test uv run pytest -q
-cd apps/web && npm run lint && npm run format:check && npm test -- --run && npm run build
 cd apps/web && npx playwright install chromium && npm run test:e2e
 ```
 
@@ -79,8 +89,9 @@ fresh database, so a broken revision fails the build.
 1. Branch from `main`.
 2. Keep the diff reviewable — one concern per PR when you can.
 3. Add or update tests for behaviour you change.
-4. Run the checks above.
-5. Fill in the PR template. Call out any new environment variables.
+4. Run `make check`.
+5. Fill in the PR template. Call out any new environment variables in
+   `.env.example` and `docs/`.
 
 ## Security
 
