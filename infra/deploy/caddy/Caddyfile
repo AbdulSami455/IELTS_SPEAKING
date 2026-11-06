@@ -1,0 +1,21 @@
+# Used by docker-compose.caddy.yml. Set DOMAIN and ACME_EMAIL in .env.
+#
+#   docker compose -f docker-compose.prod.yml -f docker-compose.caddy.yml up -d
+#
+# Caddy talks to the web container on the Compose network. Set
+# WEB_ORIGIN=https://$DOMAIN and TRUSTED_PROXY_HOPS=1 on api/worker/beat.
+
+{
+	email {$ACME_EMAIL}
+}
+
+{$DOMAIN} {
+	encode gzip
+	reverse_proxy web:8080 {
+		flush_interval -1
+		transport http {
+			read_timeout 180s
+			write_timeout 180s
+		}
+	}
+}

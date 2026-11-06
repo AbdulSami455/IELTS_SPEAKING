@@ -15,8 +15,17 @@ What you get:
 - `migrate` runs `alembic upgrade head` once, then exits
 - `api`, `worker`, `beat`, `web` (nginx on host port **8080**)
 
-Open `http://localhost:8080` (or put Caddy/Traefik in front for TLS and set
-`WEB_ORIGIN=https://your.domain`).
+Open `http://localhost:8080`. For HTTPS, add the Caddy overlay:
+
+```sh
+# .env: DOMAIN=speak.example.com  ACME_EMAIL=you@example.com
+#       WEB_ORIGIN=https://speak.example.com  TRUSTED_PROXY_HOPS=1
+docker compose -f docker-compose.prod.yml -f docker-compose.caddy.yml up -d --build
+```
+
+See [caddy/](caddy/). Traefik, host nginx, or [Cloudflare Tunnel](cloudflare.md)
+work the same way: terminate TLS at the edge and keep `TRUSTED_PROXY_HOPS` in
+line with how many proxies add `X-Forwarded-For` (usually `1`).
 
 ```sh
 # Logs
@@ -32,7 +41,3 @@ docker compose -f docker-compose.prod.yml down
 Replace MinIO with hosted S3/R2/Tigris by deleting the `minio` service and
 setting `MINIO_ENDPOINT`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`, and
 `MINIO_FORCE_PATH_STYLE` in `.env` (`false` for AWS virtual-host style).
-
-TLS belongs at the edge (Caddy, Traefik, nginx, Cloudflare). Terminate HTTPS
-there and keep `TRUSTED_PROXY_HOPS` in line with how many proxies you added
-(usually `1`).

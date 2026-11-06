@@ -1,0 +1,29 @@
+# TLS overlay for docker-compose.prod.yml.
+# Usage:
+#   DOMAIN=speak.example.com ACME_EMAIL=you@example.com \
+#     docker compose -f docker-compose.prod.yml -f docker-compose.caddy.yml up -d
+#
+# Set WEB_ORIGIN=https://$DOMAIN and TRUSTED_PROXY_HOPS=1 in .env.
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN:?Set DOMAIN in .env (public hostname)}
+      ACME_EMAIL: ${ACME_EMAIL:?Set ACME_EMAIL in .env}
+    volumes:
+      - ./infra/deploy/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      web:
+        condition: service_started
+
+volumes:
+  caddy_data:
+  caddy_config:
