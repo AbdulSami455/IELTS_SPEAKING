@@ -1,0 +1,218 @@
+# DigitalOcean App Platform spec.
+# Dashboard: Apps → Create → App Spec, or:
+#   doctl apps create --spec infra/deploy/digitalocean/app.yaml
+#
+# Fill every value: SECRET in the control plane. Object storage is NOT
+# provisioned — use R2, Spaces, Tigris, or S3 and set MINIO_*.
+# After the first deploy, set WEB_ORIGIN to the web ingress URL and redeploy.
+
+name: ielts-speaking
+region: nyc
+
+databases:
+  - name: ielts-pg
+    engine: PG
+    version: "16"
+    production: true
+  - name: ielts-redis
+    engine: REDIS
+    version: "7"
+    production: true
+
+jobs:
+  - name: migrate
+    kind: PRE_DEPLOY
+    dockerfile_path: infra/Dockerfile.backend
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    run_command: alembic upgrade head
+    envs:
+      - key: APP_ENV
+        value: production
+      - key: AUTO_MIGRATE
+        value: "false"
+      - key: DATABASE_URL
+        scope: RUN_TIME
+        value: ${ielts-pg.DATABASE_URL}
+
+services:
+  - name: api
+    dockerfile_path: infra/Dockerfile.backend
+    http_port: 4000
+    instance_count: 1
+    instance_size_slug: basic-xs
+    health_check:
+      http_path: /health/ready
+      initial_delay_seconds: 20
+      period_seconds: 10
+    run_command: uvicorn ielts_api.api:app --host 0.0.0.0 --port 4000 --proxy-headers --forwarded-allow-ips='*'
+    envs:
+      - key: APP_ENV
+        value: production
+      - key: AUTH_MODE
+        value: jwt
+      - key: AUTO_MIGRATE
+        value: "false"
+      - key: TRUSTED_PROXY_HOPS
+        value: "1"
+      - key: CONSENT_VERSION
+        value: "2026-10-12"
+      - key: INFERENCE_MODE
+        value: openrouter
+      - key: DATABASE_URL
+        scope: RUN_TIME
+        value: ${ielts-pg.DATABASE_URL}
+      - key: REDIS_URL
+        scope: RUN_TIME
+        value: ${ielts-redis.DATABASE_URL}
+      - key: CELERY_BROKER_URL
+        scope: RUN_TIME
+        value: ${ielts-redis.DATABASE_URL}
+      - key: AUTH_TOKEN_SECRET
+        type: SECRET
+      - key: METRICS_TOKEN
+        type: SECRET
+      - key: OPENROUTER_API_KEY
+        type: SECRET
+      - key: MINIO_ENDPOINT
+        type: SECRET
+      - key: MINIO_PUBLIC_ENDPOINT
+        type: SECRET
+      - key: MINIO_ACCESS_KEY
+        type: SECRET
+      - key: MINIO_SECRET_KEY
+        type: SECRET
+      - key: MINIO_REGION
+        value: nyc3
+      - key: MINIO_FORCE_PATH_STYLE
+        value: "true"
+      - key: MINIO_CANDIDATE_BUCKET
+        type: SECRET
+      - key: MINIO_DERIVATIVE_BUCKET
+        type: SECRET
+      - key: MINIO_EXAMINER_BUCKET
+        type: SECRET
+      - key: WEB_ORIGIN
+        type: SECRET
+      - key: PORT
+        value: "4000"
+
+  - name: web
+    dockerfile_path: apps/web/Dockerfile
+    http_port: 8080
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    health_check:
+      http_path: /
+    envs:
+      - key: PORT
+        value: "8080"
+      - key: API_UPSTREAM
+        value: "api:4000"
+    routes:
+      - path: /
+
+workers:
+  - name: worker
+    dockerfile_path: infra/Dockerfile.backend
+    instance_count: 1
+    instance_size_slug: basic-xs
+    run_command: celery -A ielts_worker.tasks:celery_app worker --loglevel=info --concurrency=2
+    envs:
+      - key: APP_ENV
+        value: production
+      - key: AUTH_MODE
+        value: jwt
+      - key: AUTO_MIGRATE
+        value: "false"
+      - key: DATABASE_URL
+        scope: RUN_TIME
+        value: ${ielts-pg.DATABASE_URL}
+      - key: REDIS_URL
+        scope: RUN_TIME
+        value: ${ielts-redis.DATABASE_URL}
+      - key: CELERY_BROKER_URL
+        scope: RUN_TIME
+        value: ${ielts-redis.DATABASE_URL}
+      - key: AUTH_TOKEN_SECRET
+        type: SECRET
+      - key: METRICS_TOKEN
+        type: SECRET
+      - key: OPENROUTER_API_KEY
+        type: SECRET
+      - key: MINIO_ENDPOINT
+        type: SECRET
+      - key: MINIO_PUBLIC_ENDPOINT
+        type: SECRET
+      - key: MINIO_ACCESS_KEY
+        type: SECRET
+      - key: MINIO_SECRET_KEY
+        type: SECRET
+      - key: MINIO_REGION
+        value: nyc3
+      - key: MINIO_FORCE_PATH_STYLE
+        value: "true"
+      - key: MINIO_CANDIDATE_BUCKET
+        type: SECRET
+      - key: MINIO_DERIVATIVE_BUCKET
+        type: SECRET
+      - key: MINIO_EXAMINER_BUCKET
+        type: SECRET
+      - key: WEB_ORIGIN
+        type: SECRET
+      - key: INFERENCE_MODE
+        value: openrouter
+      - key: CONSENT_VERSION
+        value: "2026-10-12"
+
+  - name: beat
+    dockerfile_path: infra/Dockerfile.backend
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    run_command: celery -A ielts_worker.tasks:celery_app beat --loglevel=info --schedule /tmp/celerybeat-schedule
+    envs:
+      - key: APP_ENV
+        value: production
+      - key: AUTH_MODE
+        value: jwt
+      - key: AUTO_MIGRATE
+        value: "false"
+      - key: DATABASE_URL
+        scope: RUN_TIME
+        value: ${ielts-pg.DATABASE_URL}
+      - key: REDIS_URL
+        scope: RUN_TIME
+        value: ${ielts-redis.DATABASE_URL}
+      - key: CELERY_BROKER_URL
+        scope: RUN_TIME
+        value: ${ielts-redis.DATABASE_URL}
+      - key: AUTH_TOKEN_SECRET
+        type: SECRET
+      - key: METRICS_TOKEN
+        type: SECRET
+      - key: OPENROUTER_API_KEY
+        type: SECRET
+      - key: MINIO_ENDPOINT
+        type: SECRET
+      - key: MINIO_PUBLIC_ENDPOINT
+        type: SECRET
+      - key: MINIO_ACCESS_KEY
+        type: SECRET
+      - key: MINIO_SECRET_KEY
+        type: SECRET
+      - key: MINIO_REGION
+        value: nyc3
+      - key: MINIO_FORCE_PATH_STYLE
+        value: "true"
+      - key: MINIO_CANDIDATE_BUCKET
+        type: SECRET
+      - key: MINIO_DERIVATIVE_BUCKET
+        type: SECRET
+      - key: MINIO_EXAMINER_BUCKET
+        type: SECRET
+      - key: WEB_ORIGIN
+        type: SECRET
+      - key: INFERENCE_MODE
+        value: openrouter
+      - key: CONSENT_VERSION
+        value: "2026-10-12"
