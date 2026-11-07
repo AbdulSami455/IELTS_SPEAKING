@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 import logging
 import os
 import uuid
@@ -220,16 +222,19 @@ def create_app() -> FastAPI:
             headers=headers,
         )
 
-    @app.on_event("startup")
-    async def startup() -> None:
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         await _initialize_database_with_retry(database)
         # Local convenience only; deployments run `alembic upgrade head` as a release step.
         if os.environ.get("AUTO_MIGRATE", "").lower() in {"1", "true", "yes"}:
             await asyncio.to_thread(run_migrations)
+        try:
+            yield
+        finally:
+            await database.dispose()
 
-    @app.on_event("shutdown")
-    async def shutdown() -> None:
-        await database.dispose()
+    # The database handle is created after the app, so attach the lifespan here.
+    app.router.lifespan_context = lifespan
 
     app.include_router(api_router, prefix="/v1")
     return app
