@@ -1,0 +1,33 @@
+FROM python:3.13-slim-bookworm
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=ghcr.io/astral-sh/uv:0.8.17 /uv /usr/local/bin/uv
+
+WORKDIR /app
+
+COPY pyproject.toml uv.lock README.md ./
+COPY apps/api apps/api
+COPY apps/worker apps/worker
+COPY packages packages
+COPY scripts scripts
+COPY config config
+COPY alembic.ini ./
+COPY migrations migrations
+
+RUN uv sync --frozen --no-dev
+
+# Run as an unprivileged user; the image is read-only apart from /tmp.
+RUN useradd --system --uid 10001 --create-home app \
+    && chown -R app:app /app
+USER app
+
+ENV PATH="/app/.venv/bin:$PATH"
+ENV PYTHONUNBUFFERED=1
+ENV PORT=4000
+EXPOSE 4000
+
+# Railway sets PORT; --proxy-headers trusts its edge for the client IP/scheme.
+CMD ["sh", "-c", "uvicorn ielts_api.api:app --host 0.0.0.0 --port ${PORT:-4000} --proxy-headers --forwarded-allow-ips='*'"]

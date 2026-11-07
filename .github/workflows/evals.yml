@@ -1,0 +1,58 @@
+name: AI evals
+
+# Nightly live run against the real providers. Opt in by setting the repository variable
+# RUN_LIVE_EVALS=true and the OPENROUTER_API_KEY secret; otherwise the job is skipped.
+# The run re-records provider responses and fails on threshold breaches; recordings
+# are uploaded as an artifact so a regression can be inspected and committed.
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live-evals:
+    # Forks and clones without the secret skip the run instead of failing every night.
+    if: ${{ vars.RUN_LIVE_EVALS == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      APP_ENV: development
+      WEB_ORIGIN: http://localhost:3000
+      AUTH_MODE: jwt
+      AUTH_TOKEN_SECRET: evals-only-secret-that-is-long-enough-for-hmac-0123456789abcdef
+      DATABASE_URL: postgresql://ielts:ielts@localhost:5432/ielts
+      REDIS_URL: redis://localhost:6379/0
+      CELERY_BROKER_URL: redis://localhost:6379/1
+      MINIO_ENDPOINT: http://localhost:9000
+      MINIO_ACCESS_KEY: minio
+      MINIO_SECRET_KEY: minio-development-only
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      # Do not map empty GitHub variables onto these keys — an empty string
+      # would override the code defaults. Set repository variables only when
+      # you intend to pin a slug, then add them here explicitly.
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+      - run: uv sync --frozen --all-packages
+      - name: Scoring eval
+        run: uv run python evals/scoring/run.py --live --record
+      - name: Examiner eval
+        if: always()
+        run: uv run python evals/examiner/run.py --live --record
+      - name: Provider probes
+        if: always()
+        run: uv run python -m ielts_inference.probes
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: eval-recordings
+          path: |
+            evals/scoring/recordings
+            evals/examiner/recordings
+          retention-days: 30

@@ -1,0 +1,76 @@
+from random import Random
+
+from ielts_inference.topics import (
+    PART1_TOPICS,
+    PART2_THEMES,
+    choose_session_topics,
+    part1_question_angle,
+    part1_topic_for_index,
+)
+
+
+def test_catalog_covers_core_ielts_ranges():
+    part1 = {item["id"] for item in PART1_TOPICS}
+    part2 = {item["id"] for item in PART2_THEMES}
+    assert "food" in part1
+    assert {"hometown", "work_study", "travel", "technology", "sport", "music"}.issubset(part1)
+    assert {"teacher", "journey", "skill", "environment_issue"}.issubset(part2)
+    assert len(PART1_TOPICS) >= 30
+    assert len(PART2_THEMES) >= 20
+
+
+def test_part2_catalog_covers_reference_prompt_types():
+    ids = {item["id"] for item in PART2_THEMES}
+    assert {
+        "decision",
+        "team_project",
+        "solved_problem",
+        "community_tradition",
+        "outdoor_activity",
+        "local_improvement",
+        "memorable_conversation",
+        "organised_event",
+        "routine_change",
+    } <= ids
+    for theme in PART2_THEMES:
+        assert theme["task"].lower().startswith("describe")
+        assert len(theme["prompts"]) == 4
+        assert all(len(item) >= 8 for item in theme["prompts"])
+
+
+def test_part1_rotates_across_three_topics():
+    plan = {"part1": ["travel", "music", "sport"], "part2": "journey", "part3_theme": "travel"}
+    assert part1_topic_for_index(plan, 0)["id"] == "travel"
+    assert part1_topic_for_index(plan, 1)["id"] == "music"
+    assert part1_topic_for_index(plan, 2)["id"] == "sport"
+    assert part1_topic_for_index(plan, 3)["id"] == "travel"
+
+
+def test_part1_question_angle_is_specific():
+    angle = part1_question_angle("travel", 0)
+    assert "trip" in angle or "travel" in angle
+    assert angle != "Do you like travel?"
+
+
+def test_recent_food_is_not_selected_again_immediately():
+    recent = [
+        {
+            "part1": ["food", "housework"],
+            "part2": "meal",
+            "part3_theme": "food culture, eating habits, and hospitality",
+        }
+    ]
+    plan = choose_session_topics(recent, rng=Random(0))
+    assert "food" not in plan["part1"]
+    assert plan["part2"] != "meal"
+
+
+def test_rotation_eventually_returns_to_food():
+    rng = Random(3)
+    recent: list[dict] = []
+    seen: set[str] = set()
+    for _ in range(25):
+        plan = choose_session_topics(recent, rng=rng)
+        seen.update(plan["part1"])
+        recent.append(plan)
+    assert "food" in seen

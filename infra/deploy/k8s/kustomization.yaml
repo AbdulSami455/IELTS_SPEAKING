@@ -1,0 +1,20 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: ielts
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - api.yaml
+  - worker.yaml
+  - beat.yaml
+  - web.yaml
+  - migrate-job.yaml
+  # Apply ingress.yaml yourself after editing the hostname:
+  #   kubectl apply -f infra/deploy/k8s/ingress.yaml
+images:
+  - name: ielts-api
+    newName: ghcr.io/abdulsami455/ielts-speaking-api
+    newTag: latest
+  - name: ielts-web
+    newName: ghcr.io/abdulsami455/ielts-speaking-web
+    newTag: latest

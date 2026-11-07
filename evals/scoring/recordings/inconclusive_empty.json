@@ -1,0 +1,151 @@
+{
+  "ok": true,
+  "raw": {
+    "criteria": [
+      {
+        "criterion": "fluency_and_coherence",
+        "band": 3.0,
+        "confidence": "high",
+        "subdimensions": {
+          "pace": 2.5,
+          "pauses": 3.0,
+          "coherence": 3.0,
+          "linking": 2.5,
+          "development": 2.5
+        },
+        "evidence": [
+          {
+            "quote": "Um.",
+            "note": "Frequent hesitation and very limited output severely impact fluency."
+          },
+          {
+            "quote": "<CANDIDATE_TRANSCRIPT>\n\n</CANDIDATE_TRANSCRIPT>",
+            "note": "Complete lack of response to questions.  This is not a case of thinking time; it's a lack of production."
+          }
+        ]
+      },
+      {
+        "criterion": "lexical_resource",
+        "band": 2.5,
+        "confidence": "medium",
+        "subdimensions": {
+          "range": 2.0,
+          "accuracy": 3.0,
+          "appropriacy": 2.5
+        },
+        "evidence": [
+          {
+            "quote": "Um.",
+            "note": "The only lexical item is a filler, indicating extremely limited vocabulary use."
+          }
+        ]
+      },
+      {
+        "criterion": "grammatical_range_and_accuracy",
+        "band": 2.5,
+        "confidence": "medium",
+        "subdimensions": {
+          "range": 2.0,
+          "accuracy": 3.0
+        },
+        "evidence": [
+          {
+            "quote": "<CANDIDATE_TRANSCRIPT>\n\n</CANDIDATE_TRANSCRIPT>",
+            "note": "No grammatical structures were produced, so assessment is limited."
+          }
+        ]
+      },
+      {
+        "criterion": "pronunciation",
+        "band": 3.0,
+        "confidence": "inconclusive",
+        "subdimensions": {
+          "intelligibility": 3.0,
+          "features": 3.0
+        },
+        "evidence": [
+          {
+            "quote": "Um.",
+            "note": "Pronunciation of the filler is clear, but there is no other speech to assess."
+          }
+        ]
+      }
+    ],
+    "strengths": [
+      "The candidate produced a clear filler ('Um.')"
+    ],
+    "improvements": [
+      "Initiate responses to questions.",
+      "Extend responses beyond single words or fillers.",
+      "Develop ideas and provide more than minimal answers."
+    ],
+    "minorImprovements": [
+      "The candidate did not use any incorrect grammar."
+    ],
+    "mistakes": [],
+    "fluencyNotes": [
+      "The candidate's pace is non-existent, as there is very little speech.",
+      "Pauses are excessively long and do not indicate thinking time, but rather a lack of production.",
+      "There is no coherence, as responses are absent or incomplete.",
+      "Linking words are not present due to the lack of connected speech.",
+      "Ideas are not developed at all; questions are not answered."
+    ],
+    "exampleRewrites": [],
+    "practicePlan": {
+      "days": [
+        {
+          "day": 1,
+          "focus": "Initiating Responses",
+          "task": "Repeat simple questions immediately after hearing them. (e.g., 'What is your name?')",
+          "minutes": 10,
+          "successCriteria": "Respond to 10 questions with at least 2-3 words."
+        },
+        {
+          "day": 2,
+          "focus": "Expanding Responses",
+          "task": "Answer simple 'What...?' questions with full sentences.",
+          "minutes": 15,
+          "successCriteria": "Answer 5 'What...?' questions with complete sentences."
+        },
+        {
+          "day": 3,
+          "focus": "Reducing Fillers",
+          "task": "Record yourself answering questions and identify instances of 'Um' or 'Ah'.",
+          "minutes": 15,
+          "successCriteria": "Reduce filler usage by 50% in a 2-minute recording."
+        },
+        {
+          "day": 4,
+          "focus": "Sentence Completion",
+          "task": "Complete sentence stems related to everyday topics. (e.g., 'I like to... because...')",
+          "minutes": 20,
+          "successCriteria": "Complete 10 sentence stems with grammatically correct and meaningful phrases."
+        },
+        {
+          "day": 5,
+          "focus": "Coherence Practice",
+          "task": "Describe a simple picture for 1 minute, focusing on connecting ideas.",
+          "minutes": 20,
+          "successCriteria": "Maintain a coherent description for the full minute, using linking words."
+        },
+        {
+          "day": 6,
+          "focus": "Mini-Mock Test (Part 1)",
+          "task": "Answer 5 Part 1 style questions, aiming for 2-3 sentence responses.",
+          "minutes": 10,
+          "successCriteria": "Answer all questions with at least 2-3 sentences each."
+        },
+        {
+          "day": 7,
+          "focus": "Timed Retest",
+          "task": "Complete a full IELTS Speaking Part 1 test.",
+          "minutes": 15,
+          "successCriteria": "Provide responses to all questions, aiming for fluency and coherence."
+        }
+      ]
+    }
+  },
+  "model": "google/gemma-3-27b-it",
+  "latency_seconds": 52.37,
+  "recorded_at": "2026-10-12T08:58:15Z"
+}

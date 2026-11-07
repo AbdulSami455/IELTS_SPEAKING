@@ -1,0 +1,42 @@
+name: Bug report
+description: Something does not work as documented
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please do **not** paste API keys, `.env` files, or learner recordings.
+        Security issues go to the address in SECURITY.md, not here.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      placeholder: Expected vs actual behaviour.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: 1. … 2. … 3. …
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Exam room / microphone
+        - Examiner questions
+        - Scoring / report
+        - Auth / consent
+        - Deploy / Docker
+        - Docs
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: Environment
+      placeholder: "e.g. docker compose, Railway, Python 3.13, Node 22"

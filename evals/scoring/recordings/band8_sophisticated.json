@@ -1,0 +1,175 @@
+{
+  "ok": true,
+  "raw": {
+    "criteria": [
+      {
+        "criterion": "fluency_and_coherence",
+        "band": 7.0,
+        "confidence": "high",
+        "subdimensions": {
+          "pace": 7.5,
+          "pauses": 6.5,
+          "coherence": 7.0,
+          "linking": 7.0,
+          "development": 7.0
+        },
+        "evidence": [
+          {
+            "quote": "I'd say outdoors, although it depends on the season.",
+            "note": "Natural pace and flow, with a smooth transition between ideas."
+          }
+        ]
+      },
+      {
+        "criterion": "lexical_resource",
+        "band": 7.0,
+        "confidence": "high",
+        "subdimensions": {
+          "range": 7.0,
+          "accuracy": 7.0,
+          "collocation": 6.5,
+          "idiom": 6.0
+        },
+        "evidence": [
+          {
+            "quote": "cook something elaborate",
+            "note": "Good use of vocabulary to describe the activity."
+          },
+          {
+            "quote": "a marker of a well-lived life",
+            "note": "Sophisticated phrasing and demonstrates a good range."
+          }
+        ]
+      },
+      {
+        "criterion": "grammatical_range_and_accuracy",
+        "band": 6.5,
+        "confidence": "medium",
+        "subdimensions": {
+          "range": 6.5,
+          "accuracy": 6.5,
+          "complex_structures": 6.0,
+          "error_correction": 7.0
+        },
+        "evidence": [
+          {
+            "quote": "It was the first trip we'd made without our parents",
+            "note": "Correct use of past perfect."
+          }
+        ]
+      },
+      {
+        "criterion": "pronunciation",
+        "band": 7.0,
+        "confidence": "medium",
+        "subdimensions": {
+          "intelligibility": 7.0,
+          "naturalness": 6.5,
+          "stress": 7.0,
+          "intonation": 6.5
+        },
+        "evidence": [
+          {
+            "quote": "overall clarity",
+            "note": "Speech is generally clear and easy to understand."
+          }
+        ]
+      }
+    ],
+    "strengths": [
+      "Good range of vocabulary.",
+      "Clear and coherent responses.",
+      "Natural speaking pace.",
+      "Effective use of linking words."
+    ],
+    "improvements": [
+      "Refine grammatical accuracy, particularly tense usage.",
+      "Expand the use of idiomatic language.",
+      "Develop more complex sentence structures."
+    ],
+    "minorImprovements": [
+      "Good use of descriptive language in Part 2.",
+      "Effective use of 'although' to introduce a contrasting idea in Part 1.",
+      "Clear articulation and pronunciation.",
+      "Successfully maintained a consistent speaking rate."
+    ],
+    "mistakes": [
+      {
+        "type": "grammar",
+        "quote": "I suppose it has stayed with me",
+        "correction": "I suppose it stayed with me",
+        "note": "Present perfect is not needed here. Simple past is sufficient to describe a completed action in the past.",
+        "practice": "Complete these sentences with the correct past tense: 1. I _____ (visit) Paris last year. 2. She _____ (live) in London for five years."
+      }
+    ],
+    "fluencyNotes": [
+      "Maintains a consistently good pace throughout the test.",
+      "Pauses are generally natural and used for emphasis, not hesitation.",
+      "Ideas are logically connected and easy to follow.",
+      "Uses linking words effectively to create coherence (e.g., 'although', 'so', 'at the same time').",
+      "Develops ideas with sufficient detail, providing relevant examples."
+    ],
+    "exampleRewrites": [
+      {
+        "original": "I suppose it has stayed with me",
+        "saferRewrite": "I suppose it stayed with me"
+      }
+    ],
+    "practicePlan": {
+      "days": [
+        {
+          "day": 1,
+          "focus": "Grammar - Past Simple vs. Present Perfect",
+          "task": "Complete a gap-fill exercise focusing on correct tense usage.",
+          "minutes": 30,
+          "successCriteria": "80% accuracy in tense selection."
+        },
+        {
+          "day": 2,
+          "focus": "Vocabulary - Idioms",
+          "task": "Learn 5 new idioms related to travel and use them in sentences.",
+          "minutes": 20,
+          "successCriteria": "Correctly use all 5 idioms in original sentences."
+        },
+        {
+          "day": 3,
+          "focus": "Sentence Structure - Complex Sentences",
+          "task": "Rewrite simple sentences into complex sentences using conjunctions.",
+          "minutes": 30,
+          "successCriteria": "Successfully transform 10 sentences into complex structures."
+        },
+        {
+          "day": 4,
+          "focus": "Fluency - Pausing",
+          "task": "Read a short text aloud, focusing on natural pausing and intonation.",
+          "minutes": 20,
+          "successCriteria": "Maintain a natural rhythm with appropriate pauses."
+        },
+        {
+          "day": 5,
+          "focus": "Coherence - Linking Words",
+          "task": "Write a short paragraph using a variety of linking words to connect ideas.",
+          "minutes": 30,
+          "successCriteria": "Use at least 5 different linking words effectively."
+        },
+        {
+          "day": 6,
+          "focus": "Integrated Practice - Part 2",
+          "task": "Record yourself answering a Part 2 question, focusing on all areas for improvement.",
+          "minutes": 60,
+          "successCriteria": "Deliver a coherent and grammatically accurate response with a natural pace."
+        },
+        {
+          "day": 7,
+          "focus": "Timed Retest",
+          "task": "Complete a full IELTS speaking practice test under timed conditions.",
+          "minutes": 120,
+          "successCriteria": "Achieve a consistent score across all parts of the test."
+        }
+      ]
+    }
+  },
+  "model": "google/gemma-3-27b-it",
+  "latency_seconds": 49.1,
+  "recorded_at": "2026-10-12T08:57:23Z"
+}

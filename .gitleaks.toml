@@ -1,0 +1,21 @@
+title = "IELTS Speaking Practice"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Documented development placeholders, not production secrets"
+paths = [
+  '''\.env\.example$''',
+  '''\.github/workflows/ci\.yml$''',
+  '''\.github/workflows/evals\.yml$''',
+  '''apps/web/e2e/''',
+  '''apps/api/tests/''',
+]
+regexes = [
+  '''development-jwt-secret-please-change-32''',
+  '''ci-only-secret-that-is-long-enough-for-hmac''',
+  '''ci-placeholder-key''',
+  '''evals-only-secret-that-is-long-enough-for-hmac''',
+  '''minio-development-only''',
+]

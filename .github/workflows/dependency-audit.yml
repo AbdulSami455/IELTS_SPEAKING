@@ -1,0 +1,42 @@
+name: Dependency audit
+
+# Known-vulnerability scan for the locked dependencies. Runs on pull requests that touch
+# a lockfile and weekly, so new advisories surface even when nobody changes code.
+
+on:
+  pull_request:
+    paths:
+      - uv.lock
+      - apps/web/package-lock.json
+  schedule:
+    - cron: "23 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    name: Python (pip-audit)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+      - run: uv export --frozen --no-hashes --all-packages --no-emit-workspace -o requirements-audit.txt
+      - run: uvx pip-audit -r requirements-audit.txt --no-deps --disable-pip
+
+  web:
+    name: Web, production dependencies (npm audit)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npm audit --omit=dev --audit-level=high

@@ -1,0 +1,15 @@
+{
+  "ok": true,
+  "raw": {
+    "topic": "Learning to Code",
+    "task": "Describe a time you learned a new skill related to computer coding that you found particularly useful. It could be a specific programming language, a coding technique, or a software tool.",
+    "prompts": [
+      "Describe the specific situation where you decided to learn this coding skill – what problem were you trying to solve, or what opportunity did you want to take advantage of?",
+      "Explain how you went about learning it – did you take a course, use online resources, or learn from someone else? What were the biggest challenges you faced?",
+      "Describe a specific project or task where you successfully applied this skill. What was the outcome, and what did you learn from the experience?",
+      "How has this skill impacted your life or work since then? Do you think it will continue to be valuable in the future?"
+    ]
+  },
+  "latency_seconds": 5.77,
+  "recorded_at": "2026-10-12T08:51:01Z"
+}

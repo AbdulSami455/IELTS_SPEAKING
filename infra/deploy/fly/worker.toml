@@ -1,0 +1,17 @@
+app = "ielts-worker"
+primary_region = "lhr"
+
+[build]
+  dockerfile = "infra/Dockerfile.backend"
+
+[env]
+  APP_ENV = "production"
+  AUTH_MODE = "jwt"
+  AUTO_MIGRATE = "false"
+
+[processes]
+  worker = "celery -A ielts_worker.tasks:celery_app worker --loglevel=info --concurrency=2"
+
+[[vm]]
+  memory = "1gb"
+  cpus = 1

@@ -1,0 +1,25 @@
+{
+  "slug": "work-and-study-v1",
+  "version": "2",
+  "language": "en",
+  "title": "Work and study",
+  "questions": [
+    {"part": 1, "sort_order": 1, "timing_seconds": 40, "prompt_text": "Do you work or are you a student?"},
+    {"part": 1, "sort_order": 2, "timing_seconds": 40, "prompt_text": "What do you like most about your work or studies?"},
+    {"part": 1, "sort_order": 3, "timing_seconds": 40, "prompt_text": "How do you usually organise your time during the week?"},
+    {"part": 1, "sort_order": 4, "timing_seconds": 40, "prompt_text": "Do you prefer to study or work in the morning or later in the day?"},
+    {
+      "part": 2,
+      "sort_order": 5,
+      "timing_seconds": 120,
+      "prompt_text": "Describe a skill you learned that has been useful in your work or studies.",
+      "cue_card": {
+        "title": "A useful skill",
+        "prompts": ["what the skill is", "how you learned it", "how you use it now", "and explain why it is useful"]
+      }
+    },
+    {"part": 3, "sort_order": 6, "timing_seconds": 50, "prompt_text": "How has technology changed the way people learn new skills?"},
+    {"part": 3, "sort_order": 7, "timing_seconds": 50, "prompt_text": "Should employers provide more training, or should people teach themselves?"},
+    {"part": 3, "sort_order": 8, "timing_seconds": 50, "prompt_text": "What skills do you think will be most important in the future workplace?"}
+  ]
+}

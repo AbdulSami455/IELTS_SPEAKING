@@ -1,0 +1,110 @@
+{
+  "id": "band6_steady",
+  "description": "Connected answers with some range and recurring grammar slips; around band 6.",
+  "expected_band": [
+    5.5,
+    6.5
+  ],
+  "injection": false,
+  "mean_coverage": 0.95,
+  "merged_features": {
+    "words_per_minute": 126,
+    "fillers_per_minute": 2.6,
+    "pause_count": 11,
+    "mean_pause_seconds": 0.7
+  },
+  "conversation_context": [
+    {
+      "part": 1,
+      "examiner": "<CANDIDATE_TRANSCRIPT>\nDo you prefer to spend your free time indoors or outdoors?\n</CANDIDATE_TRANSCRIPT>",
+      "candidate": "<CANDIDATE_TRANSCRIPT>\nI think I prefer outdoors, because I usually go, like, to the park near my house after work. It was a very good experience, very good, to be in nature, and I feel relax after a long day.\n</CANDIDATE_TRANSCRIPT>"
+    },
+    {
+      "part": 2,
+      "examiner": "<CANDIDATE_TRANSCRIPT>\nDescribe a journey you remember well. You should say where you went, who you went with, what happened, and explain why you remember it.\n</CANDIDATE_TRANSCRIPT>",
+      "candidate": "<CANDIDATE_TRANSCRIPT>\nLast year I went to the mountains with my cousins. We travelled by train for about six hours and then took a small bus to the village. The reason I remember it is that we got lost on the first day, and the reason is that, um, nobody had a map. In the end a farmer showed us the way and even invited us for tea. I remember it because it was the first time I felt really independent, and also because the views were amazing.\n</CANDIDATE_TRANSCRIPT>"
+    },
+    {
+      "part": 3,
+      "examiner": "<CANDIDATE_TRANSCRIPT>\nWhy do you think people travel more now than in the past?\n</CANDIDATE_TRANSCRIPT>",
+      "candidate": "<CANDIDATE_TRANSCRIPT>\nPeople in my country they are very friendly, and I think flights are cheaper, so families can afford to travel more often than before. Also social media show many beautiful places, so people want to visit. But maybe it is not good for environment.\n</CANDIDATE_TRANSCRIPT>"
+    }
+  ],
+  "parts": [
+    {
+      "part": 1,
+      "question": "Do you prefer to spend your free time indoors or outdoors?",
+      "transcript": "I think I prefer outdoors, because I usually go, like, to the park near my house after work. It was a very good experience, very good, to be in nature, and I feel relax after a long day.",
+      "features": {
+        "word_count": 38,
+        "unique_word_ratio": 0.6,
+        "filler_count": 3,
+        "mean_sentence_length": 13
+      },
+      "acoustic": {
+        "duration_seconds": 18.2,
+        "speech_rate_wpm": 125,
+        "pause_count": 3,
+        "longest_pause_seconds": 1.4
+      },
+      "speech": {
+        "confidence": 0.9,
+        "language": "en"
+      },
+      "pronunciation": {
+        "unclear_words": [],
+        "model_notes": null
+      }
+    },
+    {
+      "part": 2,
+      "question": "Describe a journey you remember well. You should say where you went, who you went with, what happened, and explain why you remember it.",
+      "transcript": "Last year I went to the mountains with my cousins. We travelled by train for about six hours and then took a small bus to the village. The reason I remember it is that we got lost on the first day, and the reason is that, um, nobody had a map. In the end a farmer showed us the way and even invited us for tea. I remember it because it was the first time I felt really independent, and also because the views were amazing.",
+      "features": {
+        "word_count": 86,
+        "unique_word_ratio": 0.6,
+        "filler_count": 4,
+        "mean_sentence_length": 13
+      },
+      "acoustic": {
+        "duration_seconds": 40.3,
+        "speech_rate_wpm": 128,
+        "pause_count": 5,
+        "longest_pause_seconds": 1.9
+      },
+      "speech": {
+        "confidence": 0.9,
+        "language": "en"
+      },
+      "pronunciation": {
+        "unclear_words": [],
+        "model_notes": null
+      }
+    },
+    {
+      "part": 3,
+      "question": "Why do you think people travel more now than in the past?",
+      "transcript": "People in my country they are very friendly, and I think flights are cheaper, so families can afford to travel more often than before. Also social media show many beautiful places, so people want to visit. But maybe it is not good for environment.",
+      "features": {
+        "word_count": 44,
+        "unique_word_ratio": 0.6,
+        "filler_count": 2,
+        "mean_sentence_length": 13
+      },
+      "acoustic": {
+        "duration_seconds": 21.0,
+        "speech_rate_wpm": 126,
+        "pause_count": 3,
+        "longest_pause_seconds": 1.2
+      },
+      "speech": {
+        "confidence": 0.9,
+        "language": "en"
+      },
+      "pronunciation": {
+        "unclear_words": [],
+        "model_notes": null
+      }
+    }
+  ]
+}

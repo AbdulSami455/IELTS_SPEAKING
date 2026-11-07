@@ -1,0 +1,110 @@
+{
+  "id": "band7_fluent",
+  "description": "Extended, well-organised answers with precise vocabulary and only occasional slips; around band 7.",
+  "expected_band": [
+    6.5,
+    7.5
+  ],
+  "injection": false,
+  "mean_coverage": 0.98,
+  "merged_features": {
+    "words_per_minute": 148,
+    "fillers_per_minute": 0.9,
+    "pause_count": 7,
+    "mean_pause_seconds": 0.7
+  },
+  "conversation_context": [
+    {
+      "part": 1,
+      "examiner": "<CANDIDATE_TRANSCRIPT>\nDo you prefer to spend your free time indoors or outdoors?\n</CANDIDATE_TRANSCRIPT>",
+      "candidate": "<CANDIDATE_TRANSCRIPT>\nMostly outdoors, to be honest. I find that even a short walk along the river clears my head after a day of staring at a screen, whereas staying in tends to make me restless. That said, on cold evenings I'm perfectly happy with a book and a cup of tea.\n</CANDIDATE_TRANSCRIPT>"
+    },
+    {
+      "part": 2,
+      "examiner": "<CANDIDATE_TRANSCRIPT>\nDescribe a journey you remember well. You should say where you went, who you went with, what happened, and explain why you remember it.\n</CANDIDATE_TRANSCRIPT>",
+      "candidate": "<CANDIDATE_TRANSCRIPT>\nThe journey that stands out is a trip I took to the north coast with two university friends a couple of years ago. We hired a tiny, rather unreliable car and drove along the coastal road, stopping whenever something caught our eye. What made it memorable was partly the scenery, which was dramatic, but mainly the fact that the car broke down in a village where nobody spoke our language. A mechanic fixed it for almost nothing and his family insisted we stay for dinner. I think I remember it so vividly because it taught me that the unplanned parts of a journey are often the best ones.\n</CANDIDATE_TRANSCRIPT>"
+    },
+    {
+      "part": 3,
+      "examiner": "<CANDIDATE_TRANSCRIPT>\nWhy do you think people travel more now than in the past?\n</CANDIDATE_TRANSCRIPT>",
+      "candidate": "<CANDIDATE_TRANSCRIPT>\nThere are several reasons. The most obvious is cost: budget airlines have made flying affordable for ordinary families, which simply wasn't the case a generation ago. Another factor is exposure; people constantly see other places online, so travel feels more attainable. I'd also argue that work has become more flexible, so it's easier to take time off. The downside, of course, is the environmental impact, which I think we are only beginning to take seriously.\n</CANDIDATE_TRANSCRIPT>"
+    }
+  ],
+  "parts": [
+    {
+      "part": 1,
+      "question": "Do you prefer to spend your free time indoors or outdoors?",
+      "transcript": "Mostly outdoors, to be honest. I find that even a short walk along the river clears my head after a day of staring at a screen, whereas staying in tends to make me restless. That said, on cold evenings I'm perfectly happy with a book and a cup of tea.",
+      "features": {
+        "word_count": 50,
+        "unique_word_ratio": 0.6,
+        "filler_count": 1,
+        "mean_sentence_length": 13
+      },
+      "acoustic": {
+        "duration_seconds": 20.7,
+        "speech_rate_wpm": 145,
+        "pause_count": 2,
+        "longest_pause_seconds": 0.9
+      },
+      "speech": {
+        "confidence": 0.9,
+        "language": "en"
+      },
+      "pronunciation": {
+        "unclear_words": [],
+        "model_notes": null
+      }
+    },
+    {
+      "part": 2,
+      "question": "Describe a journey you remember well. You should say where you went, who you went with, what happened, and explain why you remember it.",
+      "transcript": "The journey that stands out is a trip I took to the north coast with two university friends a couple of years ago. We hired a tiny, rather unreliable car and drove along the coastal road, stopping whenever something caught our eye. What made it memorable was partly the scenery, which was dramatic, but mainly the fact that the car broke down in a village where nobody spoke our language. A mechanic fixed it for almost nothing and his family insisted we stay for dinner. I think I remember it so vividly because it taught me that the unplanned parts of a journey are often the best ones.",
+      "features": {
+        "word_count": 108,
+        "unique_word_ratio": 0.6,
+        "filler_count": 2,
+        "mean_sentence_length": 13
+      },
+      "acoustic": {
+        "duration_seconds": 43.8,
+        "speech_rate_wpm": 148,
+        "pause_count": 3,
+        "longest_pause_seconds": 1.1
+      },
+      "speech": {
+        "confidence": 0.9,
+        "language": "en"
+      },
+      "pronunciation": {
+        "unclear_words": [],
+        "model_notes": null
+      }
+    },
+    {
+      "part": 3,
+      "question": "Why do you think people travel more now than in the past?",
+      "transcript": "There are several reasons. The most obvious is cost: budget airlines have made flying affordable for ordinary families, which simply wasn't the case a generation ago. Another factor is exposure; people constantly see other places online, so travel feels more attainable. I'd also argue that work has become more flexible, so it's easier to take time off. The downside, of course, is the environmental impact, which I think we are only beginning to take seriously.",
+      "features": {
+        "word_count": 75,
+        "unique_word_ratio": 0.6,
+        "filler_count": 1,
+        "mean_sentence_length": 13
+      },
+      "acoustic": {
+        "duration_seconds": 30.0,
+        "speech_rate_wpm": 150,
+        "pause_count": 2,
+        "longest_pause_seconds": 0.8
+      },
+      "speech": {
+        "confidence": 0.9,
+        "language": "en"
+      },
+      "pronunciation": {
+        "unclear_words": [],
+        "model_notes": null
+      }
+    }
+  ]
+}

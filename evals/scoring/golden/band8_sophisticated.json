@@ -1,0 +1,110 @@
+{
+  "id": "band8_sophisticated",
+  "description": "Natural, idiomatic speech with wide range and near-flawless accuracy; around band 8. The current scoring model compresses the top of the scale by about half a band, so the gate allows down to 7.0; a 6.5 or lower is a regression.",
+  "expected_band": [
+    7.0,
+    8.5
+  ],
+  "injection": false,
+  "mean_coverage": 0.99,
+  "merged_features": {
+    "words_per_minute": 158,
+    "fillers_per_minute": 0.3,
+    "pause_count": 4,
+    "mean_pause_seconds": 0.7
+  },
+  "conversation_context": [
+    {
+      "part": 1,
+      "examiner": "<CANDIDATE_TRANSCRIPT>\nDo you prefer to spend your free time indoors or outdoors?\n</CANDIDATE_TRANSCRIPT>",
+      "candidate": "<CANDIDATE_TRANSCRIPT>\nI'd say outdoors, although it depends on the season. In spring I'll happily spend a whole weekend cycling or just wandering around the old town, but when it's grey and wet I'm much more inclined to stay in, cook something elaborate, and catch up with friends.\n</CANDIDATE_TRANSCRIPT>"
+    },
+    {
+      "part": 2,
+      "examiner": "<CANDIDATE_TRANSCRIPT>\nDescribe a journey you remember well. You should say where you went, who you went with, what happened, and explain why you remember it.\n</CANDIDATE_TRANSCRIPT>",
+      "candidate": "<CANDIDATE_TRANSCRIPT>\nI'd like to talk about an overnight train I took from the capital to the mountains with my sister when we were teenagers. It was the first trip we'd made without our parents, so there was a real sense of occasion about it. The carriage was ancient, the heating barely worked, and we spent most of the night wrapped in coats, talking and watching the lights of small towns slide past. When we arrived at dawn the whole valley was covered in frost, and I remember standing on the platform feeling as though we'd crossed into a different country. I suppose it has stayed with me because it was the moment I realised that travelling is as much about who you're with as where you end up.\n</CANDIDATE_TRANSCRIPT>"
+    },
+    {
+      "part": 3,
+      "examiner": "<CANDIDATE_TRANSCRIPT>\nWhy do you think people travel more now than in the past?\n</CANDIDATE_TRANSCRIPT>",
+      "candidate": "<CANDIDATE_TRANSCRIPT>\nI think it comes down to a combination of affordability and expectation. Flying is dramatically cheaper in real terms than it was for my parents' generation, and at the same time travel has become something people feel they ought to do, almost a marker of a well-lived life. Social media amplifies that enormously. Whether this is sustainable is another matter; I suspect we'll see more pressure to travel less often but for longer, which honestly might make for better trips.\n</CANDIDATE_TRANSCRIPT>"
+    }
+  ],
+  "parts": [
+    {
+      "part": 1,
+      "question": "Do you prefer to spend your free time indoors or outdoors?",
+      "transcript": "I'd say outdoors, although it depends on the season. In spring I'll happily spend a whole weekend cycling or just wandering around the old town, but when it's grey and wet I'm much more inclined to stay in, cook something elaborate, and catch up with friends.",
+      "features": {
+        "word_count": 46,
+        "unique_word_ratio": 0.6,
+        "filler_count": 0,
+        "mean_sentence_length": 13
+      },
+      "acoustic": {
+        "duration_seconds": 17.8,
+        "speech_rate_wpm": 155,
+        "pause_count": 1,
+        "longest_pause_seconds": 0.7
+      },
+      "speech": {
+        "confidence": 0.9,
+        "language": "en"
+      },
+      "pronunciation": {
+        "unclear_words": [],
+        "model_notes": null
+      }
+    },
+    {
+      "part": 2,
+      "question": "Describe a journey you remember well. You should say where you went, who you went with, what happened, and explain why you remember it.",
+      "transcript": "I'd like to talk about an overnight train I took from the capital to the mountains with my sister when we were teenagers. It was the first trip we'd made without our parents, so there was a real sense of occasion about it. The carriage was ancient, the heating barely worked, and we spent most of the night wrapped in coats, talking and watching the lights of small towns slide past. When we arrived at dawn the whole valley was covered in frost, and I remember standing on the platform feeling as though we'd crossed into a different country. I suppose it has stayed with me because it was the moment I realised that travelling is as much about who you're with as where you end up.",
+      "features": {
+        "word_count": 127,
+        "unique_word_ratio": 0.6,
+        "filler_count": 1,
+        "mean_sentence_length": 13
+      },
+      "acoustic": {
+        "duration_seconds": 48.2,
+        "speech_rate_wpm": 158,
+        "pause_count": 2,
+        "longest_pause_seconds": 0.9
+      },
+      "speech": {
+        "confidence": 0.9,
+        "language": "en"
+      },
+      "pronunciation": {
+        "unclear_words": [],
+        "model_notes": null
+      }
+    },
+    {
+      "part": 3,
+      "question": "Why do you think people travel more now than in the past?",
+      "transcript": "I think it comes down to a combination of affordability and expectation. Flying is dramatically cheaper in real terms than it was for my parents' generation, and at the same time travel has become something people feel they ought to do, almost a marker of a well-lived life. Social media amplifies that enormously. Whether this is sustainable is another matter; I suspect we'll see more pressure to travel less often but for longer, which honestly might make for better trips.",
+      "features": {
+        "word_count": 80,
+        "unique_word_ratio": 0.6,
+        "filler_count": 0,
+        "mean_sentence_length": 13
+      },
+      "acoustic": {
+        "duration_seconds": 30.0,
+        "speech_rate_wpm": 160,
+        "pause_count": 1,
+        "longest_pause_seconds": 0.6
+      },
+      "speech": {
+        "confidence": 0.9,
+        "language": "en"
+      },
+      "pronunciation": {
+        "unclear_words": [],
+        "model_notes": null
+      }
+    }
+  ]
+}

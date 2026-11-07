@@ -1,0 +1,17 @@
+app = "ielts-beat"
+primary_region = "lhr"
+
+[build]
+  dockerfile = "infra/Dockerfile.backend"
+
+[env]
+  APP_ENV = "production"
+  AUTH_MODE = "jwt"
+  AUTO_MIGRATE = "false"
+
+[processes]
+  beat = "celery -A ielts_worker.tasks:celery_app beat --loglevel=info --schedule /tmp/celerybeat-schedule"
+
+[[vm]]
+  memory = "256mb"
+  cpus = 1

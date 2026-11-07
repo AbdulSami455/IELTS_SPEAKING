@@ -1,0 +1,25 @@
+{
+  "slug": "people-and-places-v1",
+  "version": "2",
+  "language": "en",
+  "title": "People and places",
+  "questions": [
+    {"part": 1, "sort_order": 1, "timing_seconds": 40, "prompt_text": "Who do you spend most of your free time with?"},
+    {"part": 1, "sort_order": 2, "timing_seconds": 40, "prompt_text": "Are you good at remembering people's names?"},
+    {"part": 1, "sort_order": 3, "timing_seconds": 40, "prompt_text": "What kind of neighbourhood do you live in?"},
+    {"part": 1, "sort_order": 4, "timing_seconds": 40, "prompt_text": "Do you enjoy meeting new people?"},
+    {
+      "part": 2,
+      "sort_order": 5,
+      "timing_seconds": 120,
+      "prompt_text": "Describe a person who has had a positive influence on you.",
+      "cue_card": {
+        "title": "A person who influenced you",
+        "prompts": ["who this person is", "how you know them", "what they did", "and explain how they influenced you"]
+      }
+    },
+    {"part": 3, "sort_order": 6, "timing_seconds": 50, "prompt_text": "How can communities support young people more effectively?"},
+    {"part": 3, "sort_order": 7, "timing_seconds": 50, "prompt_text": "Do you think people today have weaker local connections than in the past?"},
+    {"part": 3, "sort_order": 8, "timing_seconds": 50, "prompt_text": "What makes a neighbourhood a good place to live?"}
+  ]
+}

@@ -1,0 +1,192 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ielts
+      POSTGRES_USER: ielts
+      POSTGRES_PASSWORD: ielts
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ielts -d ielts"]
+      interval: 5s
+      timeout: 5s
+      retries: 8
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 8
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio-development-only
+      MINIO_API_CORS_ALLOW_ORIGIN: http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+
+  minio-setup:
+    image: amazon/aws-cli:2.27.0
+    depends_on:
+      minio:
+        condition: service_started
+    environment:
+      AWS_ACCESS_KEY_ID: minio
+      AWS_SECRET_ACCESS_KEY: minio-development-only
+      AWS_DEFAULT_REGION: us-east-1
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        set -eu
+        i=0
+        until aws --endpoint-url http://minio:9000 s3 ls; do
+          i=$$((i+1))
+          if [ "$$i" -gt 30 ]; then exit 1; fi
+          sleep 2
+        done
+        aws --endpoint-url http://minio:9000 s3 mb s3://ielts-candidate-private || true
+        aws --endpoint-url http://minio:9000 s3 mb s3://ielts-derived-private || true
+        aws --endpoint-url http://minio:9000 s3 mb s3://ielts-examiner-private || true
+        echo "MinIO buckets ready"
+
+  api:
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.backend
+    env_file:
+      - .env
+    environment: &backend-env
+      DATABASE_URL: postgresql://ielts:ielts@postgres:5432/ielts
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_PUBLIC_ENDPOINT: http://localhost:9000
+      WEB_ORIGIN: http://localhost:3000
+      API_HOST: 0.0.0.0
+      API_PORT: 4000
+      AUTO_MIGRATE: "true"
+      WATCHFILES_FORCE_POLLING: "true"
+      PYTHONPATH: /app/apps/api/src:/app/apps/worker/src:/app/packages/domain/src:/app/packages/db/src:/app/packages/config/src:/app/packages/inference/src:/app/packages/audio/src:/app/packages/observability/src
+    volumes: &backend-src
+      - ./apps:/app/apps
+      - ./packages:/app/packages
+      - ./scripts:/app/scripts
+      - ./config:/app/config
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio-setup:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    ports:
+      - "4000:4000"
+    command:
+      [
+        "uvicorn",
+        "ielts_api.api:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "4000",
+        "--reload",
+        "--reload-dir",
+        "/app/apps",
+        "--reload-dir",
+        "/app/packages",
+      ]
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:4000/health/live')",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 8
+      start_period: 20s
+
+  worker:
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.backend
+    user: "nobody:nogroup"
+    env_file:
+      - .env
+    environment: *backend-env
+    volumes: *backend-src
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command:
+      [
+        "watchfiles",
+        "--filter",
+        "python",
+        "celery -A ielts_worker.tasks:celery_app worker --loglevel=info --pool=solo",
+        "/app/apps",
+        "/app/packages",
+      ]
+
+  # Scheduler for retention and provider probes. Exactly one instance must run.
+  beat:
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.backend
+    user: "nobody:nogroup"
+    env_file:
+      - .env
+    environment: *backend-env
+    volumes: *backend-src
+    depends_on:
+      redis:
+        condition: service_healthy
+    command:
+      [
+        "celery",
+        "-A",
+        "ielts_worker.tasks:celery_app",
+        "beat",
+        "--loglevel=info",
+        "--schedule",
+        "/tmp/celerybeat-schedule",
+      ]
+
+  web:
+    image: node:22-alpine
+    working_dir: /web
+    volumes:
+      - ./apps/web:/web
+      - web_node_modules:/web/node_modules
+    environment:
+      VITE_API_BASE_URL: http://localhost:4000/v1
+      CHOKIDAR_USEPOLLING: "true"
+    command: ["sh", "/web/scripts/dev-entrypoint.sh"]
+    ports:
+      - "3000:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  minio_data:
+  web_node_modules:

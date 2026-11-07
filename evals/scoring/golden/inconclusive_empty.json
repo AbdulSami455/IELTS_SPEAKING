@@ -1,0 +1,107 @@
+{
+  "id": "inconclusive_empty",
+  "description": "Empty and near-empty transcripts; the band must not be inflated and should be inconclusive.",
+  "expected_band": null,
+  "injection": false,
+  "mean_coverage": 0.05,
+  "merged_features": {
+    "words_per_minute": 20,
+    "fillers_per_minute": 3.0,
+    "pause_count": 1,
+    "mean_pause_seconds": 0.7
+  },
+  "conversation_context": [
+    {
+      "part": 1,
+      "examiner": "<CANDIDATE_TRANSCRIPT>\nDo you prefer to spend your free time indoors or outdoors?\n</CANDIDATE_TRANSCRIPT>",
+      "candidate": "<CANDIDATE_TRANSCRIPT>\n\n</CANDIDATE_TRANSCRIPT>"
+    },
+    {
+      "part": 2,
+      "examiner": "<CANDIDATE_TRANSCRIPT>\nDescribe a journey you remember well. You should say where you went, who you went with, what happened, and explain why you remember it.\n</CANDIDATE_TRANSCRIPT>",
+      "candidate": "<CANDIDATE_TRANSCRIPT>\nUm.\n</CANDIDATE_TRANSCRIPT>"
+    },
+    {
+      "part": 3,
+      "examiner": "<CANDIDATE_TRANSCRIPT>\nWhy do you think people travel more now than in the past?\n</CANDIDATE_TRANSCRIPT>",
+      "candidate": "<CANDIDATE_TRANSCRIPT>\n\n</CANDIDATE_TRANSCRIPT>"
+    }
+  ],
+  "parts": [
+    {
+      "part": 1,
+      "question": "Do you prefer to spend your free time indoors or outdoors?",
+      "transcript": "",
+      "features": {
+        "word_count": 0,
+        "unique_word_ratio": 0.6,
+        "filler_count": 0,
+        "mean_sentence_length": 13
+      },
+      "acoustic": {
+        "duration_seconds": 0.0,
+        "speech_rate_wpm": 0,
+        "pause_count": 0,
+        "longest_pause_seconds": 0
+      },
+      "speech": {
+        "confidence": 0.2,
+        "language": "en"
+      },
+      "pronunciation": {
+        "unclear_words": [],
+        "model_notes": null
+      }
+    },
+    {
+      "part": 2,
+      "question": "Describe a journey you remember well. You should say where you went, who you went with, what happened, and explain why you remember it.",
+      "transcript": "Um.",
+      "features": {
+        "word_count": 1,
+        "unique_word_ratio": 0.6,
+        "filler_count": 1,
+        "mean_sentence_length": 13
+      },
+      "acoustic": {
+        "duration_seconds": 1.5,
+        "speech_rate_wpm": 40,
+        "pause_count": 1,
+        "longest_pause_seconds": 5.0
+      },
+      "speech": {
+        "confidence": 0.3,
+        "language": "en"
+      },
+      "pronunciation": {
+        "unclear_words": [],
+        "model_notes": null
+      }
+    },
+    {
+      "part": 3,
+      "question": "Why do you think people travel more now than in the past?",
+      "transcript": "",
+      "features": {
+        "word_count": 0,
+        "unique_word_ratio": 0.6,
+        "filler_count": 0,
+        "mean_sentence_length": 13
+      },
+      "acoustic": {
+        "duration_seconds": 0.0,
+        "speech_rate_wpm": 0,
+        "pause_count": 0,
+        "longest_pause_seconds": 0
+      },
+      "speech": {
+        "confidence": 0.2,
+        "language": "en"
+      },
+      "pronunciation": {
+        "unclear_words": [],
+        "model_notes": null
+      }
+    }
+  ]
+}

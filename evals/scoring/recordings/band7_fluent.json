@@ -1,0 +1,184 @@
+{
+  "ok": true,
+  "raw": {
+    "criteria": [
+      {
+        "criterion": "fluency_and_coherence",
+        "band": 6.5,
+        "confidence": "high",
+        "subdimensions": {
+          "pace": 6.5,
+          "pausing": 6.0,
+          "linking": 7.0,
+          "development": 6.5
+        },
+        "evidence": [
+          {
+            "quote": "Mostly outdoors, to be honest.",
+            "note": "Natural pace and flow, minimal hesitation."
+          },
+          {
+            "quote": "What made it memorable was partly the scenery, which was dramatic, but mainly the fact that the car broke down in a village where nobody spoke our language.",
+            "note": "Good use of linking words ('partly', 'but mainly') to connect ideas."
+          }
+        ]
+      },
+      {
+        "criterion": "lexical_resource",
+        "band": 6.5,
+        "confidence": "high",
+        "subdimensions": {
+          "range": 6.5,
+          "accuracy": 6.5,
+          "collocation": 6.0
+        },
+        "evidence": [
+          {
+            "quote": "clears my head",
+            "note": "Good idiomatic expression."
+          },
+          {
+            "quote": "unreliable car",
+            "note": "Appropriate and natural collocation."
+          }
+        ]
+      },
+      {
+        "criterion": "grammatical_range_and_accuracy",
+        "band": 6.0,
+        "confidence": "medium",
+        "subdimensions": {
+          "range": 6.0,
+          "accuracy": 6.0
+        },
+        "evidence": [
+          {
+            "quote": "which simply wasn't the case a generation ago.",
+            "note": "Correct use of past tense and complex sentence structure."
+          }
+        ]
+      },
+      {
+        "criterion": "pronunciation",
+        "band": 6.5,
+        "confidence": "inconclusive",
+        "subdimensions": {
+          "intelligibility": 6.5,
+          "naturalness": 6.5
+        },
+        "evidence": [
+          {
+            "quote": "N/A",
+            "note": "Pronunciation assessment is limited by the available data. Speech is clear and understandable."
+          }
+        ]
+      }
+    ],
+    "strengths": [
+      "Clear and coherent responses.",
+      "Good range of vocabulary.",
+      "Natural pace and flow of speech.",
+      "Effective use of linking words."
+    ],
+    "improvements": [
+      "Expand on ideas with more detail.",
+      "Refine grammatical accuracy, particularly with articles.",
+      "Increase the complexity of sentence structures."
+    ],
+    "minorImprovements": [
+      "Good use of idiomatic language ('clears my head').",
+      "Appropriate collocations ('unreliable car').",
+      "Effective use of past tense in narrative.",
+      "Clear articulation and understandable speech."
+    ],
+    "mistakes": [
+      {
+        "type": "grammar",
+        "quote": "The journey that stands out is a trip I took",
+        "correction": "The journey that stands out is the trip I took",
+        "note": "Avoid unnecessary use of 'a' before uncountable nouns like 'trip' when it's already specified.",
+        "practice": "Rewrite 5 sentences with 'trip', 'journey', or 'experience' removing unnecessary 'a'."
+      },
+      {
+        "type": "grammar",
+        "quote": "I'd also argue that work has become more flexible, so it's easier to take time off.",
+        "correction": "I would also argue that work has become more flexible, so it is easier to take time off.",
+        "note": "While contractions are natural, in a formal context like the IELTS, using the full forms ('I would', 'it is') can demonstrate greater accuracy.",
+        "practice": "Rewrite 5 sentences using contractions, then rewrite them using full forms."
+      }
+    ],
+    "fluencyNotes": [
+      "The candidate maintains a good pace throughout, averaging around 148 WPM.",
+      "Pauses are generally well-placed and do not disrupt the flow of speech, but could be slightly reduced.",
+      "Responses are generally coherent, with ideas logically connected.",
+      "The candidate uses a range of linking words and phrases to connect ideas.",
+      "Development of ideas is generally good, but could be expanded upon with more detail and examples."
+    ],
+    "exampleRewrites": [
+      {
+        "original": "The journey that stands out is a trip I took",
+        "saferRewrite": "The journey that stands out is the trip I took"
+      },
+      {
+        "original": "I'd also argue that work has become more flexible, so it's easier to take time off.",
+        "saferRewrite": "I would also argue that work has become more flexible, so it is easier to take time off."
+      }
+    ],
+    "practicePlan": {
+      "days": [
+        {
+          "day": 1,
+          "focus": "Grammar - Articles",
+          "task": "Complete 10 sentence completion exercises focusing on correct article usage (a, an, the).",
+          "minutes": 30,
+          "successCriteria": "8/10 correct."
+        },
+        {
+          "day": 2,
+          "focus": "Grammar - Contractions",
+          "task": "Rewrite 10 sentences, converting contractions to full forms and vice versa.",
+          "minutes": 20,
+          "successCriteria": "10/10 correct."
+        },
+        {
+          "day": 3,
+          "focus": "Vocabulary - Collocations",
+          "task": "Learn 5 new collocations related to travel and use them in original sentences.",
+          "minutes": 20,
+          "successCriteria": "Accurate use of all 5 collocations."
+        },
+        {
+          "day": 4,
+          "focus": "Fluency - Pausing",
+          "task": "Read a short article aloud, focusing on reducing unnecessary pauses.",
+          "minutes": 15,
+          "successCriteria": "Smooth reading with minimal pauses."
+        },
+        {
+          "day": 5,
+          "focus": "Fluency - Idea Development",
+          "task": "Choose a topic and speak for 2 minutes, aiming to provide detailed explanations and examples.",
+          "minutes": 20,
+          "successCriteria": "Continuous speech for 2 minutes with clear and developed ideas."
+        },
+        {
+          "day": 6,
+          "focus": "Coherence - Linking Words",
+          "task": "Rewrite a short paragraph, adding appropriate linking words and phrases to improve coherence.",
+          "minutes": 20,
+          "successCriteria": "Paragraph flows logically with clear connections between ideas."
+        },
+        {
+          "day": 7,
+          "focus": "Timed Practice",
+          "task": "Complete a full IELTS Speaking practice test (Parts 1, 2, and 3).",
+          "minutes": 60,
+          "successCriteria": "Maintain fluency, accuracy, and coherence throughout the test."
+        }
+      ]
+    }
+  },
+  "model": "google/gemma-3-27b-it",
+  "latency_seconds": 63.58,
+  "recorded_at": "2026-10-12T08:56:34Z"
+}

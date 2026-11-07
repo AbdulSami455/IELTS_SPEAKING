@@ -1,0 +1,88 @@
+"""API dependencies."""
+
+from __future__ import annotations
+
+from collections.abc import AsyncIterator
+
+from fastapi import Depends, Request
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from ielts_config import EnvironmentConfig, get_config
+from ielts_db.database import DatabaseConfig
+from ielts_db.repositories import UserRepository
+from ielts_db.storage import ObjectStore
+from ielts_observability import record_consent_blocked
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from ielts_api.auth.identity import AuthenticatedUser, get_identity_verifier
+from ielts_api.errors import AppError
+from ielts_api.rate_limit import USER_LIMIT, enforce
+
+_db: DatabaseConfig | None = None
+_store: ObjectStore | None = None
+_security = HTTPBearer(auto_error=False)
+
+
+def settings() -> EnvironmentConfig:
+    return get_config()
+
+
+def database() -> DatabaseConfig:
+    global _db
+    if _db is None:
+        _db = DatabaseConfig()
+    return _db
+
+
+def object_store(config: EnvironmentConfig = Depends(settings)) -> ObjectStore:
+    global _store
+    if _store is None:
+        _store = ObjectStore(config)
+    return _store
+
+
+async def get_session() -> AsyncIterator[AsyncSession]:
+    factory = database().session_factory
+    async with factory() as session:
+        yield session
+
+
+async def require_user(
+    request: Request,
+    credentials: HTTPAuthorizationCredentials | None = Depends(_security),
+    config: EnvironmentConfig = Depends(settings),
+) -> AuthenticatedUser:
+    token = credentials.credentials if credentials else request.cookies.get("auth-token", "")
+    if not token:
+        raise AppError("AUTH_REQUIRED", "Authentication required", 401)
+    identity = await get_identity_verifier(config).verify(token, expected_token_type="access")
+    if identity is None:
+        raise AppError("AUTH_REQUIRED", "Invalid or expired token", 401)
+    # Limit before touching the database so a flood costs us a Redis round trip, not a write.
+    await enforce(identity.auth_subject, USER_LIMIT)
+    async with database().session_factory() as session:
+        # Accounts are created at registration only; a token for a deleted account is dead.
+        user = await UserRepository(session).get_by_auth_subject(identity.auth_subject)
+        if user is None or user.token_version != identity.token_version:
+            raise AppError("AUTH_REQUIRED", "Invalid or expired token", 401)
+    return AuthenticatedUser(
+        user_id=user.id,
+        auth_subject=user.auth_subject,
+        email=user.email,
+        display_name=user.display_name,
+        consent_version=user.consent_version,
+    )
+
+
+async def require_consent(
+    user: AuthenticatedUser = Depends(require_user),
+    config: EnvironmentConfig = Depends(settings),
+) -> AuthenticatedUser:
+    """Recording, uploading, and scoring need consent to the current policy version."""
+    if user.consent_version != config.consent_version:
+        record_consent_blocked()
+        raise AppError(
+            "CONSENT_REQUIRED",
+            "Accept the current terms and audio-recording consent to continue.",
+            403,
+        )
+    return user

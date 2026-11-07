@@ -1,0 +1,16 @@
+---
+description: Python conventions for the IELTS speaking monorepo
+globs: "**/*.py"
+alwaysApply: false
+---
+
+# Python
+
+- Python 3.13, Ruff line length 120, src layout. Tests live next to the package, not in `src/`.
+- `packages/domain` imports no FastAPI, SQLAlchemy, Celery, or HTTP.
+- Routers parse Pydantic, call a service, map `AppError`. No SQL and no LLM calls in a router.
+- Read settings from `EnvironmentConfig`, not `os.getenv`.
+- JSON via `ApiModel` is camelCase; IELTS criterion keys stay snake_case.
+- Do not swallow exceptions with `pass`. Log at an external boundary, then continue or raise.
+- Do not widen Ruff `select` in a feature PR. Do not add `Any` to hide a missing type.
+- New behaviour needs a pytest. Live provider calls use `@pytest.mark.eval_live`.
