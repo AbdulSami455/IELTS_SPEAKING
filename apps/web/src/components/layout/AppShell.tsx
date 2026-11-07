@@ -1,3 +1,4 @@
+import { PRODUCT_FULL } from "../../features/marketing/site";
 import { Link, useLocation } from "react-router-dom";
 import type { ReactNode } from "react";
 import { ChartNoAxesCombined, Home, LogOut, Trophy, type LucideIcon } from "lucide-react";
@@ -79,7 +80,7 @@ export function AppShell({ children, variant = "default", focusAction }: AppShel
           {focus ? (
             <Brand compact />
           ) : (
-            <Link to="/" className="shrink-0 rounded-lg no-underline" aria-label="IELTS Speaking by Hinterbuild home">
+            <Link to="/" className="shrink-0 rounded-lg no-underline" aria-label={`${PRODUCT_FULL} home`}>
               <Brand />
             </Link>
           )}
@@ -143,7 +144,7 @@ export function AppShell({ children, variant = "default", focusAction }: AppShel
       {!focus && (
         <>
           <footer className="mx-auto flex w-full max-w-[1200px] flex-wrap justify-between gap-x-5 gap-y-2 border-t border-border px-4 pt-5 pb-[calc(24px+var(--tabbar-h))] text-xs text-muted-foreground md:px-6 md:pb-7">
-            <span>IELTS Speaking by Hinterbuild · Make yourself heard.</span>
+            <span>{PRODUCT_FULL} · Make yourself heard.</span>
             <span>Practice estimates, not official IELTS results.</span>
           </footer>
           <nav

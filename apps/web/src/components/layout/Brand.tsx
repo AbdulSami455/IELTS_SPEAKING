@@ -1,3 +1,4 @@
+import { OPERATOR } from "../../features/marketing/site";
 import { cn } from "@/lib/utils";
 
 export function Brand({ compact = false, className }: { compact?: boolean; className?: string }) {
@@ -9,7 +10,7 @@ export function Brand({ compact = false, className }: { compact?: boolean; class
       </svg>
       <span className="leading-tight">
         <span className="block text-[17px] font-semibold tracking-tight">IELTS Speaking</span>
-        {!compact && <span className="block text-[11px] font-medium text-muted-foreground">by Hinterbuild</span>}
+        {!compact && <span className="block text-[11px] font-medium text-muted-foreground">by {OPERATOR}</span>}
       </span>
     </span>
   );
