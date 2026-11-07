@@ -1,6 +1,7 @@
 name: AI evals
 
-# Nightly live run against the real providers. Needs the OPENROUTER_API_KEY secret.
+# Nightly live run against the real providers. Opt in by setting the repository variable
+# RUN_LIVE_EVALS=true and the OPENROUTER_API_KEY secret; otherwise the job is skipped.
 # The run re-records provider responses and fails on threshold breaches; recordings
 # are uploaded as an artifact so a regression can be inspected and committed.
 
@@ -9,8 +10,13 @@ on:
     - cron: "17 3 * * *"
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   live-evals:
+    # Forks and clones without the secret skip the run instead of failing every night.
+    if: ${{ vars.RUN_LIVE_EVALS == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
