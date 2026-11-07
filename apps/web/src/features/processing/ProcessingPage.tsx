@@ -152,7 +152,10 @@ export function ProcessingPage() {
           })}
         </ol>
         {error && (
-          <Alert tone={failed ? "error" : "warning"} title={failed ? "Scoring interrupted" : "Having trouble checking status — still trying."}>
+          <Alert
+            tone={failed ? "error" : "warning"}
+            title={failed ? "Scoring interrupted" : "Having trouble checking status — still trying."}
+          >
             {error}
           </Alert>
         )}
