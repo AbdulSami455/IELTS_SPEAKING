@@ -29,7 +29,7 @@ jobs:
       # would override the code defaults. Set repository variables only when
       # you intend to pin a slug, then add them here explicitly.
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
