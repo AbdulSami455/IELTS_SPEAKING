@@ -46,7 +46,7 @@ jobs:
             type=sha,prefix=sha-
             type=raw,value=latest,enable=${{ github.ref_type == 'tag' }}
       - name: Backend image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: infra/Dockerfile.backend
@@ -56,7 +56,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Web image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: apps/web
           file: apps/web/Dockerfile
