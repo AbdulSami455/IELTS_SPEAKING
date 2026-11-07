@@ -9,7 +9,7 @@ services:
     environment:
       POSTGRES_DB: ielts
       POSTGRES_USER: ielts
-      POSTGRES_PASSWORD: ielts
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env, the example default is not allowed in production}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -39,7 +39,7 @@ services:
     restart: unless-stopped
 
   minio-setup:
-    image: amazon/aws-cli:latest
+    image: amazon/aws-cli:2.27.0
     depends_on:
       minio:
         condition: service_started
@@ -68,7 +68,7 @@ services:
       dockerfile: infra/Dockerfile.backend
     env_file: .env
     environment: &backend
-      DATABASE_URL: postgresql://ielts:ielts@postgres:5432/ielts
+      DATABASE_URL: postgresql://ielts:${POSTGRES_PASSWORD}@postgres:5432/ielts
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/1
       MINIO_ENDPOINT: http://minio:9000

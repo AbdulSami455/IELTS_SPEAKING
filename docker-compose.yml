@@ -39,7 +39,7 @@ services:
       - minio_data:/data
 
   minio-setup:
-    image: amazon/aws-cli:latest
+    image: amazon/aws-cli:2.27.0
     depends_on:
       minio:
         condition: service_started
