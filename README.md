@@ -147,6 +147,17 @@ Scoring uses the public IELTS speaking criteria:
 
 Bands are **estimates for coaching**. They are not official scores.
 
+### Known limitations of scoring
+
+- In the eval set, the default scoring model compresses the scale by about half a
+  band at the extremes: very weak speech tends to score slightly high, very strong
+  speech slightly low. The golden ranges in `evals/scoring/golden/` encode this, so a
+  larger gap fails `make evals-replay`.
+- Pronunciation is judged from pace, pauses, and recognition confidence. There is no
+  phoneme-level assessment, and accent is never treated as an error.
+- Results depend on the models you configure. Re-run `make evals` after changing a
+  model or a prompt, and read [docs/models.md](docs/models.md).
+
 ## Architecture
 
 Four processes, three stores, one OpenAI-compatible model gateway.
@@ -477,6 +488,18 @@ Recording only happens after the learner accepts consent. Bumping
 `CONSENT_VERSION` forces a new acceptance before the next sitting.
 
 Do not commit `.env`, provider keys, or dumps of learner audio.
+
+### If you run this for other people
+
+You become responsible for their data. Voice recordings and transcripts are personal
+data in most jurisdictions, and each practice test sends audio and text to your
+configured model provider. Before opening a deployment to the public:
+
+- Replace the operator name, support email, and legal pages with your own (see the
+  `VITE_OPERATOR_NAME`, `VITE_SUPPORT_EMAIL`, `VITE_LEGAL_UPDATED` variables in
+  `.env.example`) and have the terms and privacy text reviewed for your jurisdiction.
+- Name the model provider in your privacy policy and check its data-retention terms.
+- Keep the retention windows above in line with what your policy promises.
 
 ## Security
 
