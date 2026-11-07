@@ -35,3 +35,6 @@ secrets.json
 .worktrees/
 worktrees/
 uv.lock.bak
+
+# Local design reference notes (third-party style analysis, not for the public repo)
+design.md
